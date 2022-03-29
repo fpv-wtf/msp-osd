@@ -6,9 +6,13 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <assert.h>
 
-#include <SFML/Graphics.h>
-#include <SFML/Window.h>
+#include "dji_display.h"
 
 #include "msp.h"
 #include "msp_displayport.h"
@@ -21,14 +25,17 @@
 
 #define WIDTH 1440
 #define HEIGHT 810
+#define BYTES_PER_PIXEL 4
+#define PLANE_ID 6
 
 #define FONT_WIDTH 36
 #define FONT_HEIGHT 54
 
-sfTexture *font;
-sfRenderWindow *window;
+
+dji_display_state_t *dji_display;
 uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 displayport_vtable_t *display_driver;
+uint8_t *font;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
@@ -39,26 +46,19 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
 }
 
 void draw_screen() {
-    sfRenderWindow_clear(window, sfColor_fromRGB(55,55,55));
+    memset(dji_display->fb0_virtual_addr, 0, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     for(int y = 0; y < OSD_HEIGHT; y++) {
         for(int x = 0; x < OSD_WIDTH; x++) {
             uint8_t c = character_map[x][y];
             if (c != 0) {
                 printf("%c", c > 31 ? c : 20);
-                sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
-                sfVector2f dest = {x * FONT_WIDTH, y * FONT_HEIGHT};
-                sfSprite *sprite = sfSprite_create();
-                sfSprite_setTexture(sprite, font, 0);
-                sfSprite_setTextureRect(sprite, r);
-                sfSprite_setPosition(sprite, dest);
-                sfRenderWindow_drawSprite(window, sprite, NULL);
-                sfSprite_destroy(sprite);
+                memcpy(((uint8_t *)dji_display->fb0_virtual_addr + ((x * FONT_WIDTH) + (y * FONT_HEIGHT * WIDTH) * BYTES_PER_PIXEL)), (font + (y * FONT_HEIGHT * FONT_WIDTH * c)), FONT_WIDTH * FONT_HEIGHT * BYTES_PER_PIXEL);
             }
             printf(" ");
         }
         printf("\n");
     }
-    sfRenderWindow_display(window);
+    dji_display_push_frame(dji_display, dji_display->fb_0);
 }
 
 void clear_screen()
@@ -110,13 +110,24 @@ int connect_to_server(char *address)
     return sockfd;
 }
 
+uint8_t *open_font(const char *filename) {
+    struct stat st;
+    stat(filename, &st);
+    size_t filesize = st.st_size;
+    int fd = open(filename, O_RDONLY, 0);
+    assert(fd != -1);
+    void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
+    assert(mmappedData != MAP_FAILED);
+    return mmappedData;
+}
+
 int main(int argc, char *args[])
 {
     memset(character_map, 0, sizeof(character_map));
-    sfVideoMode videoMode = {1440, 810, 32};
-    window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
-    sfRenderWindow_display(window);
-    font = sfTexture_createFromFile("bold.png", NULL);
+    dji_display = dji_display_state_alloc();
+    dji_display_open_framebuffer(dji_display, PLANE_ID);
+
+    font = open_font("font.bin");
     
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
@@ -130,24 +141,13 @@ int main(int argc, char *args[])
 
     uint8_t quit = 0;
     while (!quit)
-    {
-        sfEvent event;
-        sfRenderWindow_pollEvent(window, &event);
-
-        // Close window: exit
-        if (event.type == sfEvtMouseButtonReleased)
-        {
-            sfRenderWindow_close(window);
-            quit = 1;
-        }
-        
+    {   
         uint8_t byte = 0;
         if (read(socket_fd, &byte, 1) > 0)
             msp_process_data(msp_state, byte);
     }
-    sfTexture_destroy(font);
-    sfRenderWindow_destroy(window);
-    free(msp_state);
+    dji_display_close_framebuffer(dji_display);
+    dji_display_state_free(dji_display);
     free(display_driver);
     return 0;
 }

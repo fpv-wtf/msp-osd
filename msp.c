@@ -91,7 +91,6 @@ msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
             break;
         case MSP_DONE:
         {
-            printf("processed msp msg with cmd %x\n", msp_state->message.cmd);
             msp_msg_t *msg_copy = malloc(sizeof(msp_msg_t));
             memcpy(msg_copy, &msp_state->message, sizeof(msp_msg_t));
             if (msp_state->cb != 0)
