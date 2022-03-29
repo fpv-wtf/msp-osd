@@ -10,5 +10,4 @@ typedef struct displayport_vtable_s {
     draw_complete_func draw_complete;
 } displayport_vtable_t;
 
-void set_display_driver(displayport_vtable_t *driver);
-int displayport_process_message(msp_msg_t *msg);
+int displayport_process_message(displayport_vtable_t *display_driver, msp_msg_t *msg);

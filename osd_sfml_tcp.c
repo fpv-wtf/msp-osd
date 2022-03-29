@@ -13,13 +13,8 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-sfTexture *font;
-sfRenderWindow *window;
-
 #define OSD_WIDTH 30
 #define OSD_HEIGHT 16
-
-uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 
 #define SERVER "10.211.55.4"
 #define PORT 5762
@@ -29,6 +24,11 @@ uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 
 #define FONT_WIDTH 36
 #define FONT_HEIGHT 54
+
+sfTexture *font;
+sfRenderWindow *window;
+uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
+displayport_vtable_t *display_driver;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
@@ -74,7 +74,7 @@ void draw_complete() {
 
 void msp_callback(msp_msg_t *msp_message)
 {
-    displayport_process_message(msp_message);
+    displayport_process_message(display_driver, msp_message);
     draw_screen();
 }
 
@@ -119,13 +119,10 @@ int main(int argc, char *args[])
     sfRenderWindow_display(window);
     font = sfTexture_createFromFile("bold.png", NULL);
     
-    displayport_vtable_t displayport_vtable = {
-        .draw_character = &draw_character,
-        .clear_screen = &clear_screen,
-        .draw_complete = &draw_complete
-    };
-    
-    set_display_driver(&displayport_vtable);
+    display_driver = calloc(1, sizeof(displayport_vtable_t));
+    display_driver->draw_character = &draw_character;
+    display_driver->clear_screen = &clear_screen;
+    display_driver->draw_complete = &draw_complete;
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
@@ -152,5 +149,6 @@ int main(int argc, char *args[])
     sfTexture_destroy(font);
     sfRenderWindow_destroy(window);
     free(msp_state);
+    free(display_driver);
     return 0;
 }
