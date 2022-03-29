@@ -257,7 +257,7 @@ duss_result_t duss_hal_display_plane_blending_set(duss_disp_instance_handle_t * 
 duss_result_t duss_hal_display_release_plane(duss_disp_instance_handle_t * , duss_disp_plane_id_t );
 duss_result_t duss_hal_display_push_frame(duss_disp_instance_handle_t * , duss_disp_plane_id_t , duss_frame_buffer_t * );
 
-void duss_hal_attach_disp(uint32_t param_1,int *param_2);
-void duss_hal_attach_ion_mem(uint32_t param_1,int *param_2);
-void duss_hal_detach_ion_mem();
-void duss_hal_detach_disp();
+duss_result_t duss_hal_attach_disp(char *param_1,duss_hal_obj **param_2);
+duss_result_t duss_hal_attach_ion_mem(char *param_1,duss_hal_obj **param_2);
+duss_result_t duss_hal_detach_ion_mem();
+duss_result_t duss_hal_detach_disp();

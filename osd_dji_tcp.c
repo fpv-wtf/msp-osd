@@ -32,10 +32,15 @@
 #define FONT_HEIGHT 54
 
 
+#define SWAP32(data)   \
+( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
+  (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) ) 
+
 dji_display_state_t *dji_display;
 uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 displayport_vtable_t *display_driver;
-uint8_t *font;
+void *font;
+uint8_t which_fb = 0;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
@@ -46,19 +51,29 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
 }
 
 void draw_screen() {
-    memset(dji_display->fb0_virtual_addr, 0, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+    void *fb_addr = which_fb ? dji_display->fb1_virtual_addr : dji_display->fb0_virtual_addr;
+    memset(fb_addr, 0x00000050, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     for(int y = 0; y < OSD_HEIGHT; y++) {
         for(int x = 0; x < OSD_WIDTH; x++) {
             uint8_t c = character_map[x][y];
             if (c != 0) {
+                uint32_t pixel_x = x * FONT_WIDTH;
+                uint32_t pixel_y = y * FONT_HEIGHT;
+                for(uint8_t gx = 0; gx < FONT_WIDTH; gx++) {
+                    for(uint8_t gy = 0; gy < FONT_HEIGHT; gy++) {
+                        uint32_t font_offset = (FONT_HEIGHT * FONT_WIDTH * c);
+                        uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
+                        *((uint8_t*)fb_addr + target_offset) = SWAP32(((uint32_t*)font)[font_offset + gx + (gy * FONT_WIDTH)]);
+                    }
+                }
                 printf("%c", c > 31 ? c : 20);
-                memcpy(((uint8_t *)dji_display->fb0_virtual_addr + ((x * FONT_WIDTH) + (y * FONT_HEIGHT * WIDTH) * BYTES_PER_PIXEL)), (font + (y * FONT_HEIGHT * FONT_WIDTH * c)), FONT_WIDTH * FONT_HEIGHT * BYTES_PER_PIXEL);
             }
             printf(" ");
         }
         printf("\n");
     }
-    dji_display_push_frame(dji_display, dji_display->fb_0);
+    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
+    which_fb = !which_fb;
 }
 
 void clear_screen()
@@ -92,7 +107,7 @@ int connect_to_server(char *address)
     else
         printf("socket created!\n");
 
-    bzero(&servaddr, sizeof(servaddr));
+    memset(&servaddr, 0, sizeof(servaddr));
 
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
@@ -110,7 +125,7 @@ int connect_to_server(char *address)
     return sockfd;
 }
 
-uint8_t *open_font(const char *filename) {
+void *open_font(const char *filename) {
     struct stat st;
     stat(filename, &st);
     size_t filesize = st.st_size;
@@ -137,14 +152,16 @@ int main(int argc, char *args[])
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
     
-    int socket_fd = connect_to_server(SERVER);
+    //int socket_fd = connect_to_server(SERVER);
+    FILE* socket_fd = fopen("msp_sample.bin", "r");
 
     uint8_t quit = 0;
     while (!quit)
     {   
         uint8_t byte = 0;
-        if (read(socket_fd, &byte, 1) > 0)
+        if (fread(&byte, 1, 1, socket_fd) > 0)
             msp_process_data(msp_state, byte);
+        usleep(50);
     }
     dji_display_close_framebuffer(dji_display);
     dji_display_state_free(dji_display);

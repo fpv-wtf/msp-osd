@@ -126,7 +126,8 @@ int main(int argc, char *args[])
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
     
-    int socket_fd = connect_to_server(SERVER);
+    //int socket_fd = connect_to_server(SERVER);
+    FILE *socket_fd = fopen("msp_sample.bin", "r");
 
     uint8_t quit = 0;
     while (!quit)
@@ -142,8 +143,9 @@ int main(int argc, char *args[])
         }
         
         uint8_t byte = 0;
-        if (read(socket_fd, &byte, 1) > 0)
+        if (fread(&byte, 1, 1, socket_fd) > 0)
             msp_process_data(msp_state, byte);
+        usleep(100);
     }
     sfTexture_destroy(font);
     sfRenderWindow_destroy(window);
