@@ -52,18 +52,22 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
 
 void draw_screen() {
     void *fb_addr = which_fb ? dji_display->fb1_virtual_addr : dji_display->fb0_virtual_addr;
-    memset(fb_addr, 0x00000050, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     for(int y = 0; y < OSD_HEIGHT; y++) {
         for(int x = 0; x < OSD_WIDTH; x++) {
             uint8_t c = character_map[x][y];
             if (c != 0) {
                 uint32_t pixel_x = x * FONT_WIDTH;
                 uint32_t pixel_y = y * FONT_HEIGHT;
+                uint32_t character_offset = (((FONT_HEIGHT * FONT_WIDTH) * BYTES_PER_PIXEL) * c);
                 for(uint8_t gx = 0; gx < FONT_WIDTH; gx++) {
                     for(uint8_t gy = 0; gy < FONT_HEIGHT; gy++) {
-                        uint32_t font_offset = (FONT_HEIGHT * FONT_WIDTH * c);
+                        uint32_t font_offset = character_offset + (gy * FONT_WIDTH * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
                         uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
-                        *((uint8_t*)fb_addr + target_offset) = SWAP32(((uint32_t*)font)[font_offset + gx + (gy * FONT_WIDTH)]);
+                        *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);        
+                        *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);    
+                        *((uint8_t *)fb_addr + target_offset + 2) = *(uint8_t *)((uint8_t *)font + font_offset);   
+                        *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);  
                     }
                 }
                 printf("%c", c > 31 ? c : 20);
