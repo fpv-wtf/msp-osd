@@ -15,6 +15,7 @@
 
 sfTexture *font;
 sfRenderWindow *window;
+uint8_t character_map[30][16];
 
 #define SERVER "10.211.55.4"
 #define PORT 5762
@@ -22,33 +23,51 @@ sfRenderWindow *window;
 #define WIDTH 1440
 #define HEIGHT 810
 
+#define FONT_WIDTH 36
+#define FONT_HEIGHT 54
+
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
-    sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
-    sfVector2f dest = {x, y};
-    sfSprite *sprite = sfSprite_create();
-    sfSprite_setTexture(sprite, font, 0);
-    sfSprite_setTextureRect(sprite, r);
-    sfSprite_setPosition(sprite, dest);
-    sfRenderWindow_drawSprite(window, sprite, NULL);
-    sfSprite_destroy(sprite);
+    character_map[x][y] = c;
+}
+
+void draw_screen() {
+    for(int y = 0; y < 16; y++) {
+        for(int x = 0; x < 30; x++) {
+            uint8_t c = character_map[x][y];
+            if (c != 0) {
+                printf("%c", c);
+                sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
+                sfVector2f dest = {x * (FONT_WIDTH + 12), y * FONT_HEIGHT};
+                sfSprite *sprite = sfSprite_create();
+                sfSprite_setTexture(sprite, font, 0);
+                sfSprite_setTextureRect(sprite, r);
+                sfSprite_setPosition(sprite, dest);
+                sfRenderWindow_drawSprite(window, sprite, NULL);
+                sfSprite_destroy(sprite);
+            }
+            printf(" ");
+        }
+        printf("\n");
+    }
+    sfRenderWindow_display(window);
 }
 
 void clear_screen()
 {
     printf("clear\n");
-    sfColor black = {0,0,0,0};
-    sfRenderWindow_clear(window, black);
+    memset(character_map, 0, sizeof(character_map));
 }
 
 void draw_complete() {
     printf("draw complete!\n");
-    sfRenderWindow_display(window);
 }
 
 void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(msp_message);
+    sfRenderWindow_clear(window, sfColor_fromRGB(0,0,0));
+    draw_screen();
 }
 
 int connect_to_server(char *address)
@@ -86,6 +105,7 @@ int connect_to_server(char *address)
 
 int main(int argc, char *args[])
 {
+    memset(character_map, 0, sizeof(character_map));
     sfVideoMode videoMode = {1440, 810, 32};
     window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
     font = sfTexture_createFromFile("bold.png", NULL);

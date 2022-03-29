@@ -1,8 +1,5 @@
 #include <stdint.h>
 
-#define FONT_WIDTH 36
-#define FONT_HEIGHT 54
-
 typedef void (*draw_character_func)(uint32_t x, uint32_t y, uint8_t c);
 typedef void (*clear_screen_func)();
 typedef void (*draw_complete_func)();

@@ -18,7 +18,7 @@ static void process_draw_string(uint8_t *payload) {
         }
     }
     for(uint8_t idx = 0; idx < str_len; idx++) {
-        display_driver->draw_character(col * FONT_WIDTH, row * FONT_HEIGHT, payload[3+idx]);
+        display_driver->draw_character(col, row, payload[3+idx]);
         col++;
         if(col > MSP_COLS) {
             col = 0;
