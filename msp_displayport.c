@@ -1,7 +1,6 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-#define MSP_ROWS 13 // NTSC mode. PAL mode has 16 rows which doesn't fit as well
 #define MSP_COLS 30
 
 displayport_vtable_t *display_driver;
@@ -42,7 +41,7 @@ static void process_open() {
 }
 
 static void process_close() {
-
+    process_clear_screen();
 }
 
 void set_display_driver(displayport_vtable_t *driver) {
