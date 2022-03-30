@@ -17,6 +17,8 @@
 #define OSD_WIDTH 31
 #define OSD_HEIGHT 16
 
+#define X_OFFSET 180
+
 #define SERIAL_PORT "/dev/tty.usbserial-A10K6NWF"
 
 #define SERVER "10.211.55.4"
@@ -35,21 +37,26 @@ displayport_vtable_t *display_driver;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
-    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1) {
+    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1)
+    {
         return;
     }
     character_map[x][y] = c;
 }
 
-void draw_screen() {
-    sfRenderWindow_clear(window, sfColor_fromRGB(55,55,55));
-    for(int y = 0; y < OSD_HEIGHT; y++) {
-        for(int x = 0; x < OSD_WIDTH; x++) {
+void draw_screen()
+{
+    sfRenderWindow_clear(window, sfColor_fromRGB(55, 55, 55));
+    for (int y = 0; y < OSD_HEIGHT; y++)
+    {
+        for (int x = 0; x < OSD_WIDTH; x++)
+        {
             uint8_t c = character_map[x][y];
-            if (c != 0) {
+            if (c != 0)
+            {
                 printf("%c", c > 31 ? c : 20);
                 sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
-                sfVector2f dest = {x * FONT_WIDTH, y * FONT_HEIGHT};
+                sfVector2f dest = {(x * FONT_WIDTH) + X_OFFSET, y * FONT_HEIGHT};
                 sfSprite *sprite = sfSprite_create();
                 sfSprite_setTexture(sprite, font, 0);
                 sfSprite_setTextureRect(sprite, r);
@@ -69,7 +76,8 @@ void clear_screen()
     memset(character_map, 0, sizeof(character_map));
 }
 
-void draw_complete() {
+void draw_complete()
+{
     sfRenderWindow_display(window);
     printf("draw complete!\n");
 }
@@ -113,46 +121,37 @@ int connect_to_server(char *address)
     return sockfd;
 }
 
-int open_serial_port(const char * device)
+int open_serial_port(const char *device)
 {
-  int fd = open(device, O_RDWR | O_NOCTTY);
-  if (fd == -1)
-  {
-    perror(device);
-    return -1;
-  }
- 
-  int result = tcflush(fd, TCIOFLUSH);
-  if (result)
-  {
-    perror("tcflush failed");  // just a warning, not a fatal error
-  }
- 
-  struct termios options;
-  result = tcgetattr(fd, &options);
-  if (result)
-  {
-    perror("tcgetattr failed");
-    close(fd);
-    return -1;
-  }
- 
-  options.c_iflag &= ~(INLCR | IGNCR | ICRNL | IXON | IXOFF);
-  options.c_oflag &= ~(ONLCR | OCRNL);
-  options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    struct termios tio;
+    struct termios stdio;
+    int tty_fd;
+    fd_set rdset;
 
-  cfsetospeed(&options, B115200);
-  cfsetispeed(&options, cfgetospeed(&options));
- 
-  result = tcsetattr(fd, TCSANOW, &options);
-  if (result)
-  {
-    perror("tcsetattr failed");
-    close(fd);
-    return -1;
-  }
- 
-  return fd;
+    memset(&stdio, 0, sizeof(stdio));
+    stdio.c_iflag = 0;
+    stdio.c_oflag = 0;
+    stdio.c_cflag = 0;
+    stdio.c_lflag = 0;
+    stdio.c_cc[VMIN] = 1;
+    stdio.c_cc[VTIME] = 0;
+    tcsetattr(STDOUT_FILENO, TCSANOW, &stdio);
+    tcsetattr(STDOUT_FILENO, TCSAFLUSH, &stdio);
+    fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+
+    memset(&tio, 0, sizeof(tio));
+    tio.c_iflag = 0;
+    tio.c_oflag = 0;
+    tio.c_cflag = CS8 | CREAD | CLOCAL; 
+    tio.c_lflag = 0;
+    tio.c_cc[VMIN] = 1;
+    tio.c_cc[VTIME] = 0;
+
+    tty_fd = open(device, O_RDWR | O_NONBLOCK); 
+    cfsetospeed(&tio, B115200);               
+    cfsetispeed(&tio, B115200);                
+    tcsetattr(tty_fd, TCSANOW, &tio);
+    return tty_fd;
 }
 
 int main(int argc, char *args[])
@@ -162,7 +161,7 @@ int main(int argc, char *args[])
     window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
     sfRenderWindow_display(window);
     font = sfTexture_createFromFile("bold.png", NULL);
-    
+
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
     display_driver->clear_screen = &clear_screen;
@@ -170,10 +169,10 @@ int main(int argc, char *args[])
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
-    
-    //int socket_fd = connect_to_server(SERVER);
-    FILE *socket_fd = fopen("msp_sample.bin", "r");
 
+    // int socket_fd = connect_to_server(SERVER);
+    //FILE *socket_fd = fopen("msp_sample.bin", "r");
+    int socket_fd = open_serial_port(SERIAL_PORT);
     uint8_t quit = 0;
     while (!quit)
     {
@@ -186,9 +185,9 @@ int main(int argc, char *args[])
             sfRenderWindow_close(window);
             quit = 1;
         }
-        
+
         uint8_t byte = 0;
-        if (fread(&byte, 1, 1, socket_fd) > 0)
+        if (read(socket_fd, &byte, 1) > 0)
             msp_process_data(msp_state, byte);
         usleep(100);
     }
