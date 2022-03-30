@@ -17,7 +17,7 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-#define OSD_WIDTH 30
+#define OSD_WIDTH 31
 #define OSD_HEIGHT 16
 
 #define SERVER "10.211.55.4"
@@ -44,7 +44,7 @@ uint8_t which_fb = 0;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
-    if (x > OSD_WIDTH || y > OSD_HEIGHT) {
+    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1) {
         return;
     }
     character_map[x][y] = c;
@@ -76,8 +76,7 @@ void draw_screen() {
         }
         printf("\n");
     }
-    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
-    which_fb = !which_fb;
+    
 }
 
 void clear_screen()
@@ -87,6 +86,8 @@ void clear_screen()
 }
 
 void draw_complete() {
+    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
+    which_fb = !which_fb;
     printf("draw complete!\n");
 }
 

@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window.h>
@@ -13,8 +14,10 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-#define OSD_WIDTH 30
+#define OSD_WIDTH 31
 #define OSD_HEIGHT 16
+
+#define SERIAL_PORT "/dev/tty.usbserial-A10K6NWF"
 
 #define SERVER "10.211.55.4"
 #define PORT 5762
@@ -32,7 +35,7 @@ displayport_vtable_t *display_driver;
 
 void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
-    if (x > OSD_WIDTH || y > OSD_HEIGHT) {
+    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1) {
         return;
     }
     character_map[x][y] = c;
@@ -58,7 +61,6 @@ void draw_screen() {
         }
         printf("\n");
     }
-    sfRenderWindow_display(window);
 }
 
 void clear_screen()
@@ -68,6 +70,7 @@ void clear_screen()
 }
 
 void draw_complete() {
+    sfRenderWindow_display(window);
     printf("draw complete!\n");
 }
 
@@ -108,6 +111,48 @@ int connect_to_server(char *address)
         printf("connected!\n");
     fcntl(sockfd, F_SETFL, O_NONBLOCK);
     return sockfd;
+}
+
+int open_serial_port(const char * device)
+{
+  int fd = open(device, O_RDWR | O_NOCTTY);
+  if (fd == -1)
+  {
+    perror(device);
+    return -1;
+  }
+ 
+  int result = tcflush(fd, TCIOFLUSH);
+  if (result)
+  {
+    perror("tcflush failed");  // just a warning, not a fatal error
+  }
+ 
+  struct termios options;
+  result = tcgetattr(fd, &options);
+  if (result)
+  {
+    perror("tcgetattr failed");
+    close(fd);
+    return -1;
+  }
+ 
+  options.c_iflag &= ~(INLCR | IGNCR | ICRNL | IXON | IXOFF);
+  options.c_oflag &= ~(ONLCR | OCRNL);
+  options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+
+  cfsetospeed(&options, B115200);
+  cfsetispeed(&options, cfgetospeed(&options));
+ 
+  result = tcsetattr(fd, TCSANOW, &options);
+  if (result)
+  {
+    perror("tcsetattr failed");
+    close(fd);
+    return -1;
+  }
+ 
+  return fd;
 }
 
 int main(int argc, char *args[])

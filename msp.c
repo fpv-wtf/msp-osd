@@ -75,13 +75,23 @@ msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
             msp_state->buf_ptr++;
             if (msp_state->buf_ptr == msp_state->message.size)
             {
+                msp_state->buf_ptr = 0;
                 msp_state->state = MSP_CHECKSUM;
             }
             break;
         case MSP_CHECKSUM:
             if (msp_state->message.checksum == dat)
             {
-                msp_state->state = MSP_DONE;
+                msp_msg_t *msg_copy = malloc(sizeof(msp_msg_t));
+                memcpy(msg_copy, &msp_state->message, sizeof(msp_msg_t));
+                if (msp_state->cb != 0)
+                {
+                    msp_state->cb(msg_copy);
+                }
+                free(msg_copy);
+                memset(&msp_state->message, 0, sizeof(msp_msg_t));
+                msp_state->state = MSP_IDLE;
+                break;            
             }
             else
             {
@@ -89,19 +99,6 @@ msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
                 return MSP_ERR_CKS;
             }
             break;
-        case MSP_DONE:
-        {
-            msp_msg_t *msg_copy = malloc(sizeof(msp_msg_t));
-            memcpy(msg_copy, &msp_state->message, sizeof(msp_msg_t));
-            if (msp_state->cb != 0)
-            {
-                msp_state->cb(msg_copy);
-            }
-            free(msg_copy);
-            memset(&msp_state->message, 0, sizeof(msp_msg_t));
-            msp_state->state = MSP_IDLE;
-            break;
-        }
     }
     return 0;
 }
