@@ -19,8 +19,6 @@ int connect_to_server(char *address, int port)
         printf("socket failed!\n");
         return -1;
     }
-    else
-        printf("socket created! %d\n", sockfd);
 
     memset(&servaddr, 0, sizeof(servaddr));
 
@@ -34,8 +32,7 @@ int connect_to_server(char *address, int port)
         printf("connection failed!\n");
         return -1;
     }
-    else
-        printf("Created UDP psuedo-connection\n");
+
     fcntl(sockfd, F_SETFL, O_NONBLOCK);
     return sockfd;
 }

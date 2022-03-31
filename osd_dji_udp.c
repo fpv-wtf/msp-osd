@@ -85,8 +85,6 @@ static void draw_screen() {
         }
         //printf("\n");
     }   
-    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
-    which_fb = !which_fb;
 }
 
 static void clear_screen()
@@ -95,6 +93,8 @@ static void clear_screen()
 }
 
 static void draw_complete() {
+    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
+    which_fb = !which_fb;
     printf("DRAW\n"); 
 }
 

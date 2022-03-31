@@ -36,35 +36,46 @@ static void msp_callback(msp_msg_t *msp_message)
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     signal(SIGINT, sig_handler);
     struct pollfd poll_fds[2];
     const char *pty_name_ptr;
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
     serial_fd = open_serial_port(SERIAL_PORT);
+    if (serial_fd <= 0) {
+        printf("Failed to open serial port!\n");
+        return 1;
+    }
     pty_fd = open_pty(&pty_name_ptr);
     printf("Allocated PTY %s\n", pty_name_ptr);
+    if (argc > 1) {
+        unlink(argv[1]);
+        symlink(pty_name_ptr, argv[1]);    
+    }
     socket_fd = connect_to_server(IP_ADDRESS, PORT);
-    uint8_t serial_byte = 0;
-    uint8_t pty_byte = 0;
+    uint8_t serial_data[256];
+    ssize_t serial_data_size;
     while (!quit) {
         poll_fds[0].fd = serial_fd;
         poll_fds[1].fd = pty_fd;
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
         poll(poll_fds, 2, -1); 
-        if (read(serial_fd, &serial_byte, 1) > 0) {
-            if(msp_process_data(msp_state, serial_byte) == 0) {
-                // 0 -> MSP data was valid, so buffer it to forward on later
-                message_buffer[cursor] = serial_byte;
-                cursor++;
-            } else {
-                cursor = 0;
+        serial_data_size = read(serial_fd, serial_data, sizeof(serial_data));
+        if (serial_data_size > 0) {
+            for (ssize_t i = 0; i < serial_data_size; i++) {
+                if(msp_process_data(msp_state, serial_data[i]) == 0) {
+                    // 0 -> MSP data was valid, so buffer it to forward on later
+                    message_buffer[cursor] = serial_data[i];
+                    cursor++;
+                } else {
+                    cursor = 0;
+                }
             }
         }
-        if(read(pty_fd, &pty_byte, 1) > 0) {
-           write(serial_fd, &pty_byte, 1);
+        if(0 < (serial_data_size = read(pty_fd, serial_data, sizeof(serial_data)))) {
+           write(serial_fd, serial_data, serial_data_size);
         }
 
     }
