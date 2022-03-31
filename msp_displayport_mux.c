@@ -17,7 +17,14 @@ int pty_fd;
 int serial_fd;
 int socket_fd;
 
-void msp_callback(msp_msg_t *msp_message)
+static volatile sig_atomic_t quit = 0;
+
+static void sig_handler(int _)
+{
+    quit = 1;
+}
+
+static void msp_callback(msp_msg_t *msp_message)
 {
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
         write(socket_fd, &message_buffer, cursor);
@@ -29,6 +36,7 @@ void msp_callback(msp_msg_t *msp_message)
 }
 
 int main() {
+    signal(SIGINT, sig_handler);
     const char *pty_name_ptr;
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
@@ -38,8 +46,7 @@ int main() {
     socket_fd = connect_to_server(IP_ADDRESS, PORT);
     uint8_t serial_byte = 0;
     uint8_t pty_byte = 0;
-    uint8_t exit = 0;
-    while (!exit) {
+    while (!quit) {
         if (read(serial_fd, &serial_byte, 1) > 0) {
             if(msp_process_data(msp_state, serial_byte) == 0) {
                 // 0 -> MSP data was valid, so buffer it to forward on later

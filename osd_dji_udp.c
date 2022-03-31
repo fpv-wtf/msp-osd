@@ -13,7 +13,7 @@
 #include <assert.h>
 
 #include "dji_display.h"
-
+#include "network.h"
 #include "msp.h"
 #include "msp_displayport.h"
 
@@ -38,13 +38,19 @@
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
   (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) ) 
 
+static volatile sig_atomic_t quit = 0;
 dji_display_state_t *dji_display;
 uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 displayport_vtable_t *display_driver;
 void *font;
 uint8_t which_fb = 0;
 
-void draw_character(uint32_t x, uint32_t y, uint8_t c)
+static void sig_handler(int _)
+{
+    quit = 1;
+}
+
+static void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
     if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1) {
         return;
@@ -52,7 +58,7 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
     character_map[x][y] = c;
 }
 
-void draw_screen() {
+static void draw_screen() {
     void *fb_addr = which_fb ? dji_display->fb1_virtual_addr : dji_display->fb0_virtual_addr;
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
@@ -79,27 +85,26 @@ void draw_screen() {
         }
         //printf("\n");
     }   
-}
-
-void clear_screen()
-{
     dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
     which_fb = !which_fb;
+}
+
+static void clear_screen()
+{
     memset(character_map, 0, sizeof(character_map));
 }
 
-void draw_complete() {
-    printf("DRAW\n");
-   
+static void draw_complete() {
+    printf("DRAW\n"); 
 }
 
-void msp_callback(msp_msg_t *msp_message)
+static void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
     draw_screen();
 }
 
-void *open_font(const char *filename) {
+static void *open_font(const char *filename) {
     struct stat st;
     stat(filename, &st);
     size_t filesize = st.st_size;
@@ -112,6 +117,7 @@ void *open_font(const char *filename) {
 
 int main(int argc, char *args[])
 {
+    signal(SIGINT, sig_handler);
     memset(character_map, 0, sizeof(character_map));
     dji_display = dji_display_state_alloc();
     dji_display_open_framebuffer(dji_display, PLANE_ID);
@@ -128,7 +134,6 @@ int main(int argc, char *args[])
     
     int socket_fd = bind_socket(PORT);
 
-    uint8_t quit = 0;
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[255];

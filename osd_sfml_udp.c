@@ -34,12 +34,18 @@
 #define FONT_WIDTH 36
 #define FONT_HEIGHT 54
 
+static volatile sig_atomic_t quit = 0;
 sfTexture *font;
 sfRenderWindow *window;
 uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 displayport_vtable_t *display_driver;
 
-void draw_character(uint32_t x, uint32_t y, uint8_t c)
+static void sig_handler(int _)
+{
+    quit = 1;
+}
+
+static void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
     if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1)
     {
@@ -48,7 +54,7 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
     character_map[x][y] = c;
 }
 
-void draw_screen()
+static void draw_screen()
 {
     sfRenderWindow_clear(window, sfColor_fromRGB(55, 55, 55));
     for (int y = 0; y < OSD_HEIGHT; y++)
@@ -74,19 +80,19 @@ void draw_screen()
     }
 }
 
-void clear_screen()
+static void clear_screen()
 {
     DEBUG_PRINT("clear\n");
     memset(character_map, 0, sizeof(character_map));
 }
 
-void draw_complete()
+static void draw_complete()
 {
     sfRenderWindow_display(window);
     DEBUG_PRINT("draw complete!\n");
 }
 
-void msp_callback(msp_msg_t *msp_message)
+static void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
     draw_screen();
@@ -94,6 +100,7 @@ void msp_callback(msp_msg_t *msp_message)
 
 int main(int argc, char *args[])
 {
+    signal(SIGINT, sig_handler);
     memset(character_map, 0, sizeof(character_map));
     sfVideoMode videoMode = {1440, 810, 32};
     window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
@@ -109,7 +116,6 @@ int main(int argc, char *args[])
     msp_state->cb = &msp_callback;
 
     int socket_fd = bind_socket(PORT);
-    uint8_t quit = 0;
     int recv_len = 0;
     while (!quit)
     {
@@ -132,6 +138,7 @@ int main(int argc, char *args[])
                 msp_process_data(msp_state, buffer[i]);
         }
     }
+    sfRenderWindow_close(window);
     sfTexture_destroy(font);
     sfRenderWindow_destroy(window);
     free(msp_state);
