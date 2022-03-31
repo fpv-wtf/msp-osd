@@ -7,7 +7,7 @@
 #include "serial.h"
 #include "msp.h"
 
-#define SERIAL_PORT "/dev/ttyS1"
+#define SERIAL_PORT "/dev/ttyS1_moved"
 #define IP_ADDRESS "192.168.41.2"
 #define PORT 7654
 
@@ -45,6 +45,8 @@ int main() {
                 // 0 -> MSP data was valid, so buffer it to forward on later
                 message_buffer[cursor] = serial_byte;
                 cursor++;
+            } else {
+                cursor = 0;
             }
         }
         if(read(pty_fd, &pty_byte, 1) > 0) {
