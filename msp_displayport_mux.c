@@ -12,8 +12,11 @@
 #define IP_ADDRESS "192.168.41.2"
 #define PORT 7654
 
+uint8_t frame_buffer[4196]; // buffer a whole frame of MSP commands until we get a draw command
 uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
 uint8_t cursor = 0;
+uint32_t fb_cursor = 0;
+
 int pty_fd;
 int serial_fd;
 int socket_fd;
@@ -28,10 +31,19 @@ static void sig_handler(int _)
 static void msp_callback(msp_msg_t *msp_message)
 {
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
-        write(socket_fd, &message_buffer, cursor);
+        if(fb_cursor > sizeof(frame_buffer)) {
+            printf("Exhausted frame buffer!\n");
+        }
+        memcpy(&frame_buffer[fb_cursor], message_buffer, cursor);
+        fb_cursor += cursor;
         cursor = 0;
+        if(msp_message->payload[0] == 4) { // Draw command
+            write(socket_fd, frame_buffer, fb_cursor);
+            printf("DRAW! wrote %d bytes\n", fb_cursor);
+            fb_cursor = 0;
+        }
     } else {
-        write(pty_fd, &message_buffer, cursor);
+        write(pty_fd, message_buffer, cursor);
         cursor = 0;
     }
 }
@@ -62,8 +74,7 @@ int main(int argc, char *argv[]) {
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
         poll(poll_fds, 2, -1); 
-        serial_data_size = read(serial_fd, serial_data, sizeof(serial_data));
-        if (serial_data_size > 0) {
+        if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
             for (ssize_t i = 0; i < serial_data_size; i++) {
                 if(msp_process_data(msp_state, serial_data[i]) == 0) {
                     // 0 -> MSP data was valid, so buffer it to forward on later
@@ -75,7 +86,7 @@ int main(int argc, char *argv[]) {
             }
         }
         if(0 < (serial_data_size = read(pty_fd, serial_data, sizeof(serial_data)))) {
-           write(serial_fd, serial_data, serial_data_size);
+           write(serial_fd, &serial_data, serial_data_size);
         }
 
     }

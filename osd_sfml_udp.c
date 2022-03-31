@@ -129,10 +129,10 @@ int main(int argc, char *args[])
             quit = 1;
         }
 
-        uint8_t buffer[255];
+        uint8_t buffer[4096];
         struct sockaddr_storage src_addr;
         socklen_t src_addr_len=sizeof(src_addr);
-        if ((recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)) > 0)
+        if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
         {
             for (int i=0; i<recv_len; i++)
                 msp_process_data(msp_state, buffer[i]);
