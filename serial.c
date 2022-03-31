@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
-
+#ifdef __APPLE__
+#include <util.h>
+#endif
 #include "serial.h"
 
 int open_serial_port(const char *device)

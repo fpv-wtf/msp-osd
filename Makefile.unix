@@ -2,6 +2,7 @@ CC=gcc
 CFLAGS=-I. -O2
 DEPS = msp.h msp_displayport.h network.h serial.h
 OSD_OBJ = osd_sfml_udp.o network.o msp.o msp_displayport.o
+DISPLAYPORT_MUX_OBJ = msp_displayport_mux.o serial.o network.o msp.o
 OSD_LIBS=-lcsfml-graphics
 
 %.o: %.c $(DEPS)
@@ -9,6 +10,9 @@ OSD_LIBS=-lcsfml-graphics
 
 osd_sfml: $(OSD_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(OSD_LIBS)
+
+msp_displayport_mux: $(DISPLAYPORT_MUX_OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 clean: 
 	rm -rf *.o
