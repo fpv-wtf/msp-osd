@@ -20,8 +20,10 @@
 #define OSD_WIDTH 31
 #define OSD_HEIGHT 16
 
-#define SERVER "10.211.55.4"
-#define PORT 5762
+#define X_OFFSET 180
+#define Y_OFFSET 0
+
+#define PORT 7654
 
 #define WIDTH 1440
 #define HEIGHT 810
@@ -52,13 +54,14 @@ void draw_character(uint32_t x, uint32_t y, uint8_t c)
 
 void draw_screen() {
     void *fb_addr = which_fb ? dji_display->fb1_virtual_addr : dji_display->fb0_virtual_addr;
+    // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     for(int y = 0; y < OSD_HEIGHT; y++) {
         for(int x = 0; x < OSD_WIDTH; x++) {
             uint8_t c = character_map[x][y];
             if (c != 0) {
-                uint32_t pixel_x = x * FONT_WIDTH;
-                uint32_t pixel_y = y * FONT_HEIGHT;
+                uint32_t pixel_x = (x * FONT_WIDTH) + X_OFFSET;
+                uint32_t pixel_y = (y * FONT_HEIGHT) + Y_OFFSET;
                 uint32_t character_offset = (((FONT_HEIGHT * FONT_WIDTH) * BYTES_PER_PIXEL) * c);
                 for(uint8_t gx = 0; gx < FONT_WIDTH; gx++) {
                     for(uint8_t gy = 0; gy < FONT_HEIGHT; gy++) {
@@ -70,64 +73,30 @@ void draw_screen() {
                         *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);  
                     }
                 }
-                printf("%c", c > 31 ? c : 20);
+                //printf("%c", c > 31 ? c : 20);
             }
-            printf(" ");
+            //printf(" ");
         }
-        printf("\n");
-    }
-    
+        //printf("\n");
+    }   
 }
 
 void clear_screen()
 {
-    printf("clear\n");
+    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
+    which_fb = !which_fb;
     memset(character_map, 0, sizeof(character_map));
 }
 
 void draw_complete() {
-    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
-    which_fb = !which_fb;
-    printf("draw complete!\n");
+    printf("DRAW\n");
+   
 }
 
 void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
     draw_screen();
-}
-
-int connect_to_server(char *address)
-{
-    int sockfd, connfd;
-    struct sockaddr_in servaddr;
-
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-    {
-        printf("socket failed!\n");
-        exit(0);
-    }
-    else
-        printf("socket created!\n");
-
-    memset(&servaddr, 0, sizeof(servaddr));
-
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(address);
-    servaddr.sin_port = htons(PORT);
-
-    if (connect(sockfd, &servaddr, sizeof(servaddr)) != 0)
-    {
-        printf("connection failed!\n");
-        exit(0);
-    }
-    else
-        printf("connected!\n");
-    fcntl(sockfd, F_SETFL, O_NONBLOCK);
-    return sockfd;
 }
 
 void *open_font(const char *filename) {
@@ -157,16 +126,21 @@ int main(int argc, char *args[])
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
     
-    //int socket_fd = connect_to_server(SERVER);
-    FILE* socket_fd = fopen("msp_sample.bin", "r");
+    int socket_fd = bind_socket(PORT);
 
     uint8_t quit = 0;
+    int recv_len = 0;
+    uint8_t byte = 0;
+    uint8_t buffer[255];
+    struct sockaddr_storage src_addr;
+    socklen_t src_addr_len=sizeof(src_addr);
     while (!quit)
     {   
-        uint8_t byte = 0;
-        if (fread(&byte, 1, 1, socket_fd) > 0)
-            msp_process_data(msp_state, byte);
-        usleep(50);
+        if ((recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)) > 0)
+        {
+            for (int i=0; i<recv_len; i++)
+                msp_process_data(msp_state, buffer[i]);
+        }
     }
     dji_display_close_framebuffer(dji_display);
     dji_display_state_free(dji_display);

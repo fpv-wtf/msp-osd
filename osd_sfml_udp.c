@@ -6,23 +6,27 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window.h>
 
 #include "msp.h"
 #include "msp_displayport.h"
+#include "serial.h"
+#include "network.h"
+
+#ifdef DEBUG
+#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 #define OSD_WIDTH 31
 #define OSD_HEIGHT 16
 
 #define X_OFFSET 180
 
-#define SERIAL_PORT "/dev/tty.usbserial-A10K6NWF"
-
-#define SERVER "10.211.55.4"
-#define PORT 5762
+#define PORT 7654
 
 #define WIDTH 1440
 #define HEIGHT 810
@@ -54,7 +58,7 @@ void draw_screen()
             uint8_t c = character_map[x][y];
             if (c != 0)
             {
-                printf("%c", c > 31 ? c : 20);
+                DEBUG_PRINT("%c", c > 31 ? c : 20);
                 sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
                 sfVector2f dest = {(x * FONT_WIDTH) + X_OFFSET, y * FONT_HEIGHT};
                 sfSprite *sprite = sfSprite_create();
@@ -64,94 +68,28 @@ void draw_screen()
                 sfRenderWindow_drawSprite(window, sprite, NULL);
                 sfSprite_destroy(sprite);
             }
-            printf(" ");
+            DEBUG_PRINT(" ");
         }
-        printf("\n");
+        DEBUG_PRINT("\n");
     }
 }
 
 void clear_screen()
 {
-    printf("clear\n");
+    DEBUG_PRINT("clear\n");
     memset(character_map, 0, sizeof(character_map));
 }
 
 void draw_complete()
 {
     sfRenderWindow_display(window);
-    printf("draw complete!\n");
+    DEBUG_PRINT("draw complete!\n");
 }
 
 void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
     draw_screen();
-}
-
-int connect_to_server(char *address)
-{
-    int sockfd, connfd;
-    struct sockaddr_in servaddr;
-
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-    {
-        printf("socket failed!\n");
-        exit(0);
-    }
-    else
-        printf("socket created!\n");
-
-    bzero(&servaddr, sizeof(servaddr));
-
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(address);
-    servaddr.sin_port = htons(PORT);
-
-    if (connect(sockfd, &servaddr, sizeof(servaddr)) != 0)
-    {
-        printf("connection failed!\n");
-        exit(0);
-    }
-    else
-        printf("connected!\n");
-    fcntl(sockfd, F_SETFL, O_NONBLOCK);
-    return sockfd;
-}
-
-int open_serial_port(const char *device)
-{
-    struct termios tio;
-    struct termios stdio;
-    int tty_fd;
-    fd_set rdset;
-
-    memset(&stdio, 0, sizeof(stdio));
-    stdio.c_iflag = 0;
-    stdio.c_oflag = 0;
-    stdio.c_cflag = 0;
-    stdio.c_lflag = 0;
-    stdio.c_cc[VMIN] = 1;
-    stdio.c_cc[VTIME] = 0;
-    tcsetattr(STDOUT_FILENO, TCSANOW, &stdio);
-    tcsetattr(STDOUT_FILENO, TCSAFLUSH, &stdio);
-    fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
-
-    memset(&tio, 0, sizeof(tio));
-    tio.c_iflag = 0;
-    tio.c_oflag = 0;
-    tio.c_cflag = CS8 | CREAD | CLOCAL; 
-    tio.c_lflag = 0;
-    tio.c_cc[VMIN] = 1;
-    tio.c_cc[VTIME] = 0;
-
-    tty_fd = open(device, O_RDWR | O_NONBLOCK); 
-    cfsetospeed(&tio, B115200);               
-    cfsetispeed(&tio, B115200);                
-    tcsetattr(tty_fd, TCSANOW, &tio);
-    return tty_fd;
 }
 
 int main(int argc, char *args[])
@@ -170,10 +108,9 @@ int main(int argc, char *args[])
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
 
-    // int socket_fd = connect_to_server(SERVER);
-    //FILE *socket_fd = fopen("msp_sample.bin", "r");
-    int socket_fd = open_serial_port(SERIAL_PORT);
+    int socket_fd = bind_socket(PORT);
     uint8_t quit = 0;
+    int recv_len = 0;
     while (!quit)
     {
         sfEvent event;
@@ -186,10 +123,14 @@ int main(int argc, char *args[])
             quit = 1;
         }
 
-        uint8_t byte = 0;
-        if (read(socket_fd, &byte, 1) > 0)
-            msp_process_data(msp_state, byte);
-        usleep(100);
+        uint8_t buffer[255];
+        struct sockaddr_storage src_addr;
+        socklen_t src_addr_len=sizeof(src_addr);
+        if ((recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)) > 0)
+        {
+            for (int i=0; i<recv_len; i++)
+                msp_process_data(msp_state, buffer[i]);
+        }
     }
     sfTexture_destroy(font);
     sfRenderWindow_destroy(window);

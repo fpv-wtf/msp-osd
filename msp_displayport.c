@@ -7,7 +7,7 @@ static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *p
     if(!display_driver || !display_driver->draw_character) return;
     uint8_t row = payload[0];
     uint8_t col = payload[1];
-    uint8_t attrs = payload[2]; // todo implement blink
+    uint8_t attrs = payload[2]; // there is support for hw blink with these but it seems unused
     uint8_t str_len;
     for(str_len = 1; str_len < 255; str_len++) {
         if(payload[2 + str_len] == '\0') {

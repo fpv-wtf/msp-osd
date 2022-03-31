@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include "dji_display.h"
 
+#define GOGGLES_V1_VOFFSET 575
+#define GOGGLES_V2_VOFFSET 215
+
 static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
     return 0;
 }
@@ -40,12 +43,18 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
 
     // PLANE BLENDING
 
-    display_state->pb_0->voffset = 575; // this is either 215 or 575 depending on hwid?
+    display_state->pb_0->is_enable = 1;
+    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET; // TODO just check hwid to figure this out
     display_state->pb_0->hoffset = 0;
     display_state->pb_0->order = 2;
-    display_state->pb_0->is_enable = 1;
+
+    // Global alpha - disable as we want per pixel alpha.
+
     display_state->pb_0->glb_alpha_en = 0;
     display_state->pb_0->glb_alpha_val = 0;
+
+    // Blending algorithm 1 seems to work.
+
     display_state->pb_0->blending_alg = 1;
     
     duss_hal_device_desc_t device_descs[3] = {
@@ -66,11 +75,13 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
         printf("failed to open display hal");
         exit(0);
     }
+    
     res = duss_hal_display_reset(display_state->disp_instance_handle);
     if (res != 0) {
         printf("failed to reset display");
         exit(0);
     }
+    
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,0,&plane_id);
     if (res != 0) {
         printf("failed to acquire plane");
@@ -116,24 +127,24 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_0, &display_state->fb0_physical_addr);
     if (res != 0) {
-        printf("failed ot get phys addr");
+        printf("failed to get FB0 phys addr");
         exit(0);
     }
     printf("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
 
     res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_1,0x473100,0x400,0,0x17);
     if (res != 0) {
-        printf("failed to allocate VRAM");
+        printf("failed to allocate FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_map(display_state->ion_buf_1,&display_state->fb1_virtual_addr);
     if (res != 0) {
-        printf("failed to map VRAM");
+        printf("failed to map FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_1, &display_state->fb1_physical_addr);
     if (res != 0) {
-        printf("failed ot get phys addr");
+        printf("failed to get FB1 phys addr");
         exit(0);
     }
     printf("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
@@ -154,7 +165,6 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
 }
 
 void dji_display_push_frame(dji_display_state_t *display_state, duss_frame_buffer_t *fb) {
-        duss_result_t res = 0;
-        duss_hal_mem_sync(fb->buffer, 1);
-        res = duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
+    duss_hal_mem_sync(fb->buffer, 1);
+    duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
 }

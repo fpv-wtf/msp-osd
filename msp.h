@@ -16,7 +16,6 @@ typedef enum {
     MSP_CMD,
     MSP_PAYLOAD,
     MSP_CHECKSUM,
-    MSP_DONE
 } msp_state_machine_e;
 
 typedef enum {
