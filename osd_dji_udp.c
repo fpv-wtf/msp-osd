@@ -58,7 +58,7 @@ static void sig_handler(int _)
 
 static void draw_character(uint32_t x, uint32_t y, uint8_t c)
 {
-    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1) {
+    if ((x > (OSD_WIDTH - 1)) || (y > (OSD_HEIGHT - 1))) {
         return;
     }
     character_map[x][y] = c;

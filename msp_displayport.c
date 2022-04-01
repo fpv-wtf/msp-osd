@@ -14,7 +14,7 @@ static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *p
             break;
         }
     }
-    for(uint8_t idx = 0; idx < str_len; idx++) {
+    for(uint8_t idx = 0; idx < (str_len - 1); idx++) {
         display_driver->draw_character(col, row, payload[3+idx]);
         col++;
         if(col > MSP_COLS) {
