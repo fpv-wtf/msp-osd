@@ -15,3 +15,23 @@ Provided targets and tools are:
 * `osd_sfml` - The same thing as `osd_dji`, but for a desktop PC using SFML and `bold.png` .
 
 Currently works very well on desktop, but the UDP layer from the DJI air side to the goggles is too slow and drops too many packets to be practically useful yet.
+
+# Installation
+
+On Air Unit / Air Unit Lite (Vista):
+
+`adb push msp_displayport_mux /blackbox`
+`setprop dji.hdvt_uav_service 0`
+`mv /dev/ttyS1 /dev/ttyS1_moved`
+`nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1` This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out
+now you can try `setprop dji.hdvt_uav_service 1` - depending on your FC it may or may not be able to handle the volume of MSP messages as well as DisplayPort at the same time.
+
+On goggles:
+
+`adb push osd_dji /blackbox`
+`adb push font.bin /blackbox`
+`setprop dji.glasses_service 0`
+`cd /blackbox`
+`./osd_dji`
+
+Enjoy. To revert, `setprop dji.glasses_service 1` on the goggles, and/or just reboot everything.
