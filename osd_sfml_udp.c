@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/poll.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window.h>
@@ -88,6 +89,7 @@ static void clear_screen()
 
 static void draw_complete()
 {
+    draw_screen();
     sfRenderWindow_display(window);
     DEBUG_PRINT("draw complete!\n");
 }
@@ -95,11 +97,11 @@ static void draw_complete()
 static void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
-    draw_screen();
 }
 
 int main(int argc, char *args[])
 {
+    struct pollfd poll_fds[1];
     signal(SIGINT, sig_handler);
     memset(character_map, 0, sizeof(character_map));
     sfVideoMode videoMode = {1440, 810, 32};
@@ -117,6 +119,10 @@ int main(int argc, char *args[])
 
     int socket_fd = bind_socket(PORT);
     int recv_len = 0;
+    uint8_t buffer[4096];
+
+    printf("started up, listening on port %d\n", PORT);
+
     while (!quit)
     {
         sfEvent event;
@@ -129,13 +135,17 @@ int main(int argc, char *args[])
             quit = 1;
         }
 
-        uint8_t buffer[4096];
-        struct sockaddr_storage src_addr;
-        socklen_t src_addr_len=sizeof(src_addr);
-        if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+        poll_fds[0].fd = socket_fd;
+        poll_fds[0].events = POLLIN;
+        if(poll(poll_fds, 1, 50) > 0) // poll every 50ms so we also go back through the SFML loop  
         {
-            for (int i=0; i<recv_len; i++)
-                msp_process_data(msp_state, buffer[i]);
+            struct sockaddr_storage src_addr;
+            socklen_t src_addr_len=sizeof(src_addr);
+            if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            {
+                for (int i=0; i<recv_len; i++)
+                    msp_process_data(msp_state, buffer[i]);
+            }
         }
     }
     sfRenderWindow_close(window);

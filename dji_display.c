@@ -164,7 +164,13 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     }
 }
 
-void dji_display_push_frame(dji_display_state_t *display_state, duss_frame_buffer_t *fb) {
+void dji_display_push_frame(dji_display_state_t *display_state, uint8_t which_fb) {
+    duss_frame_buffer_t *fb = which_fb ? display_state->fb_1 : display_state->fb_0;
     duss_hal_mem_sync(fb->buffer, 1);
     duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
 }
+
+void *dji_display_get_fb_address(dji_display_state_t *display_state, uint8_t which_fb) {
+     return which_fb ? display_state->fb1_virtual_addr : display_state->fb0_virtual_addr;
+}
+

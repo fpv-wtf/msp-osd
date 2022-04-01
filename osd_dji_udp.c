@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <sys/poll.h>
 
 #include "dji_display.h"
 #include "network.h"
@@ -33,6 +34,11 @@
 #define FONT_WIDTH 36
 #define FONT_HEIGHT 54
 
+#ifdef DEBUG
+#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
@@ -59,7 +65,7 @@ static void draw_character(uint32_t x, uint32_t y, uint8_t c)
 }
 
 static void draw_screen() {
-    void *fb_addr = which_fb ? dji_display->fb1_virtual_addr : dji_display->fb0_virtual_addr;
+    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     for(int y = 0; y < OSD_HEIGHT; y++) {
@@ -79,11 +85,11 @@ static void draw_screen() {
                         *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);  
                     }
                 }
-                //printf("%c", c > 31 ? c : 20);
+                DEBUG_PRINT("%c", c > 31 ? c : 20);
             }
-            //printf(" ");
+            DEBUG_PRINT(" ");
         }
-        //printf("\n");
+        DEBUG_PRINT("\n");
     }   
 }
 
@@ -93,15 +99,15 @@ static void clear_screen()
 }
 
 static void draw_complete() {
-    dji_display_push_frame(dji_display, which_fb ? dji_display->fb_1 : dji_display->fb_0);
+    draw_screen();
+    dji_display_push_frame(dji_display, which_fb);
     which_fb = !which_fb;
-    printf("DRAW\n"); 
+    DEBUG_PRINT("drew a frame\n"); 
 }
 
 static void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
-    draw_screen();
 }
 
 static void *open_font(const char *filename) {
@@ -117,6 +123,8 @@ static void *open_font(const char *filename) {
 
 int main(int argc, char *args[])
 {
+    struct pollfd poll_fds[1];
+
     signal(SIGINT, sig_handler);
     memset(character_map, 0, sizeof(character_map));
     dji_display = dji_display_state_alloc();
@@ -133,16 +141,25 @@ int main(int argc, char *args[])
     msp_state->cb = &msp_callback;
     
     int socket_fd = bind_socket(PORT);
+    printf("started up, listening on port %d\n", PORT);
+
+    // Draw an empty screen to get transparency back
+    draw_screen();
 
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[4096];
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
+
     while (!quit)
-    {   
+    {
+        poll_fds[0].fd = socket_fd;
+        poll_fds[0].events = POLLIN;
+        poll(poll_fds, 1, -1);    
         if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
         {
+            DEBUG_PRINT("got packet len %d\n", recv_len);
             for (int i=0; i<recv_len; i++)
                 msp_process_data(msp_state, buffer[i]);
         }
@@ -150,5 +167,6 @@ int main(int argc, char *args[])
     dji_display_close_framebuffer(dji_display);
     dji_display_state_free(dji_display);
     free(display_driver);
+    free(msp_state);
     return 0;
 }

@@ -8,9 +8,13 @@
 #include "serial.h"
 #include "msp.h"
 
-#define SERIAL_PORT "/dev/ttyS1_moved"
-#define IP_ADDRESS "192.168.41.2"
 #define PORT 7654
+
+#ifdef DEBUG
+#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 uint8_t frame_buffer[4196]; // buffer a whole frame of MSP commands until we get a draw command
 uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
@@ -39,7 +43,7 @@ static void msp_callback(msp_msg_t *msp_message)
         cursor = 0;
         if(msp_message->payload[0] == 4) { // Draw command
             write(socket_fd, frame_buffer, fb_cursor);
-            printf("DRAW! wrote %d bytes\n", fb_cursor);
+            DEBUG_PRINT("DRAW! wrote %d bytes\n", fb_cursor);
             fb_cursor = 0;
         }
     } else {
@@ -49,23 +53,30 @@ static void msp_callback(msp_msg_t *msp_message)
 }
 
 int main(int argc, char *argv[]) {
+    if(argc < 3) {
+        printf("usage: msp_displayport_mux ipaddr serial_port [pty_target]");
+        return 0;
+    }
+    char *ip_address = argv[1];
+    char *serial_port = argv[2];
     signal(SIGINT, sig_handler);
     struct pollfd poll_fds[2];
     const char *pty_name_ptr;
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
-    serial_fd = open_serial_port(SERIAL_PORT);
+    serial_fd = open_serial_port(serial_port);
     if (serial_fd <= 0) {
         printf("Failed to open serial port!\n");
         return 1;
     }
     pty_fd = open_pty(&pty_name_ptr);
     printf("Allocated PTY %s\n", pty_name_ptr);
-    if (argc > 1) {
+    if (argc > 3) {
         unlink(argv[1]);
-        symlink(pty_name_ptr, argv[1]);    
+        symlink(pty_name_ptr, argv[1]);   
+        printf("Relinked %s to %s\n", argv[1], pty_name_ptr); 
     }
-    socket_fd = connect_to_server(IP_ADDRESS, PORT);
+    socket_fd = connect_to_server(ip_address, PORT);
     uint8_t serial_data[256];
     ssize_t serial_data_size;
     while (!quit) {
