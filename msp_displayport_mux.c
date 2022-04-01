@@ -72,9 +72,9 @@ int main(int argc, char *argv[]) {
     pty_fd = open_pty(&pty_name_ptr);
     printf("Allocated PTY %s\n", pty_name_ptr);
     if (argc > 3) {
-        unlink(argv[1]);
-        symlink(pty_name_ptr, argv[1]);   
-        printf("Relinked %s to %s\n", argv[1], pty_name_ptr); 
+        unlink(argv[3]);
+        symlink(pty_name_ptr, argv[3]);   
+        printf("Relinked %s to %s\n", argv[3], pty_name_ptr); 
     }
     socket_fd = connect_to_server(ip_address, PORT);
     uint8_t serial_data[256];
