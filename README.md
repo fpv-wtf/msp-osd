@@ -14,24 +14,45 @@ Provided targets and tools are:
 * `osd_dji` - Listens for these MSP DisplayPort messages over UDP and blits them to a DJI framebuffer screen using the DJI framebuffer HAL `libduml_hal` access library, and a converted Betaflight font font stored in `font.bin` .
 * `osd_sfml` - The same thing as `osd_dji`, but for a desktop PC using SFML and `bold.png` .
 
-Currently works very well on desktop, but the UDP layer from the DJI air side to the goggles is too slow and drops too many packets to be practically useful yet.
-
 # Installation
 
 On Air Unit / Air Unit Lite (Vista):
+```
+adb push msp_displayport_mux /blackbox
+setprop dji.hdvt_uav_service 0
+mv /dev/ttyS1 /dev/ttyS1_moved
+nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1
+```
+This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out.
 
-`adb push msp_displayport_mux /blackbox`
-`setprop dji.hdvt_uav_service 0`
-`mv /dev/ttyS1 /dev/ttyS1_moved`
-`nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1` This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out
-now you can try `setprop dji.hdvt_uav_service 1` - depending on your FC it may or may not be able to handle the volume of MSP messages as well as DisplayPort at the same time.
+Now you can try `setprop dji.hdvt_uav_service 1` - depending on your FC it may or may not be able to handle the volume of MSP messages as well as DisplayPort at the same time.
 
 On goggles:
 
-`adb push osd_dji /blackbox`
-`adb push font.bin /blackbox`
-`setprop dji.glasses_service 0`
-`cd /blackbox`
-`./osd_dji`
+```
+adb push osd_dji /blackbox
+adb push font.bin /blackbox
+setprop dji.glasses_service 0
+cd /blackbox
+./osd_dji
+```
 
 Enjoy. To revert, `setprop dji.glasses_service 1` on the goggles, and/or just reboot everything.
+
+# FAQ / Suggestions
+
+* Why can't I keep dji_glasses (the Goggles UI) running?
+
+Access to the DJI video driver is exclusive. We'd have to build some kind of userspace frame-buffer sharing system to get this to work. The `dji_glasses` system uses DirectFB which provides this on paper, functionality, but the DJI backend driver as well as the overall stack aren't configured to use it properly. 
+
+* I can't change channels / see my bitrate / record video / etc. while the overlay is running?
+
+See above - `dji_glasses` has three primary purposes: turning user input into commands for the radio/CP layer, displaying UI, and, for whatever reason, recording video. Without dji_glasses running we will have to replicate these functionalities. 
+
+# Additional Reading / Learning
+
+https://github.com/fpv-wtf/margerine/wiki
+
+# Shoutouts / Thank You
+
+* http://github.com/fpv-wtf team, for making this all possible and very helpful random bits of advice
