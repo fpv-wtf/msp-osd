@@ -83,6 +83,7 @@ typedef enum duss_pixel_format {
     DUSS_PIXFMT_RGB565=20001,
     DUSS_PIXFMT_RGB888=20000,
     DUSS_PIXFMT_RGBA8888=20002,
+    DUSS_PIXFMT_RGBA8888_GOGGLES_V2=20012,
     DUSS_PIXFMT_RGB_END=20004,
     DUSS_PIXFMT_SINGLE_PLANE_16BIT=40001,
     DUSS_PIXFMT_SINGLE_PLANE_8BIT=40000,
@@ -247,6 +248,7 @@ duss_result_t duss_hal_mem_free(duss_hal_mem_handle_t );
 duss_result_t duss_hal_mem_sync(duss_hal_mem_handle_t , uint32_t );
 
 duss_result_t duss_hal_display_open(duss_hal_obj_handle_t , duss_disp_instance_handle_t * * , duss_disp_vop_id_t );
+duss_result_t duss_hal_display_close(duss_hal_obj_handle_t , duss_disp_instance_handle_t *);
 // sic
 duss_result_t duss_hal_display_aquire_plane(duss_disp_instance_handle_t * , duss_disp_plane_type_t , duss_disp_plane_id_t * );
 duss_result_t duss_hal_display_reset(duss_disp_instance_handle_t *);

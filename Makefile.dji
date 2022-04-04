@@ -2,7 +2,7 @@ CC=armv7a-linux-androideabi19-clang
 CFLAGS=-I. -O2
 DEPS = msp.h msp_displayport.h network.h serial.h
 DISPLAYPORT_MUX_OBJ = msp_displayport_mux.o serial.o network.o msp.o
-OSD_DJI_OBJ = osd_dji_udp.o network.o msp.o msp_displayport.o dji_display.o
+OSD_DJI_OBJ = osd_dji_udp.o network.o msp.o msp_displayport.o dji_display.o dji_services.o
 OSD_DJI_LIBS := -lduml_hal
 ifneq ($(DJI_LIB_PATH),)
    OSD_DJI_LIBS := -L$(DJI_LIB_PATH) -lduml_hal

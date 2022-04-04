@@ -8,12 +8,13 @@ static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp
     return 0;
 }
 
-dji_display_state_t *dji_display_state_alloc() {
+dji_display_state_t *dji_display_state_alloc(uint8_t is_v2_goggles) {
     dji_display_state_t *display_state = calloc(1, sizeof(dji_display_state_t));
     display_state->disp_instance_handle = (duss_disp_instance_handle_t *)calloc(1, sizeof(duss_disp_instance_handle_t));
     display_state->fb_0 = (duss_frame_buffer_t *)calloc(1,sizeof(duss_frame_buffer_t));
     display_state->fb_1 = (duss_frame_buffer_t *)calloc(1,sizeof(duss_frame_buffer_t));
     display_state->pb_0 = (duss_disp_plane_blending_t *)calloc(1, sizeof(duss_disp_plane_blending_t));
+    display_state->is_v2_goggles = is_v2_goggles;
     return display_state;
 }
 
@@ -26,9 +27,12 @@ void dji_display_state_free(dji_display_state_t *display_state) {
 }
 
 void dji_display_close_framebuffer(dji_display_state_t *display_state) {
+ 
+    duss_hal_display_port_enable(display_state->disp_instance_handle, 3, 0);
+    duss_hal_display_release_plane(display_state->disp_instance_handle, display_state->plane_id);
+    duss_hal_display_close(display_state->disp_handle, &display_state->disp_instance_handle);
     duss_hal_mem_free(display_state->ion_buf_0);
     duss_hal_mem_free(display_state->ion_buf_1);
-    duss_hal_display_release_plane(display_state->disp_instance_handle, display_state->plane_id);
     duss_hal_device_close(display_state->disp_handle);
     duss_hal_device_stop(display_state->ion_handle);
     duss_hal_device_close(display_state->ion_handle);
@@ -82,7 +86,10 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
         exit(0);
     }
     
-    res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,0,&plane_id);
+    // No idea what this "plane mode" actually does but it's different on V2
+    uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
+
+    res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
         printf("failed to acquire plane");
         exit(0);
@@ -152,7 +159,7 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     for(int i = 0; i < 2; i++) {
         duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
         fb->buffer = i ? display_state->ion_buf_1 : display_state->ion_buf_0;
-        fb->pixel_format = DUSS_PIXFMT_RGBA8888;
+        fb->pixel_format = display_state->is_v2_goggles ? DUSS_PIXFMT_RGBA8888_GOGGLES_V2 : DUSS_PIXFMT_RGBA8888; // 20012 instead on V2
         fb->frame_id = i;
         fb->planes[0].bytes_per_line = 0x1680;
         fb->planes[0].offset = 0;

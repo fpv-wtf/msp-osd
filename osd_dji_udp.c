@@ -12,8 +12,11 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <sys/poll.h>
+#include <time.h>
+#include <linux/input.h>
 
 #include "dji_display.h"
+#include "dji_services.h"
 #include "network.h"
 #include "msp.h"
 #include "msp_displayport.h"
@@ -33,6 +36,10 @@
 
 #define FONT_WIDTH 36
 #define FONT_HEIGHT 54
+
+#define INPUT_FILENAME "/dev/input/event0"
+#define SPLASH_STRING "MSP OSD WAITING FOR DATA..."
+#define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -121,14 +128,32 @@ static void *open_font(const char *filename) {
     return mmappedData;
 }
 
+static void display_print_string(const char *string, uint8_t len) {
+    for(int x = 0; x < len; x++) {
+        character_map[x][OSD_HEIGHT - 2] = string[x];
+    }
+    draw_complete();
+}
+
+static void start_display(uint8_t is_v2_goggles) {
+    memset(character_map, 0, sizeof(character_map));
+    dji_display = dji_display_state_alloc(is_v2_goggles);
+    dji_display_open_framebuffer(dji_display, PLANE_ID);
+    display_print_string(SPLASH_STRING, sizeof(SPLASH_STRING));
+}
+
+static void stop_display() {
+    display_print_string(SHUTDOWN_STRING, sizeof(SHUTDOWN_STRING));
+    dji_display_close_framebuffer(dji_display);
+    dji_display_state_free(dji_display);
+}
+
 int main(int argc, char *args[])
 {
-    struct pollfd poll_fds[1];
-
     signal(SIGINT, sig_handler);
-    memset(character_map, 0, sizeof(character_map));
-    dji_display = dji_display_state_alloc();
-    dji_display_open_framebuffer(dji_display, PLANE_ID);
+
+    uint8_t is_v2_goggles = dji_goggles_are_v2();
+    printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
     font = open_font("font.bin");
     
@@ -140,32 +165,84 @@ int main(int argc, char *args[])
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
     
+    int event_fd = open(INPUT_FILENAME, O_RDONLY);
+    assert(event_fd > 0);
+
     int socket_fd = bind_socket(PORT);
     printf("started up, listening on port %d\n", PORT);
 
-    // Draw an empty screen to get transparency back
-    draw_screen();
-
+    struct pollfd poll_fds[2];
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[4096];
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
+    struct input_event ev;
+    struct timespec button_start, display_start, now;
+
+    enum display_mode_s {
+        DISPLAY_DISABLED = 0,
+        DISPLAY_RUNNING = 1,
+        DISPLAY_WAITING = 2
+    } display_mode = DISPLAY_DISABLED;
 
     while (!quit)
     {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if(display_mode == DISPLAY_WAITING && display_start.tv_sec > 0 && ((now.tv_sec - display_start.tv_sec) > 1)) {
+            memset(&display_start, 0, sizeof(display_start));
+            start_display(is_v2_goggles);
+            display_mode = DISPLAY_RUNNING;
+        }
+        if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > 4)) {
+            // Have we held the back button down for 5 seconds?
+            memset(&button_start, 0, sizeof(button_start));
+            if (display_mode == DISPLAY_DISABLED) {
+                printf("Switching Disabled -> Enabled!\n");
+                dji_stop_goggles(is_v2_goggles);
+                clock_gettime(CLOCK_MONOTONIC, &display_start);
+                display_mode = DISPLAY_WAITING;
+            } else {
+                printf("Switching Enabled/Waiting -> Disabled!\n");
+                if(display_mode == DISPLAY_RUNNING)
+                    stop_display();
+                display_mode = DISPLAY_DISABLED;
+                dji_start_goggles(is_v2_goggles);
+            }
+        }
+
         poll_fds[0].fd = socket_fd;
         poll_fds[0].events = POLLIN;
-        poll(poll_fds, 1, -1);    
-        if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
-        {
-            DEBUG_PRINT("got packet len %d\n", recv_len);
-            for (int i=0; i<recv_len; i++)
-                msp_process_data(msp_state, buffer[i]);
+        poll_fds[1].fd = event_fd;
+        poll_fds[1].events = POLLIN;
+        poll(poll_fds, 2, 100);
+
+        if(poll_fds[1].revents) {
+            read(event_fd, &ev, sizeof(struct input_event));
+            if(ev.code == 0xc9) {
+                if(ev.value == 1) {
+                    clock_gettime(CLOCK_MONOTONIC, &button_start);
+                } else {
+                    memset(&button_start, 0, sizeof(button_start));
+                }
+            }
+            DEBUG_PRINT("input type: %i, code: %i, value: %i\n", ev.type, ev.code, ev.value);
+        }
+        if(poll_fds[0].revents) { 
+            // Got UDP packet
+            if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            {
+                DEBUG_PRINT("got packet len %d\n", recv_len);
+                if(display_mode == DISPLAY_RUNNING) {
+                    for (int i=0; i<recv_len; i++)
+                        msp_process_data(msp_state, buffer[i]);
+                }
+            }
         }
     }
-    dji_display_close_framebuffer(dji_display);
-    dji_display_state_free(dji_display);
+    if(display_mode == DISPLAY_RUNNING) {
+        stop_display();
+    }
     free(display_driver);
     free(msp_state);
     return 0;
