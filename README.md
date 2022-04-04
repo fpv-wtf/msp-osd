@@ -32,16 +32,21 @@ On goggles:
 ```
 adb push osd_dji /blackbox
 adb push font.bin /blackbox
-setprop dji.glasses_service 0
 cd /blackbox
-./osd_dji
+nohup ./osd_dji &
 ```
 
-Enjoy. To revert, `setprop dji.glasses_service 1` on the goggles, and/or just reboot everything.
+Hold the BACK button for 5 seconds. You should see the DJI UI disappear and be replaced by the MSP OSD (or at least a `WAITING` message at the bottom of your screen).
+
+To restart the DJI goggles, hold the BACK button for 5 seconds again. 
+
+Rebooting will kill the process and return the goggles to "normal."
+
+Enjoy. 
 
 # FAQ / Suggestions
 
-* Why can't I keep dji_glasses (the Goggles UI) running?
+* Why can't we keep dji_glasses (the Goggles UI) running while we render the OSD?
 
 Access to the DJI video driver is exclusive. We'd have to build some kind of userspace frame-buffer sharing system to get this to work. The `dji_glasses` system uses DirectFB which provides this on paper, functionality, but the DJI backend driver as well as the overall stack aren't configured to use it properly. 
 
