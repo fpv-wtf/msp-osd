@@ -40,6 +40,7 @@
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "MSP OSD WAITING FOR DATA..."
 #define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
+#define FONT_PATH "/blackbox/font.bin"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -155,7 +156,7 @@ int main(int argc, char *args[])
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
-    font = open_font("font.bin");
+    font = open_font("/blackbox/font.bin");
     
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
