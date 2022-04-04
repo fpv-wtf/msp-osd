@@ -248,7 +248,7 @@ duss_result_t duss_hal_mem_free(duss_hal_mem_handle_t );
 duss_result_t duss_hal_mem_sync(duss_hal_mem_handle_t , uint32_t );
 
 duss_result_t duss_hal_display_open(duss_hal_obj_handle_t , duss_disp_instance_handle_t * * , duss_disp_vop_id_t );
-duss_result_t duss_hal_display_close(duss_hal_obj_handle_t , duss_disp_instance_handle_t *);
+duss_result_t duss_hal_display_close(duss_hal_obj_handle_t , duss_disp_instance_handle_t * *);
 // sic
 duss_result_t duss_hal_display_aquire_plane(duss_disp_instance_handle_t * , duss_disp_plane_type_t , duss_disp_plane_id_t * );
 duss_result_t duss_hal_display_reset(duss_disp_instance_handle_t *);
