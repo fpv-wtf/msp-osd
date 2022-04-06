@@ -40,7 +40,10 @@
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "MSP OSD WAITING FOR DATA..."
 #define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
-#define FONT_PATH "/blackbox/font.bin"
+
+#define FALLBACK_FONT_PATH "/blackbox/font.bin"
+#define SDCARD_FONT_PATH "/storage/sdcard0/font.bin"
+#define FONT_FILE_SIZE 1990656
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -118,15 +121,28 @@ static void msp_callback(msp_msg_t *msp_message)
     displayport_process_message(display_driver, msp_message);
 }
 
-static void *open_font(const char *filename) {
+static int open_font(const char *filename, void** font) {
+    printf("Opening font: %s\n", filename);
     struct stat st;
     stat(filename, &st);
     size_t filesize = st.st_size;
+    if(filesize != FONT_FILE_SIZE) {
+        return -1;
+    }
     int fd = open(filename, O_RDONLY, 0);
-    assert(fd != -1);
+    if (!fd) {
+        return -1;
+    }
     void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
     assert(mmappedData != MAP_FAILED);
-    return mmappedData;
+    // there is no need to keep an FD open after mmap
+    close(fd);
+    *font = mmappedData;
+    return 0;
+}
+
+static void close_font(void *font) {
+    munmap(font, FONT_FILE_SIZE);
 }
 
 static void display_print_string(const char *string, uint8_t len) {
@@ -149,15 +165,19 @@ static void stop_display() {
     dji_display_state_free(dji_display);
 }
 
-int main(int argc, char *args[])
+static void load_font() {
+    if (open_font(SDCARD_FONT_PATH, &font) < 0) {
+        open_font(FALLBACK_FONT_PATH, &font);
+    }
+}
+
+int main(int argc, char *argv[])
 {
     signal(SIGINT, sig_handler);
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
-    font = open_font("/blackbox/font.bin");
-    
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
     display_driver->clear_screen = &clear_screen;
@@ -191,12 +211,14 @@ int main(int argc, char *args[])
     {
         clock_gettime(CLOCK_MONOTONIC, &now);
         if(display_mode == DISPLAY_WAITING && display_start.tv_sec > 0 && ((now.tv_sec - display_start.tv_sec) > 1)) {
+            // Wait 1 second between stopping Glasses service and trying to start OSD.
             memset(&display_start, 0, sizeof(display_start));
+            load_font();
             start_display(is_v2_goggles);
             display_mode = DISPLAY_RUNNING;
         }
         if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > 4)) {
-            // Have we held the back button down for 5 seconds?
+            // We held the back button down for 5 seconds.
             memset(&button_start, 0, sizeof(button_start));
             if (display_mode == DISPLAY_DISABLED) {
                 printf("Switching Disabled -> Enabled!\n");
@@ -207,6 +229,7 @@ int main(int argc, char *args[])
                 printf("Switching Enabled/Waiting -> Disabled!\n");
                 if(display_mode == DISPLAY_RUNNING)
                     stop_display();
+                close_font(font);
                 display_mode = DISPLAY_DISABLED;
                 dji_start_goggles(is_v2_goggles);
             }
@@ -246,5 +269,8 @@ int main(int argc, char *args[])
     }
     free(display_driver);
     free(msp_state);
+    close(socket_fd);
+    close(event_fd);
+
     return 0;
 }
