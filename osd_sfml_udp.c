@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/poll.h>
+#include <time.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window.h>
@@ -37,6 +38,7 @@
 
 static volatile sig_atomic_t quit = 0;
 sfTexture *font;
+sfSprite *font_sprite;
 sfRenderWindow *window;
 uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
 displayport_vtable_t *display_driver;
@@ -68,12 +70,9 @@ static void draw_screen()
                 DEBUG_PRINT("%c", c > 31 ? c : 20);
                 sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
                 sfVector2f dest = {(x * FONT_WIDTH) + X_OFFSET, y * FONT_HEIGHT};
-                sfSprite *sprite = sfSprite_create();
-                sfSprite_setTexture(sprite, font, 0);
-                sfSprite_setTextureRect(sprite, r);
-                sfSprite_setPosition(sprite, dest);
-                sfRenderWindow_drawSprite(window, sprite, NULL);
-                sfSprite_destroy(sprite);
+                sfSprite_setTextureRect(font_sprite, r);
+                sfSprite_setPosition(font_sprite, dest);
+                sfRenderWindow_drawSprite(window, font_sprite, NULL);
             }
             DEBUG_PRINT(" ");
         }
@@ -108,6 +107,8 @@ int main(int argc, char *args[])
     window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
     sfRenderWindow_display(window);
     font = sfTexture_createFromFile("bold.png", NULL);
+    font_sprite = sfSprite_create();
+    sfSprite_setTexture(font_sprite, font, 0);
 
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
@@ -121,10 +122,21 @@ int main(int argc, char *args[])
     int recv_len = 0;
     uint8_t buffer[4096];
 
+    struct timespec fps_start, now;
+    uint32_t message_counter = 0;
+    clock_gettime(CLOCK_MONOTONIC, &fps_start);
+
     printf("started up, listening on port %d\n", PORT);
 
     while (!quit)
     {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if(now.tv_sec > fps_start.tv_sec) {
+            clock_gettime(CLOCK_MONOTONIC, &fps_start);
+            printf("Got %d messages in the last second\n", message_counter);
+            message_counter = 0;
+        }        
+
         sfEvent event;
         sfRenderWindow_pollEvent(window, &event);
 
@@ -143,12 +155,14 @@ int main(int argc, char *args[])
             socklen_t src_addr_len=sizeof(src_addr);
             if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
             {
-                for (int i=0; i<recv_len; i++)
+                message_counter++;
+                for (int i=0; i<recv_len; i++) 
                     msp_process_data(msp_state, buffer[i]);
             }
         }
     }
     sfRenderWindow_close(window);
+    sfSprite_destroy(font_sprite);
     sfTexture_destroy(font);
     sfRenderWindow_destroy(window);
     free(msp_state);

@@ -6,7 +6,7 @@
 void dji_stop_goggles(int is_v2) {
 #ifdef __ANDROID_API__
     if(is_v2) {
-        __system_property_set("dji.dji.glasses_wm150_service", "0");
+        __system_property_set("dji.glasses_wm150_service", "0");
     } else {
         __system_property_set("dji.glasses_service", "0");
     }
@@ -16,7 +16,7 @@ void dji_stop_goggles(int is_v2) {
 void dji_start_goggles(int is_v2) {
 #ifdef __ANDROID_API__
     if(is_v2) {
-        __system_property_set("dji.dji.glasses_wm150_service", "1");
+        __system_property_set("dji.glasses_wm150_service", "1");
     } else {
         __system_property_set("dji.glasses_service", "1");
     }
