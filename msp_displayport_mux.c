@@ -53,28 +53,43 @@ static void msp_callback(msp_msg_t *msp_message)
 }
 
 int main(int argc, char *argv[]) {
-    if(argc < 3) {
-        printf("usage: msp_displayport_mux ipaddr serial_port [pty_target]");
+    int opt;
+    uint8_t fast_serial = 0;
+    while((opt = getopt(argc, argv, "f")) != -1){
+        switch(opt){
+        case 'f':
+            fast_serial = 1;
+            printf("Configuring serial to 230400 baud\n");
+            break;  
+        case '?':
+            printf("unknown option: %c\n", optopt);
+            break;
+        }
+    }
+  
+    if((argc - optind) < 2) {
+        printf("usage: msp_displayport_mux [-f] ipaddr serial_port [pty_target]");
         return 0;
     }
-    char *ip_address = argv[1];
-    char *serial_port = argv[2];
+
+    char *ip_address = argv[optind];
+    char *serial_port = argv[optind + 1];
     signal(SIGINT, sig_handler);
     struct pollfd poll_fds[2];
     const char *pty_name_ptr;
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
-    serial_fd = open_serial_port(serial_port);
+    serial_fd = open_serial_port(serial_port, fast_serial ? B230400 : B115200);
     if (serial_fd <= 0) {
         printf("Failed to open serial port!\n");
         return 1;
     }
     pty_fd = open_pty(&pty_name_ptr);
     printf("Allocated PTY %s\n", pty_name_ptr);
-    if (argc > 3) {
-        unlink(argv[3]);
-        symlink(pty_name_ptr, argv[3]);   
-        printf("Relinked %s to %s\n", argv[3], pty_name_ptr); 
+    if ((argc - optind) > 2) {
+        unlink(argv[optind + 2]);
+        symlink(pty_name_ptr, argv[optind + 2]);   
+        printf("Relinked %s to %s\n", argv[optind + 2], pty_name_ptr); 
     }
     socket_fd = connect_to_server(ip_address, PORT);
     uint8_t serial_data[256];
@@ -99,7 +114,6 @@ int main(int argc, char *argv[]) {
         if(0 < (serial_data_size = read(pty_fd, serial_data, sizeof(serial_data)))) {
            write(serial_fd, &serial_data, serial_data_size);
         }
-
     }
     close(serial_fd);
     close(pty_fd);

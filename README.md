@@ -2,9 +2,11 @@
 
 This takes Betaflight MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and, using a font provided at `font.bin`, renders them to a framebuffer.
 
+A custom `font.bin` may be placed on the root of the SD card, at which point it will override the font in /blackbox. 
+
 SFML and DJI viewports available, as well as a mux which creates a pty and provides filtered MSP access, and reroutes DisplayPort messages to UDP.
 
-To build for DJI, install the Android NDK and add it to your path, then use make -f Makefile.dji .
+To build for DJI, install the Android NDK and add the NDK toolchain to your PATH, then use make -f Makefile.dji . Set DJI_LIB_PATH to a path to the content of `/system/lib` pulled from your DJI hardware or a firmware dump, so that the linker can find `libduml_hal.so`. On Windows, note that `make` and the actual `armv7a-linux-*` compiler binaries may be installed in different directories.
 
 To build for UNIXes, install CSFML and make -f Makefile.unix .
 
@@ -16,6 +18,13 @@ Provided targets and tools are:
 
 # Installation
 
+On your flight controller:
+
+* Ensure that the correct UART is set to use MSP.
+* Enable MSP DisplayPort. On Betaflight, this is done using the following commands:
+* `set osd_displayport_device = MSP`
+* `set displayport_msp_serial = <ConfiguratorUART - 1>` - for example, if the Configurator says UART2, the value here is `1`.
+
 On Air Unit / Air Unit Lite (Vista):
 ```
 adb push msp_displayport_mux /blackbox
@@ -24,6 +33,8 @@ mv /dev/ttyS1 /dev/ttyS1_moved
 nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1
 ```
 This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out.
+
+Optionally, you can add `-f`, like `nohup /blackbox/msp_displayport_mux -f 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1` to put the serial port in a faster 230400 baud mode, and set the MSP serial port in your flight controller to 230400 to try to improve the framerate.
 
 Now you can try `setprop dji.hdvt_uav_service 1` - depending on your FC it may or may not be able to handle the volume of MSP messages as well as DisplayPort at the same time.
 

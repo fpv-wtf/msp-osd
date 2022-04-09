@@ -12,7 +12,7 @@
 #endif
 #include "serial.h"
 
-int open_serial_port(const char *device)
+int open_serial_port(const char *device, speed_t baudrate)
 {
     struct termios tio;
     int tty_fd;
@@ -26,8 +26,8 @@ int open_serial_port(const char *device)
     tio.c_cc[VTIME] = 0;
 
     tty_fd = open(device, O_RDWR | O_NONBLOCK);
-    cfsetospeed(&tio, B115200);
-    cfsetispeed(&tio, B115200);
+    cfsetospeed(&tio, baudrate);
+    cfsetispeed(&tio, baudrate);
     tcsetattr(tty_fd, TCSANOW, &tio);
     return tty_fd;
 }
