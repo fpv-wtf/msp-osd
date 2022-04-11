@@ -65,6 +65,10 @@ Access to the DJI video driver is exclusive. We'd have to build some kind of use
 
 See above - `dji_glasses` has three primary purposes: turning user input into commands for the radio/CP layer, displaying UI, and, for whatever reason, recording video. Without dji_glasses running we will have to replicate these functionalities. 
 
+* How do I create a new font (for iNav, Ardupilot, etc.)?
+
+https://github.com/bri3d/mcm2img , `python3 mcm2img.py mcmfile.mcm font.bin RGBA`
+
 # Additional Reading / Learning
 
 https://github.com/fpv-wtf/margerine/wiki
