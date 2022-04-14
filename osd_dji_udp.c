@@ -22,7 +22,7 @@
 #include "msp_displayport.h"
 
 #define OSD_WIDTH 31
-#define OSD_HEIGHT 16
+#define OSD_HEIGHT 15
 
 #define X_OFFSET 180
 #define Y_OFFSET 0
