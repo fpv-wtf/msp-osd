@@ -52,12 +52,13 @@ adb push msp_displayport_mux /blackbox
 setprop dji.hdvt_uav_service 0
 mv /dev/ttyS1 /dev/ttyS1_moved
 nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1
+setprop dji.hdvt_uav_service 1
 ```
 This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out.
 
 Optionally, you can add `-f`, like `nohup /blackbox/msp_displayport_mux -f 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1` to put the serial port in a faster 230400 baud mode, and set the MSP serial port in your flight controller to 230400 to try to improve the framerate.
 
-Now you can try `setprop dji.hdvt_uav_service 1` - depending on your FC it may or may not be able to handle the volume of MSP messages as well as DisplayPort at the same time.
+You can also omit `setprop dji.hdvt_uav_service 1` , which will improve your OSD framerate at the expense of disabling all Air Unit / Vista side coordination functionality (AU recording, channel changes, some RC features, etc.).
 
 ### Goggles
 
