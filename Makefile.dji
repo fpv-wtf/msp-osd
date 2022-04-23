@@ -17,5 +17,19 @@ msp_displayport_mux: $(DISPLAYPORT_MUX_OBJ)
 osd_dji: $(OSD_DJI_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(OSD_DJI_LIBS)
 
-clean: 
+goggle_ipk: osd_dji
+	mkdir -p ipk/goggle/build
+	mkdir -p ipk/goggle/data/opt/bin
+	mkdir -p ipk/goggle/data/opt/fonts
+	echo "2.0" > ipk/goggle/build/debian-binary
+	cp osd_dji ipk/goggle/data/opt/bin
+	chmod +x ipk/goggle/data/opt/bin/osd_dji
+	cp font.bin ipk/goggle/data/opt/fonts
+	cd ipk/goggle/control && tar czvf ../build/control.tar.gz .
+	cd ipk/goggle/data && tar czvf ../build/data.tar.gz .
+	cd ipk/goggle/build && tar czvf "goggle-osd-dji.ipk" control.tar.gz data.tar.gz debian-binary
+
+clean:
 	rm -rf *.o
+	rm -rf ipk/goggle/data/opt/bin/osd_dji
+	rm -rf ipk/goggle/build

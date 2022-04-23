@@ -1,0 +1,5 @@
+Package: goggle-osd-dji
+Version: 0.1.0
+Maintainer: bri3d
+Description: MSP OSD service for the DJI HD FPV goggles.
+Architecture: armv7-3.2
