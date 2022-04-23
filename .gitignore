@@ -1,3 +1,4 @@
 *.o
 osd_dji
 msp_displayport_mux
+fonts/*.bin
