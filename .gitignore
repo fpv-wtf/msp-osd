@@ -2,5 +2,5 @@
 osd_dji
 msp_displayport_mux
 fonts/*.bin
-ipk/goggles/build
-ipk/goggles/data/opt/fonts/font.bin
+ipk/goggle/build
+ipk/goggle/data/opt/fonts/font.bin
