@@ -51,7 +51,7 @@ set displayport_msp_serial = <ConfiguratorUART - 1>
 adb push msp_displayport_mux /blackbox
 setprop dji.hdvt_uav_service 0
 mv /dev/ttyS1 /dev/ttyS1_moved
-nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1
+nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1 &
 setprop dji.hdvt_uav_service 1
 ```
 This tells the displayport mux to send data from /dev/ttyS1_moved to 192.168.41.2 (goggles) and to create a fake serial port at /dev/ttyS1 with the displayport messages filtered out.
