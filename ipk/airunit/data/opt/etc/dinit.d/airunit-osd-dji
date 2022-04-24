@@ -1,0 +1,3 @@
+type = process
+command = /opt/bin/airunit-osd-start.sh
+restart = true

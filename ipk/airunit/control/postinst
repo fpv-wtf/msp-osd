@@ -1,0 +1,2 @@
+#!/system/bin/sh
+/opt/bin/dinitctl -u enable airunit-osd-dji
