@@ -27,7 +27,7 @@ goggle_ipk: osd_dji
 	cp font.bin ipk/goggle/data/opt/fonts
 	cd ipk/goggle/control && tar czvf ../build/control.tar.gz .
 	cd ipk/goggle/data && tar czvf ../build/data.tar.gz .
-	cd ipk/goggle/build && tar czvf "goggle-osd-dji.ipk" control.tar.gz data.tar.gz debian-binary
+	cd ipk/goggle/build && tar czvf "goggle-osd-dji.ipk" ./control.tar.gz ./data.tar.gz ./debian-binary
 
 clean:
 	rm -rf *.o
