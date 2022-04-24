@@ -1,3 +1,4 @@
-type = process
+type = bgprocess
 command = /opt/bin/airunit-osd-start.sh
+pid-file = /opt/var/run/airunit-osd-dji.pid
 restart = true
