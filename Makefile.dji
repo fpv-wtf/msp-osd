@@ -3,19 +3,39 @@ CFLAGS=-I. -O2
 DEPS = msp.h msp_displayport.h network.h serial.h
 DISPLAYPORT_MUX_OBJ = msp_displayport_mux.o serial.o network.o msp.o
 OSD_DJI_OBJ = osd_dji_udp.o network.o msp.o msp_displayport.o dji_display.o dji_services.o
-OSD_DJI_LIBS := -lduml_hal
-ifneq ($(DJI_LIB_PATH),)
-   OSD_DJI_LIBS := -L$(DJI_LIB_PATH) -lduml_hal
-endif
+LIB_SHIMS = libshims/libduml_hal.so
+#OSD_DJI_LIBS := -lduml_hal
+#ifneq ($(DJI_LIB_PATH),)
+OSD_DJI_LIBS := -L./libshims -lduml_hal
+#endif
+
+.PHONY: libshims
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
+
+all: msp_displayport_mux osd_dji
 
 msp_displayport_mux: $(DISPLAYPORT_MUX_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 osd_dji: $(OSD_DJI_OBJ)
+	$(MAKE) -f Makefile.dji libshims
 	$(CC) -o $@ $^ $(CFLAGS) $(OSD_DJI_LIBS)
+
+#this doesn't work by default
+#an extra duss_result_t(frame_pop_handler)
+#is generated that the compiler doesn't like 
+libshims/%.c: %.h
+	stubgen -g -e .c -l -N -t libshims -p "../" -n $<
+
+libshims/lib%.so: libshims/%.c
+	$(CC) -Wno-c2x-extensions -O2 -shared -o $@ $<
+	
+libshims: $(LIB_SHIMS)
 
 clean: 
 	rm -rf *.o
+	rm -rf libshims/*.so
+	rm -rf msp_displayport_mux
+	rm -rf osd_dji

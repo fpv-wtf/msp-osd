@@ -1,4 +1,4 @@
-#include "duss_hal.h"
+#include "duml_hal.h"
 
 typedef struct dji_display_state_s {
     duss_disp_plane_id_t plane_id;
