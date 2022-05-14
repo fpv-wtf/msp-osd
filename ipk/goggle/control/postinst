@@ -1,2 +1,2 @@
 #!/system/bin/sh
-/opt/sbin/dinitctl -u enable goggle-osd-dji || true
+/opt/sbin/dinitctl -u enable msp-osd-goggles || true
