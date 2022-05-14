@@ -1,0 +1,3 @@
+#!/system/bin/sh
+/opt/sbin/dinitctl -u disable airunit-osd-dji || true
+

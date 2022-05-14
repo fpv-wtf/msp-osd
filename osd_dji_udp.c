@@ -42,6 +42,7 @@
 #define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
 
 #define FALLBACK_FONT_PATH "/blackbox/font.bin"
+#define ENTWARE_FONT_PATH "/opt/fonts/font.bin"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font.bin"
 #define FONT_FILE_SIZE 1990656
 
@@ -53,7 +54,7 @@
 
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
-  (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) ) 
+  (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) )
 
 static volatile sig_atomic_t quit = 0;
 dji_display_state_t *dji_display;
@@ -90,10 +91,10 @@ static void draw_screen() {
                     for(uint8_t gy = 0; gy < FONT_HEIGHT; gy++) {
                         uint32_t font_offset = character_offset + (gy * FONT_WIDTH * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
                         uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
-                        *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);        
-                        *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);    
-                        *((uint8_t *)fb_addr + target_offset + 2) = *(uint8_t *)((uint8_t *)font + font_offset);   
-                        *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);  
+                        *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);
+                        *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);
+                        *((uint8_t *)fb_addr + target_offset + 2) = *(uint8_t *)((uint8_t *)font + font_offset);
+                        *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);
                     }
                 }
                 DEBUG_PRINT("%c", c > 31 ? c : 20);
@@ -101,7 +102,7 @@ static void draw_screen() {
             DEBUG_PRINT(" ");
         }
         DEBUG_PRINT("\n");
-    }   
+    }
 }
 
 static void clear_screen()
@@ -113,7 +114,7 @@ static void draw_complete() {
     draw_screen();
     dji_display_push_frame(dji_display, which_fb);
     which_fb = !which_fb;
-    DEBUG_PRINT("drew a frame\n"); 
+    DEBUG_PRINT("drew a frame\n");
 }
 
 static void msp_callback(msp_msg_t *msp_message)
@@ -167,7 +168,9 @@ static void stop_display() {
 
 static void load_font() {
     if (open_font(SDCARD_FONT_PATH, &font) < 0) {
-        open_font(FALLBACK_FONT_PATH, &font);
+        if (open_font(ENTWARE_FONT_PATH, &font) < 0) {
+          open_font(FALLBACK_FONT_PATH, &font);
+        }
     }
 }
 
@@ -185,7 +188,7 @@ int main(int argc, char *argv[])
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
-    
+
     int event_fd = open(INPUT_FILENAME, O_RDONLY);
     assert(event_fd > 0);
 
@@ -252,7 +255,7 @@ int main(int argc, char *argv[])
             }
             DEBUG_PRINT("input type: %i, code: %i, value: %i\n", ev.type, ev.code, ev.value);
         }
-        if(poll_fds[0].revents) { 
+        if(poll_fds[0].revents) {
             // Got UDP packet
             if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
             {

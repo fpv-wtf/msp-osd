@@ -9,6 +9,8 @@ LIB_SHIMS = libshims/libduml_hal.so
 OSD_DJI_LIBS := -L./libshims -lduml_hal
 #endif
 
+.PHONY: repo
+
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
@@ -32,8 +34,53 @@ libshims/lib%.so: libshims/%.c
 	
 libshims: $(LIB_SHIMS)
 
-clean: 
+goggle_ipk: osd_dji
+	$(eval PKG_NAME := $(shell cat ./ipk/goggle/control/control | grep Package | cut -d" " -f2))
+	$(eval ARCH := $(shell cat ./ipk/goggle/control/control | grep Architecture | cut -d" " -f2))
+	$(eval VERSION :=$(shell cat ./ipk/goggle/control/control | grep Version | cut -d" " -f2))
+	$(eval IPK_NAME := "${PKG_NAME}_${VERSION}_${ARCH}.ipk")
+	mkdir -p ipk/goggle/build
+	cp -r ipk/goggle/data ipk/goggle/build/
+	mkdir -p ipk/goggle/build/data/opt/bin
+	mkdir -p ipk/goggle/build/opt/fonts
+	echo "2.0" > ipk/goggle/build/debian-binary
+	cp -r ipk/goggle/control ipk/goggle/build/
+	cp osd_dji ipk/goggle/build/data/opt/bin
+	chmod +x ipk/goggle/build/data/opt/bin/osd_dji
+	cp font.bin ipk/goggle/build/data/opt/fonts
+	cd ipk/goggle/build/control && tar czvf ../control.tar.gz .
+	cd ipk/goggle/build/data && tar czvf ../data.tar.gz .
+	cd ipk/goggle/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
+
+airunit_ipk: msp_displayport_mux
+	$(eval PKG_NAME := $(shell cat ./ipk/airunit/control/control | grep Package | cut -d" " -f2))
+	$(eval ARCH := $(shell cat ./ipk/airunit/control/control | grep Architecture | cut -d" " -f2))
+	$(eval VERSION :=$(shell cat ./ipk/airunit/control/control | grep Version | cut -d" " -f2))
+	$(eval IPK_NAME := "${PKG_NAME}_${VERSION}_${ARCH}.ipk")
+	mkdir -p ipk/airunit/build
+	echo "2.0" > ipk/airunit/build/debian-binary
+	cp -r ipk/airunit/data ipk/airunit/build/
+	cp msp_displayport_mux ipk/airunit/build/data/opt/bin
+	chmod +x ipk/airunit/build/data/opt/bin/msp_displayport_mux
+	cp -r ipk/airunit/control ipk/airunit/build/
+	cd ipk/airunit/build/control && tar czvf ../control.tar.gz .
+	cd ipk/airunit/build/data && tar czvf ../data.tar.gz .
+	cd ipk/airunit/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
+
+ipk: goggle_ipk airunit_ipk
+
+repo: ipk
+	mkdir -p repo
+	cp ipk/*.ipk repo/
+	../opkg-utils-0.5.0/opkg-make-index ./repo/ > repo/Packages
+	http-server -p 8042 ./repo/
+	
+clean:
 	rm -rf *.o
+	rm -rf repo
 	rm -rf libshims/*.so
 	rm -rf msp_displayport_mux
 	rm -rf osd_dji
+	rm -rf ipk/goggle/build
+	rm -rf ipk/airunit/build
+	rm -rf ipk/*.ipk
