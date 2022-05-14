@@ -9,8 +9,6 @@ LIB_SHIMS = libshims/libduml_hal.so
 OSD_DJI_LIBS := -L./libshims -lduml_hal
 #endif
 
-.PHONY: libshims
-
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
