@@ -1,0 +1,5 @@
+#!/system/bin/sh
+if [[ -f /opt/etc/fonts ]]; then
+    rm -f /opt/etc/fonts
+fi
+/opt/sbin/dinitctl -u disable msp-osd-goggles || true
