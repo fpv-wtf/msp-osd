@@ -1,0 +1,101 @@
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+    tags:
+      - '*'
+
+#  pull_request:
+#    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Create new releas and attach IPKs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: build
+    steps:
+      - name: Branch name
+        id: branch_name
+        run: |
+          echo ::set-output name=IS_TAG::${{ startsWith(github.ref, 'refs/tags/') }}
+          echo ::set-output name=SOURCE_TAG::${GITHUB_REF#refs/tags/}
+          echo ::set-output name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+
+      - name: Download artifact
+        env:
+            IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+            SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+
+      - name: View content
+        env:
+            IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+            SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        run: ls -R
+
+      - name: Create tagged release
+        id: create_release
+        env:
+            IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+            SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.SOURCE_TAG }}
+          name: ${{ env.SOURCE_TAG }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          artifacts: "./*/*.ipk"
+
+  build:
+    name: Build .ipk packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Get GitHub Build Number (ENV)
+        id: get_buildno
+        run: echo "GITHUBBUILDNUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: Get repository name
+        run: echo "REPOSITORY_NAME=$(echo '${{ github.repository }}' | cut -d '/' -f2)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Make artifact name
+        id: make_artifactname
+        run: |
+          ARTIFACT_NAME="${{ env.REPOSITORY_NAME }}-${{ github.run_number }}"
+          echo "${ARTIFACT_NAME}"
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r23b
+          add-to-path: false
+
+      - name: Build .ipk
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/:$PATH
+          make ipk
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            ./ipk/*.ipk

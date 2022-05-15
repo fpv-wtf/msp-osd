@@ -1,0 +1,7 @@
+*.o
+osd_dji
+msp_displayport_mux
+ipk/goggle/build
+ipk/airunit/build
+*.ipk
+repo
