@@ -1,6 +1,6 @@
-Package: msp-osd-airside
-Version: 0.1.0
+Package: msp-osd
+Version: 0.2.0
 Maintainer: bri3d
 Description: MSP OSD service for the DJI HD FPV airunit.
-Architecture: armv7-3.2
-Depends: dinit
+Architecture: pigeon-airside
+Depends: dinit wtfos-opkg-config
