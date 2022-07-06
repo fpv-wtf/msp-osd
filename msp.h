@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#define MSP_CMD_STATUS 101
+#define MSP_CMD_BATTERY_STATE 130
 #define MSP_CMD_DISPLAYPORT 182
 
 typedef enum {
@@ -40,4 +42,5 @@ typedef struct msp_state_s {
     msp_msg_t message;
 } msp_state_t;
 
+msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size);
 msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat);

@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/poll.h>
+#include <time.h>
 
 #include "network.h"
 #include "serial.h"
@@ -34,6 +35,7 @@ static void sig_handler(int _)
 
 static void msp_callback(msp_msg_t *msp_message)
 {
+    // Process a received MSP message and decide whether to send it to the PTY (DJI) or UDP port (MSP-OSD on Goggles)
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
         if(fb_cursor > sizeof(frame_buffer)) {
             printf("Exhausted frame buffer!\n");
@@ -55,12 +57,23 @@ static void msp_callback(msp_msg_t *msp_message)
 int main(int argc, char *argv[]) {
     int opt;
     uint8_t fast_serial = 0;
-    while((opt = getopt(argc, argv, "f")) != -1){
+    uint8_t serial_passthrough = 1;
+    uint8_t poll_manually = 0;
+    uint8_t msg_flip = 0;
+    while((opt = getopt(argc, argv, "fsp")) != -1){
         switch(opt){
         case 'f':
             fast_serial = 1;
             printf("Configuring serial to 230400 baud\n");
             break;  
+        case 's':
+            serial_passthrough = 0;
+            printf("Disabling serial passthrough, enabling filtering\n");
+            break;
+        case 'p':
+            poll_manually = 1;
+            printf("Enabling manual MSP polling every 500ms\n");
+            break;
         case '?':
             printf("unknown option: %c\n", optopt);
             break;
@@ -68,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
   
     if((argc - optind) < 2) {
-        printf("usage: msp_displayport_mux [-f] ipaddr serial_port [pty_target]");
+        printf("usage: msp_displayport_mux [-f] [-s] [-p] ipaddr serial_port [pty_target]\n-s : enable serial filtering\n-f : 230400 baud serial\n-p: enable manual polling\n");
         return 0;
     }
 
@@ -94,26 +107,52 @@ int main(int argc, char *argv[]) {
     socket_fd = connect_to_server(ip_address, PORT);
     uint8_t serial_data[256];
     ssize_t serial_data_size;
+    struct timespec now, last;
     while (!quit) {
         poll_fds[0].fd = serial_fd;
         poll_fds[1].fd = pty_fd;
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
-        poll(poll_fds, 2, -1); 
+        poll(poll_fds, 2, 250);
+        // We got serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
+            DEBUG_PRINT("RECEIVED data! length %d\n", serial_data_size);
             for (ssize_t i = 0; i < serial_data_size; i++) {
                 if(msp_process_data(msp_state, serial_data[i]) == 0) {
                     // 0 -> MSP data was valid, so buffer it to forward on later
                     message_buffer[cursor] = serial_data[i];
+                    DEBUG_PRINT("%02X ", serial_data[i]);
                     cursor++;
                 } else {
                     cursor = 0;
                 }
             }
+            DEBUG_PRINT("\n");
         }
-        if(0 < (serial_data_size = read(pty_fd, serial_data, sizeof(serial_data)))) {
+
+        // If serial passthrough is enabled, send the message through verbatim.
+        if(0 < (serial_data_size = read(pty_fd, serial_data, sizeof(serial_data))) && serial_passthrough) {
+           DEBUG_PRINT("SEND data! length %d\n", serial_data_size);
+           for (ssize_t i= 0; i < serial_data_size; i++) {
+            DEBUG_PRINT("%02X ", serial_data[i]);
+           }
+           DEBUG_PRINT("\n");
            write(serial_fd, &serial_data, serial_data_size);
         }
+
+        // If manual MSP polling is enabled, poll only for a few messages: arming status and battery voltage
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if(poll_manually && (now.tv_sec > last.tv_sec || now.tv_nsec > (last.tv_nsec + 50000000000))) {
+            construct_msp_command(&serial_data, msg_flip ? MSP_CMD_STATUS : MSP_CMD_BATTERY_STATE, 0, 0);
+            msg_flip = !msg_flip;
+            DEBUG_PRINT("Polling: ");
+            for(ssize_t i = 0; i < 6; i++) {
+                DEBUG_PRINT("%02X ", serial_data[i]);
+            }
+            DEBUG_PRINT("\n");
+            write(serial_fd, &serial_data, 6);
+        }
+        last = now;
     }
     close(serial_fd);
     close(pty_fd);

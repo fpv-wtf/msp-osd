@@ -3,6 +3,23 @@
 #include <stdio.h>
 #include "msp.h"
 
+msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size) {
+    uint8_t checksum;
+    message_buffer[0] = '$'; // Header
+    message_buffer[1] = 'M'; // MSP V1
+    message_buffer[2] = '<'; // Command Direction
+    message_buffer[3] = size; // Payload Size
+    checksum = size;
+    message_buffer[4] = command; // Command
+    checksum ^= command;
+    for(uint8_t i = 0; i < size; i++) {
+        message_buffer[5 + i] = payload[i];
+        checksum ^= message_buffer[5 + i];
+    }
+    message_buffer[5 + size] = checksum;
+    return 0;
+}
+
 msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
 {
     switch (msp_state->state)
