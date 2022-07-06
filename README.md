@@ -24,7 +24,7 @@ Provided targets and tools are:
 
 ## Installation
 
-Build the needed targets:
+Build the needed targets or install using WTFOS:
 
 ```
 make -f Makefile.dji msp_displayport_mux
@@ -36,14 +36,27 @@ make -f Makefile.dji osd_dji
 * Ensure that the correct UART is set to use MSP
 * Enable MSP DisplayPort
 
-On Betaflight, this is done using the following commands:
+On *Betaflight*, this is done using the following commands:
 
 ```
 set osd_displayport_device = MSP
 set displayport_msp_serial = <ConfiguratorUART - 1>
 ```
 
-> Eg.: If the Configurator says UART2, the value for **<ConfiguratorUART - 1>** is **1**.
+Eg.: If the Configurator says UART2, the value for **<ConfiguratorUART - 1>** is **1**.
+
+On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral.
+
+On *Ardupilot*, this is done by setting:
+
+```
+SERIALx_PROTOCOL = 42
+OSD_TYPE = 5
+```
+
+and optionally
+
+`MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 ### Air Unit / Air Unit Lite (Vista)
 
