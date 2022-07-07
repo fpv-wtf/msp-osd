@@ -35,6 +35,8 @@ static void sig_handler(int _)
 
 static void msp_callback(msp_msg_t *msp_message)
 {
+    DEBUG_PRINT("MSP cmd %d with data len %d \n", msp_message->cmd, msp_message->size);
+
     // Process a received MSP message and decide whether to send it to the PTY (DJI) or UDP port (MSP-OSD on Goggles)
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
         if(fb_cursor > sizeof(frame_buffer)) {
@@ -121,13 +123,11 @@ int main(int argc, char *argv[]) {
                 if(msp_process_data(msp_state, serial_data[i]) == 0) {
                     // 0 -> MSP data was valid, so buffer it to forward on later
                     message_buffer[cursor] = serial_data[i];
-                    DEBUG_PRINT("%02X ", serial_data[i]);
                     cursor++;
                 } else {
                     cursor = 0;
                 }
             }
-            DEBUG_PRINT("\n");
         }
 
         // If serial passthrough is enabled, send the message through verbatim.
