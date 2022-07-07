@@ -14,6 +14,7 @@
 #define MSP_CMD_DISPLAYPORT 182
 
 typedef enum {
+    MSP_ERR_NONE,
     MSP_ERR_HDR,
     MSP_ERR_LEN,
     MSP_ERR_CKS

@@ -127,5 +127,5 @@ msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
             }
             break;
     }
-    return 0;
+    return MSP_ERR_NONE;
 }
