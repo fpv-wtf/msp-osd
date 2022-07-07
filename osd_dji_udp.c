@@ -203,6 +203,8 @@ int main(int argc, char *argv[])
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
     struct timespec button_start, display_start, now;
+    memset(&display_start, 0, sizeof(display_start));
+    memset(&button_start, 0, sizeof(button_start));
 
     enum display_mode_s {
         DISPLAY_DISABLED = 0,

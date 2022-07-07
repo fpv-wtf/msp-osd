@@ -1,7 +1,16 @@
 #include <stdint.h>
 
+#define MSP_CMD_FC_VERSION 3
+#define MSP_CMD_NAME 10
+#define MSP_CMD_FILTER_CONFIG 92
+#define MSP_CMD_PID_ADVANCED 94
 #define MSP_CMD_STATUS 101
+#define MSP_CMD_RC 105
+#define MSP_CMD_ANALOG 110
+#define MSP_CMD_RC_TUNING 111
+#define MSP_CMD_PID 112
 #define MSP_CMD_BATTERY_STATE 130
+#define MSP_CMD_STATUS_EX 150
 #define MSP_CMD_DISPLAYPORT 182
 
 typedef enum {
@@ -42,5 +51,6 @@ typedef struct msp_state_s {
     msp_msg_t message;
 } msp_state_t;
 
-msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size);
+uint16_t msp_data_from_msg(uint8_t message_buffer[], msp_msg_t *msg);
+msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size, msp_direction_e direction);
 msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat);
