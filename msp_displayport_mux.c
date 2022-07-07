@@ -28,10 +28,7 @@ static uint8_t frame_buffer[4196]; // buffer a whole frame of MSP commands until
 static uint32_t fb_cursor = 0;
 
 static uint8_t rx_message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
-static uint8_t rx_cursor = 0;
-
 static uint8_t tx_message_buffer[256];
-static uint8_t tx_cursor = 0;
 
 int pty_fd;
 int serial_fd;
@@ -111,11 +108,6 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         uint16_t size = msp_data_from_msg(rx_message_buffer, msp_message);
         // This isn't an MSP DisplayPort message, so send it to either DJI directly or to the cache.
         if(serial_passthrough) {
-            // Serial passthrough is on, so send it straight to DJI.
-             for (int i = 0; i < rx_cursor; i++) {
-                    DEBUG_PRINT("%02X ", rx_message_buffer[i]);
-                }
-                DEBUG_PRINT("\n");
             write(pty_fd, rx_message_buffer, size);
         } else {
             // Serial passthrough is off, so cache the response we got.
@@ -123,7 +115,7 @@ static void rx_msp_callback(msp_msg_t *msp_message)
                 // 1 -> cache miss, so this message expired or hasn't been seen.
                 // this means DJI is waiting for it, so send it over
                 DEBUG_PRINT("DJI was waiting, got msg %d\n", msp_message->cmd);
-                for (int i = 0; i < rx_cursor; i++) {
+                for (int i = 0; i < size; i++) {
                     DEBUG_PRINT("%02X ", rx_message_buffer[i]);
                 }
                 DEBUG_PRINT("\n");
@@ -131,7 +123,6 @@ static void rx_msp_callback(msp_msg_t *msp_message)
             }
         }
     }
-    rx_cursor = 0;
 }
 
 static void tx_msp_callback(msp_msg_t *msp_message)
@@ -152,9 +143,9 @@ static void tx_msp_callback(msp_msg_t *msp_message)
     } else {
         // cache miss, so write the DJI request to serial and wait for the FC to come back.
         DEBUG_PRINT("DJI->FC MSP CACHE MISS msg %d\n",msp_message->cmd);
-        write(serial_fd, tx_message_buffer, tx_cursor);
+        uint16_t size = msp_data_from_msg(tx_message_buffer, msp_message);
+        write(serial_fd, tx_message_buffer, size);
     }
-    tx_cursor = 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -218,13 +209,7 @@ int main(int argc, char *argv[]) {
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
             DEBUG_PRINT("RECEIVED data! length %d\n", serial_data_size);
             for (ssize_t i = 0; i < serial_data_size; i++) {
-                if(msp_process_data(rx_msp_state, serial_data[i]) == MSP_ERR_NONE) {
-                    // 0 -> MSP data was valid, so buffer it to forward on to either goggles or DJI later
-                    rx_message_buffer[rx_cursor] = serial_data[i];
-                    rx_cursor++;
-                } else {
-                    rx_cursor = 0;
-                }
+                msp_process_data(rx_msp_state, serial_data[i]);
             }
         }
         // We got data from DJI (the pty), so see what to do next:
@@ -241,13 +226,7 @@ int main(int argc, char *argv[]) {
                 // Otherwise, queue it up for processing by the MSP layer.
                 DEBUG_PRINT("SEND data to MSP buffer! length %d\n", serial_data_size);
                 for (ssize_t i = 0; i < serial_data_size; i++) {
-                    if(msp_process_data(tx_msp_state, serial_data[i]) == MSP_ERR_NONE) {
-                        // 0 -> MSP data was valid, so buffer it to forward on later
-                        tx_message_buffer[tx_cursor] = serial_data[i];
-                        tx_cursor++;
-                    } else {
-                        tx_cursor = 0;
-                    }
+                    msp_process_data(tx_msp_state, serial_data[i]);
                 }
             }
         }
