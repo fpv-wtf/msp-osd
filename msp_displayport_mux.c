@@ -56,7 +56,7 @@ static uint8_t cache_msp_message(msp_msg_t *msp_message) {
         msp_message_cache[msp_message->cmd] = cache_message;
         retval = 1;
     }
-    memcpy(&cache_message->message, msp_message, sizeof(msp_message));
+    memcpy(&cache_message->message, msp_message, sizeof(msp_msg_t));
     clock_gettime(CLOCK_MONOTONIC, &cache_message->time);
     return retval;
 }
@@ -77,11 +77,13 @@ static int16_t msp_msg_from_cache(uint8_t msg_buffer[], uint8_t cmd_id) {
             clock_gettime(CLOCK_MONOTONIC, &now);
             if(now.tv_sec > cache_message->time.tv_sec) {
                 // message is too old, invalidate cache and force a resend
+                DEBUG_PRINT("MSP cache EXPIRED %d\n", cmd_id);
                 free(cache_message);
                 msp_message_cache[cmd_id] = 0;
                 return -1;
             }
         }
+        // message existed and was not stale, send it back
         return msp_data_from_msg(msg_buffer, &cache_message->message);
     }
 }
@@ -97,7 +99,6 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         }
         memcpy(&frame_buffer[fb_cursor], rx_message_buffer, rx_cursor);
         fb_cursor += rx_cursor;
-        rx_cursor = 0;
         if(msp_message->payload[0] == 4) {
             // Once we have a whole frame of data, send it to the goggles.
             write(socket_fd, frame_buffer, fb_cursor);
@@ -112,28 +113,29 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         } else {
             // Serial passthrough is off, so cache the response we got.
             if(cache_msp_message(msp_message)) {
-                // 1 -> cache miss, so this message expired or hasn't been seen. this means DJI is waiting for it, so send it over
+                // 1 -> cache miss, so this message expired or hasn't been seen.
+                // this means DJI is waiting for it, so send it over
                 write(pty_fd, rx_message_buffer, rx_cursor);
             }
         }
-        rx_cursor = 0;
     }
+    rx_cursor = 0;
 }
 
 static void tx_msp_callback(msp_msg_t *msp_message)
 {
     // We got a valid message from DJI asking for something. See if there's a response in the cache or not.
     // We can only get here if serial passthrough is off and caching is on, so no need to check again.
-    DEBUG_PRINT("DJI->FC MSP msg %d with data len %d \n", msp_message->cmd, msp_message->size);
+    DEBUG_PRINT("DJI->FC MSP msg %d with request len %d \n", msp_message->cmd, msp_message->size);
     uint8_t send_buffer[256];
-    uint16_t size;
+    int16_t size;
     if(0 < (size = msp_msg_from_cache(send_buffer, msp_message->cmd))) {
         // cache hit, so write the cached message straight back to DJI
-        DEBUG_PRINT("DJI->FC MSP CACHE HIT %d with data len %d \n", msp_message->cmd, size);
+        DEBUG_PRINT("DJI->FC MSP CACHE HIT msg %d with response len %d \n", msp_message->cmd, size);
         write(pty_fd, send_buffer, size);
     } else {
         // cache miss, so write the DJI request to serial and wait for the FC to come back.
-        DEBUG_PRINT("DJI->FC MSP CACHE MISS %d\n",msp_message->cmd);
+        DEBUG_PRINT("DJI->FC MSP CACHE MISS msg %d\n",msp_message->cmd);
         write(serial_fd, tx_message_buffer, tx_cursor);
     }
     tx_cursor = 0;

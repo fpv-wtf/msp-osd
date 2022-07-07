@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include "msp.h"
 
-void msp_data_from_msg(uint8_t message_buffer[], msp_msg_t *msg) {
+uint16_t msp_data_from_msg(uint8_t message_buffer[], msp_msg_t *msg) {
+    // return size
     construct_msp_command(message_buffer, msg->cmd, msg->payload, msg->size, msg->direction);
+    return msg->size + 6;
 }
 
 msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size, msp_direction_e direction) {
