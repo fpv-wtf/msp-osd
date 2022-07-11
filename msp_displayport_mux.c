@@ -24,11 +24,10 @@ typedef struct msp_cache_entry_s {
 
 static msp_cache_entry_t *msp_message_cache[256]; // make a slot for all possible messages
 
-static uint8_t frame_buffer[4196]; // buffer a whole frame of MSP commands until we get a draw command
+static uint8_t frame_buffer[8192]; // buffer a whole frame of MSP commands until we get a draw command
 static uint32_t fb_cursor = 0;
 
-static uint8_t rx_message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
-static uint8_t tx_message_buffer[256];
+static uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
 
 int pty_fd;
 int serial_fd;
@@ -94,9 +93,10 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         // This was an MSP DisplayPort message, so buffer it until we get a whole frame.
         if(fb_cursor > sizeof(frame_buffer)) {
             printf("Exhausted frame buffer!\n");
+            return;
         }
-        uint16_t size = msp_data_from_msg(rx_message_buffer, msp_message);
-        memcpy(&frame_buffer[fb_cursor], rx_message_buffer, size);
+        uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+        memcpy(&frame_buffer[fb_cursor], message_buffer, size);
         fb_cursor += size;
         if(msp_message->payload[0] == 4) {
             // Once we have a whole frame of data, send it to the goggles.
@@ -105,10 +105,10 @@ static void rx_msp_callback(msp_msg_t *msp_message)
             fb_cursor = 0;
         }
     } else {
-        uint16_t size = msp_data_from_msg(rx_message_buffer, msp_message);
+        uint16_t size = msp_data_from_msg(message_buffer, msp_message);
         // This isn't an MSP DisplayPort message, so send it to either DJI directly or to the cache.
         if(serial_passthrough) {
-            write(pty_fd, rx_message_buffer, size);
+            write(pty_fd, message_buffer, size);
         } else {
             // Serial passthrough is off, so cache the response we got.
             if(cache_msp_message(msp_message)) {
@@ -116,10 +116,10 @@ static void rx_msp_callback(msp_msg_t *msp_message)
                 // this means DJI is waiting for it, so send it over
                 DEBUG_PRINT("DJI was waiting, got msg %d\n", msp_message->cmd);
                 for (int i = 0; i < size; i++) {
-                    DEBUG_PRINT("%02X ", rx_message_buffer[i]);
+                    DEBUG_PRINT("%02X ", message_buffer[i]);
                 }
                 DEBUG_PRINT("\n");
-                write(pty_fd, rx_message_buffer, size);
+                write(pty_fd, message_buffer, size);
             }
         }
     }
@@ -143,8 +143,8 @@ static void tx_msp_callback(msp_msg_t *msp_message)
     } else {
         // cache miss, so write the DJI request to serial and wait for the FC to come back.
         DEBUG_PRINT("DJI->FC MSP CACHE MISS msg %d\n",msp_message->cmd);
-        uint16_t size = msp_data_from_msg(tx_message_buffer, msp_message);
-        write(serial_fd, tx_message_buffer, size);
+        uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+        write(serial_fd, message_buffer, size);
     }
 }
 
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
     }
   
     if((argc - optind) < 2) {
-        printf("usage: msp_displayport_mux [-f] [-s] [-p] ipaddr serial_port [pty_target]\n-s : enable serial caching\n-f : 230400 baud serial\n");
+        printf("usage: msp_displayport_mux [-f] [-s] ipaddr serial_port [pty_target]\n-s : enable serial caching\n-f : 230400 baud serial\n");
         return 0;
     }
 

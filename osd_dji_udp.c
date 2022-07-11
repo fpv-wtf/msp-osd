@@ -46,6 +46,10 @@
 #define SDCARD_FONT_PATH "/storage/sdcard0/font.bin"
 #define FONT_FILE_SIZE 1990656
 
+#define EV_CODE_BACK 0xc9
+
+#define BACK_BUTTON_DELAY 4
+
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
 #else
@@ -222,7 +226,7 @@ int main(int argc, char *argv[])
             start_display(is_v2_goggles);
             display_mode = DISPLAY_RUNNING;
         }
-        if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > 4)) {
+        if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > BACK_BUTTON_DELAY)) {
             // We held the back button down for 5 seconds.
             memset(&button_start, 0, sizeof(button_start));
             if (display_mode == DISPLAY_DISABLED) {
@@ -248,7 +252,7 @@ int main(int argc, char *argv[])
 
         if(poll_fds[1].revents) {
             read(event_fd, &ev, sizeof(struct input_event));
-            if(ev.code == 0xc9) {
+            if(ev.code == EV_CODE_BACK) {
                 if(ev.value == 1) {
                     clock_gettime(CLOCK_MONOTONIC, &button_start);
                 } else {
