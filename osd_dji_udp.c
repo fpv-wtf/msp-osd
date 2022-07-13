@@ -101,6 +101,10 @@ static void draw_character(uint32_t x, uint32_t y, uint16_t c)
 }
 
 static void draw_screen() {
+    if (font_page_1 == NULL) {
+        // give up if we don't have a font loaded
+        return;
+    }
     void *font;
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
@@ -113,6 +117,7 @@ static void draw_screen() {
                 if (c > 255) {
                     c = c & 0xFF;
                     if (font_page_2 != NULL) {
+                        // fall back to writing page 1 chars if we don't have a page 2 font
                         font = font_page_2;
                     }
                 } 
@@ -171,22 +176,30 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
 static int open_font(const char *filename, void** font, uint8_t page) {
     char file_path[255];
     get_font_path_with_prefix(file_path, filename, 255, (current_display_info.font_width < sd_display_info.font_width), page);
-    printf("Opening font: %s\n", filename);
+    printf("Opening font: %s\n", file_path);
     struct stat st;
-    stat(filename, &st);
+    memset(&st, 0, sizeof(st));
+    stat(file_path, &st);
     size_t filesize = st.st_size;
-    if(filesize != current_display_info.font_height * current_display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL) {
+    size_t desired_filesize = current_display_info.font_height * current_display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
+    if(filesize != desired_filesize) {
+        printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
         return -1;
     }
-    int fd = open(filename, O_RDONLY, 0);
+    int fd = open(file_path, O_RDONLY, 0);
     if (!fd) {
+        printf("Could not open file %s\n", file_path);
         return -1;
     }
     void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
-    assert(mmappedData != MAP_FAILED);
     // there is no need to keep an FD open after mmap
     close(fd);
-    *font = mmappedData;
+    if (mmappedData != MAP_FAILED) {
+        *font = mmappedData;
+    } else {
+        printf("Could not map font %s\n", file_path);
+        *font = 0;
+    }
     return 0;
 }
 
