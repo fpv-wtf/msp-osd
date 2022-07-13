@@ -23,24 +23,45 @@
 #define DEBUG_PRINT(fmt, args...)
 #endif
 
-#define OSD_WIDTH 31
-#define OSD_HEIGHT 16
-
-#define X_OFFSET 180
+#define X_OFFSET 120
 
 #define PORT 7654
 
 #define WIDTH 1440
 #define HEIGHT 810
 
-#define FONT_WIDTH 36
-#define FONT_HEIGHT 54
+typedef struct display_info_s {
+    uint8_t char_width;
+    uint8_t char_height;
+    uint8_t font_width;
+    uint8_t font_height;
+    uint16_t num_chars;
+} display_info_t; 
+
+#define SD_DISPLAY_INFO {.char_width = 31, .char_height = 15, .font_width = 36, .font_height = 54, .num_chars = 256}
+
+static const display_info_t sd_display_info = SD_DISPLAY_INFO;
+
+static const display_info_t hd_display_info = {
+    .char_width = 50,
+    .char_height = 18,
+    .font_width = 24,
+    .font_height = 36,
+    .num_chars = 512,
+};
+
+#define MAX_OSD_WIDTH 50
+#define MAX_OSD_HEIGHT 18
+
+static display_info_t current_display_info = SD_DISPLAY_INFO;
 
 static volatile sig_atomic_t quit = 0;
-sfTexture *font;
-sfSprite *font_sprite;
+sfTexture *font_1;
+sfTexture *font_2;
+sfSprite *font_sprite_1;
+sfSprite *font_sprite_2;
 sfRenderWindow *window;
-uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
+uint16_t character_map[MAX_OSD_WIDTH][MAX_OSD_HEIGHT];
 displayport_vtable_t *display_driver;
 
 static void sig_handler(int _)
@@ -48,9 +69,9 @@ static void sig_handler(int _)
     quit = 1;
 }
 
-static void draw_character(uint32_t x, uint32_t y, uint8_t c)
+static void draw_character(uint32_t x, uint32_t y, uint16_t c)
 {
-    if (x > OSD_WIDTH - 1 || y > OSD_HEIGHT - 1)
+    if (x > current_display_info.char_width - 1 || y > current_display_info.char_height - 1)
     {
         return;
     }
@@ -60,21 +81,27 @@ static void draw_character(uint32_t x, uint32_t y, uint8_t c)
 static void draw_screen()
 {
     sfRenderWindow_clear(window, sfColor_fromRGB(55, 55, 55));
-    for (int y = 0; y < OSD_HEIGHT; y++)
+    for (int y = 0; y < current_display_info.char_height; y++)
     {
-        for (int x = 0; x < OSD_WIDTH; x++)
+        for (int x = 0; x < current_display_info.char_width; x++)
         {
-            uint8_t c = character_map[x][y];
+            uint16_t c = character_map[x][y];
             if (c != 0)
             {
-                DEBUG_PRINT("%c", c > 31 ? c : 20);
-                sfIntRect r = {0, FONT_HEIGHT * c, FONT_WIDTH, FONT_HEIGHT};
-                sfVector2f dest = {(x * FONT_WIDTH) + X_OFFSET, y * FONT_HEIGHT};
+                uint8_t page = 0;
+                if (c > 255) {
+                    page = 1;
+                    c = c & 0xFF;
+                }
+                DEBUG_PRINT("%02X", c);
+                sfIntRect r = {0, current_display_info.font_height * c, current_display_info.font_width, current_display_info.font_height};
+                sfVector2f dest = {(x * current_display_info.font_width) + X_OFFSET, y * current_display_info.font_height};
+                sfSprite *font_sprite = page ? font_sprite_2 : font_sprite_1;
                 sfSprite_setTextureRect(font_sprite, r);
                 sfSprite_setPosition(font_sprite, dest);
                 sfRenderWindow_drawSprite(window, font_sprite, NULL);
             }
-            DEBUG_PRINT(" ");
+            DEBUG_PRINT("  ");
         }
         DEBUG_PRINT("\n");
     }
@@ -98,7 +125,15 @@ static void msp_callback(msp_msg_t *msp_message)
     displayport_process_message(display_driver, msp_message);
 }
 
-int main(int argc, char *args[])
+static void set_options(uint8_t font, uint8_t is_hd) {
+    if(is_hd) { 
+        current_display_info = hd_display_info;
+    } else {
+        current_display_info = sd_display_info;
+    }
+}
+
+int main(int argc, char *argv[])
 {
     struct pollfd poll_fds[1];
     signal(SIGINT, sig_handler);
@@ -106,14 +141,27 @@ int main(int argc, char *args[])
     sfVideoMode videoMode = {1440, 810, 32};
     window = sfRenderWindow_create(videoMode, "MSP OSD", 0, NULL);
     sfRenderWindow_display(window);
-    font = sfTexture_createFromFile("bold.png", NULL);
-    font_sprite = sfSprite_create();
-    sfSprite_setTexture(font_sprite, font, 0);
+    char *font_name;
+    if (argc > 1) {
+        font_name = argv[1];
+    } else {
+        font_name = "bold.png";
+    }
+    char font_load_name[255];
+    snprintf(font_load_name, 255, "%s.png", font_name);
+    font_1 = sfTexture_createFromFile(font_name, NULL);
+    font_sprite_1 = sfSprite_create();
+    sfSprite_setTexture(font_sprite_1, font_1, 0);
+    snprintf(font_2_name, 255, "%s_2.png", font_name);
+    font_2 = sfTexture_createFromFile(font_2_name, NULL);
+    font_sprite_2 = sfSprite_create();
+    sfSprite_setTexture(font_sprite_2, font_2, 0);
 
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &draw_character;
     display_driver->clear_screen = &clear_screen;
     display_driver->draw_complete = &draw_complete;
+    display_driver->set_options = &set_options;
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
@@ -162,8 +210,10 @@ int main(int argc, char *args[])
         }
     }
     sfRenderWindow_close(window);
-    sfSprite_destroy(font_sprite);
-    sfTexture_destroy(font);
+    sfSprite_destroy(font_sprite_1);
+    sfSprite_destroy(font_sprite_2);
+    sfTexture_destroy(font_1);
+    sfTexture_destroy(font_2);
     sfRenderWindow_destroy(window);
     free(msp_state);
     free(display_driver);

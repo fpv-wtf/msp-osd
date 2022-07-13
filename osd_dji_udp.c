@@ -21,12 +21,6 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-#define OSD_WIDTH 31
-#define OSD_HEIGHT 15
-
-#define X_OFFSET 180
-#define Y_OFFSET 0
-
 #define PORT 7654
 
 #define WIDTH 1440
@@ -34,17 +28,15 @@
 #define BYTES_PER_PIXEL 4
 #define PLANE_ID 6
 
-#define FONT_WIDTH 36
-#define FONT_HEIGHT 54
+#define NUM_CHARS 256
 
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "MSP OSD WAITING FOR DATA..."
 #define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
 
-#define FALLBACK_FONT_PATH "/blackbox/font.bin"
-#define ENTWARE_FONT_PATH "/opt/fonts/font.bin"
-#define SDCARD_FONT_PATH "/storage/sdcard0/font.bin"
-#define FONT_FILE_SIZE 1990656
+#define FALLBACK_FONT_PATH "/blackbox/font"
+#define ENTWARE_FONT_PATH "/opt/fonts/font"
+#define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
 #define EV_CODE_BACK 0xc9
 
@@ -60,40 +52,76 @@
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
   (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) )
 
+#define MAX_DISPLAY_X 50
+#define MAX_DISPLAY_Y 18
+
+typedef struct display_info_s {
+    uint8_t char_width;
+    uint8_t char_height;
+    uint8_t font_width;
+    uint8_t font_height;
+    uint16_t x_offset;
+    uint16_t y_offset;
+} display_info_t; 
+
 static volatile sig_atomic_t quit = 0;
-dji_display_state_t *dji_display;
-uint8_t character_map[OSD_WIDTH][OSD_HEIGHT];
-displayport_vtable_t *display_driver;
-void *font;
-uint8_t which_fb = 0;
+static dji_display_state_t *dji_display;
+static uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static displayport_vtable_t *display_driver;
+static void *font_page_1 = NULL;
+static void *font_page_2 = NULL;
+static uint8_t which_fb = 0;
+
+#define SD_DISPLAY_INFO {.char_width = 31, .char_height = 15, .font_width = 36, .font_height = 54, .x_offset = 180, .y_offset = 0}
+
+static display_info_t sd_display_info = SD_DISPLAY_INFO;
+
+static display_info_t hd_display_info = {
+    .char_width = 50,
+    .char_height = 18,
+    .font_width = 24,
+    .font_height = 36,
+    .x_offset = 120,
+    .y_offset = 80
+};
+
+static display_info_t current_display_info = SD_DISPLAY_INFO;
 
 static void sig_handler(int _)
 {
     quit = 1;
 }
 
-static void draw_character(uint32_t x, uint32_t y, uint8_t c)
+static void draw_character(uint32_t x, uint32_t y, uint16_t c)
 {
-    if ((x > (OSD_WIDTH - 1)) || (y > (OSD_HEIGHT - 1))) {
+    if ((x > (current_display_info.char_width - 1)) || (y > (current_display_info.char_height - 1))) {
         return;
     }
     character_map[x][y] = c;
 }
 
 static void draw_screen() {
+    void *font;
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    for(int y = 0; y < OSD_HEIGHT; y++) {
-        for(int x = 0; x < OSD_WIDTH; x++) {
-            uint8_t c = character_map[x][y];
+    for(int y = 0; y < current_display_info.char_height; y++) {
+        for(int x = 0; x < current_display_info.char_width; x++) {
+            uint16_t c = character_map[x][y];
             if (c != 0) {
-                uint32_t pixel_x = (x * FONT_WIDTH) + X_OFFSET;
-                uint32_t pixel_y = (y * FONT_HEIGHT) + Y_OFFSET;
-                uint32_t character_offset = (((FONT_HEIGHT * FONT_WIDTH) * BYTES_PER_PIXEL) * c);
-                for(uint8_t gx = 0; gx < FONT_WIDTH; gx++) {
-                    for(uint8_t gy = 0; gy < FONT_HEIGHT; gy++) {
-                        uint32_t font_offset = character_offset + (gy * FONT_WIDTH * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
+                font = font_page_1;
+                if (c > 255) {
+                    c = c & 0xFF;
+                    if (font_page_2 != NULL) {
+                        font = font_page_2;
+                    }
+                } 
+                uint32_t pixel_x = (x * current_display_info.font_width) + current_display_info.x_offset;
+                uint32_t pixel_y = (y * current_display_info.font_height) + current_display_info.y_offset;
+                uint32_t character_offset = (((current_display_info.font_height * current_display_info.font_width) * BYTES_PER_PIXEL) * c);
+                for(uint8_t gx = 0; gx < current_display_info.font_width; gx++) {
+                    for(uint8_t gy = 0; gy < current_display_info.font_height; gy++) {
+                        uint32_t font_offset = character_offset + (gy * current_display_info.font_width * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
                         uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
                         *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);
                         *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);
@@ -126,12 +154,28 @@ static void msp_callback(msp_msg_t *msp_message)
     displayport_process_message(display_driver, msp_message);
 }
 
-static int open_font(const char *filename, void** font) {
+static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t page) {
+    char name_buf[len];
+    if (is_hd) {
+        snprintf(name_buf, len, "%s_hd", font_path);
+    } else {
+        snprintf(name_buf, len, "%s", font_path);
+    }
+    if (page > 0) {
+        snprintf(font_path_dest, len, "%s_%d.bin", name_buf, page + 1);
+    } else {
+        snprintf(font_path_dest, len, "%s.bin", name_buf);
+    }
+}
+
+static int open_font(const char *filename, void** font, uint8_t page) {
+    char file_path[255];
+    get_font_path_with_prefix(file_path, filename, 255, (current_display_info.font_width < sd_display_info.font_width), page);
     printf("Opening font: %s\n", filename);
     struct stat st;
     stat(filename, &st);
     size_t filesize = st.st_size;
-    if(filesize != FONT_FILE_SIZE) {
+    if(filesize != current_display_info.font_height * current_display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL) {
         return -1;
     }
     int fd = open(filename, O_RDONLY, 0);
@@ -146,13 +190,41 @@ static int open_font(const char *filename, void** font) {
     return 0;
 }
 
+static void load_font() {
+    if (open_font(SDCARD_FONT_PATH, &font_page_1, 0) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &font_page_1, 0) < 0) {
+          open_font(FALLBACK_FONT_PATH, &font_page_1, 0);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &font_page_2, 1) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &font_page_2, 1) < 0) {
+          open_font(FALLBACK_FONT_PATH, &font_page_2, 1);
+        }
+    }
+}
+
 static void close_font(void *font) {
-    munmap(font, FONT_FILE_SIZE);
+    if (font != NULL)
+    {
+        munmap(font, current_display_info.font_height * current_display_info.font_width * NUM_CHARS * 4);
+    }
+}
+
+static void set_options(uint8_t font_num, uint8_t is_hd) {
+    clear_screen();
+    close_font(font_page_1);
+    close_font(font_page_2);
+    if(is_hd) { 
+        current_display_info = hd_display_info;
+    } else {
+        current_display_info = sd_display_info;
+    }
+    load_font();
 }
 
 static void display_print_string(const char *string, uint8_t len) {
     for(int x = 0; x < len; x++) {
-        character_map[x][OSD_HEIGHT - 2] = string[x];
+        character_map[x][current_display_info.char_height - 2] = string[x];
     }
     draw_complete();
 }
@@ -170,14 +242,6 @@ static void stop_display() {
     dji_display_state_free(dji_display);
 }
 
-static void load_font() {
-    if (open_font(SDCARD_FONT_PATH, &font) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &font) < 0) {
-          open_font(FALLBACK_FONT_PATH, &font);
-        }
-    }
-}
-
 int main(int argc, char *argv[])
 {
     signal(SIGINT, sig_handler);
@@ -189,6 +253,7 @@ int main(int argc, char *argv[])
     display_driver->draw_character = &draw_character;
     display_driver->clear_screen = &clear_screen;
     display_driver->draw_complete = &draw_complete;
+    display_driver->set_options = &set_options;
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
@@ -238,7 +303,8 @@ int main(int argc, char *argv[])
                 printf("Switching Enabled/Waiting -> Disabled!\n");
                 if(display_mode == DISPLAY_RUNNING)
                     stop_display();
-                close_font(font);
+                close_font(font_page_1);
+                close_font(font_page_2);
                 display_mode = DISPLAY_DISABLED;
                 dji_start_goggles(is_v2_goggles);
             }
