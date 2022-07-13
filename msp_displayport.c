@@ -1,13 +1,11 @@
 #include "msp.h"
 #include "msp_displayport.h"
 
-#define MSP_COLS 30
-
 static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *payload) {
     if(!display_driver || !display_driver->draw_character) return;
     uint8_t row = payload[0];
     uint8_t col = payload[1];
-    uint8_t attrs = payload[2]; // there is support for hw blink with these but it seems unused
+    uint8_t attrs = payload[2]; // iNav uses this to specify which font page to draw from
     uint8_t str_len;
     for(str_len = 1; str_len < 255; str_len++) {
         if(payload[2 + str_len] == '\0') {
@@ -15,12 +13,13 @@ static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *p
         }
     }
     for(uint8_t idx = 0; idx < (str_len - 1); idx++) {
-        display_driver->draw_character(col, row, payload[3+idx]);
-        col++;
-        if(col > MSP_COLS) {
-            col = 0;
-            row++;
+        uint16_t character = payload[3 + idx];
+        if(attrs & 0x1) {
+            // shift over a page if one was specified
+            character |= 0x100;
         }
+        display_driver->draw_character(col, row, character);
+        col++;
     }
 }
 
@@ -32,6 +31,13 @@ static void process_clear_screen(displayport_vtable_t *display_driver) {
 static void process_draw_complete(displayport_vtable_t *display_driver) {
     if(!display_driver || !display_driver->draw_complete) return;
     display_driver->draw_complete();
+}
+
+static void process_set_options(displayport_vtable_t *display_driver, uint8_t *payload) {
+    if(!display_driver || !display_driver->set_options) return;
+    uint8_t font = payload[0];
+    uint8_t is_hd = payload[1];
+    display_driver->set_options(font, is_hd);
 }
 
 static void process_open(displayport_vtable_t *display_driver) {
@@ -65,6 +71,9 @@ int displayport_process_message(displayport_vtable_t *display_driver, msp_msg_t 
             break;
         case 4: // 4 -> Draw Screen
             process_draw_complete(display_driver);
+            break;
+        case 5: // 5 -> Set Options (HDZero/iNav)
+            process_set_options(display_driver, &msg->payload[1]);
             break;
         default:
             break;
