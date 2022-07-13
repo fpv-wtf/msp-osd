@@ -183,7 +183,9 @@ static int open_font(const char *filename, void** font, uint8_t page) {
     size_t filesize = st.st_size;
     size_t desired_filesize = current_display_info.font_height * current_display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
     if(filesize != desired_filesize) {
-        printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
+        if (filesize != 0) {
+            printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
+        }
         return -1;
     }
     int fd = open(file_path, O_RDONLY, 0);

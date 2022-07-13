@@ -49,6 +49,8 @@ goggle_ipk: osd_dji
 	chmod +x ipk/goggle/build/data/opt/bin/osd_dji
 	mkdir -p ipk/goggle/build/data/opt/fonts
 	cp font.bin ipk/goggle/build/data/opt/fonts/
+	cp font_hd.bin ipk/goggle/build/data/opt/fonts/
+	cp font_hd_2.bin ipk/goggle/build/data/opt/fonts/
 	cd ipk/goggle/build/control && tar czvf ../control.tar.gz .
 	cd ipk/goggle/build/data && tar czvf ../data.tar.gz .
 	cd ipk/goggle/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
