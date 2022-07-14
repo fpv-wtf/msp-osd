@@ -92,7 +92,8 @@ static void rx_msp_callback(msp_msg_t *msp_message)
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
         // This was an MSP DisplayPort message, so buffer it until we get a whole frame.
         if(fb_cursor > sizeof(frame_buffer)) {
-            printf("Exhausted frame buffer!\n");
+            printf("Exhausted frame buffer! Resetting...\n");
+            fb_cursor = 0;
             return;
         }
         uint16_t size = msp_data_from_msg(message_buffer, msp_message);
