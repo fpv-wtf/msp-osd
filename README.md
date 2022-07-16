@@ -1,10 +1,90 @@
 # DisplayPort OSD Framebuffer
 
-This takes Betaflight MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and, using a font provided at `/blackbox/font.bin`, renders them to a framebuffer.
+This takes Betaflight MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and renders them to a framebuffer.
 
-A custom `font.bin` may be placed on the root of the goggles SD card, at which point it will override the font in `/blackbox/font.bin`.
+A custom `font.bin` package may be placed on the root of the goggles SD card, at which point it will override the font in `/blackbox/font.bin`.
 
-SFML and DJI viewports are available, as well as a *mux* which creates a *pty* and provides filtered MSP access, and reroutes DisplayPort messages to UDP.
+SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a *mux* which creates a *pty* and provides filtered MSP access, and reroutes DisplayPort messages to UDP.
+
+# Setup and Installation
+
+### Easy Installation
+
+* Install WTFOS from https://testing.fpv.wtf . WTFOS must be installed on both the goggles and each AU/Vista.
+* Install the msp-osd package on each device using WTFOS.
+* Ensure that the fan-control package is installed and configured to start automatically on the goggles. This should happen automatically, but it's critical to double-check!
+* Hold the BACK button for 5 seconds on the goggles. You should see the DJI UI disappear and be replaced by the MSP OSD (or at least a `WAITING` message at the bottom of your screen).
+* To restart the DJI goggles, hold the BACK button for 5 seconds again.
+
+### Flight Controller Setup
+
+* Ensure that the correct UART is set to use MSP
+* Enable MSP DisplayPort
+
+On *Betaflight*, this is done using the following commands:
+
+```
+set osd_displayport_device = MSP
+set displayport_msp_serial = <ConfiguratorUART - 1>
+```
+
+Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1**.
+
+On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time. 
+
+On *Ardupilot*, this is done by setting:
+
+```
+SERIALx_PROTOCOL = 42
+OSD_TYPE = 5
+```
+
+and optionally
+
+`MSP_OPTIONS = 4` to allow the use of a Betaflight font.
+
+### Custom Fonts
+
+* Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
+
+* Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller. 
+
+* For Betaflight: https://github.com/betaflight/betaflight-configurator/tree/master/resources/osd/2
+* For iNav: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
+* For Ardupilot: https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_OSD/fonts
+
+* Run `python3 mcm2img.py mcmfile.mcm font RGBA 255 255 255`
+
+* Place the 4 files this makes (font.bin, font_2.bin, font_hd.bin, font_hd_2.bin) on the root of the SD card in the goggles.
+
+* Ensure the goggles are unplugged from USB, and restart MSP-OSD using the BACK button.
+
+You can customize the font color by changing the 255 255 255 RGB values.
+
+## FAQ / Suggestions
+
+### Why can't we keep dji_glasses (the Goggles UI) running while we render the OSD?
+
+Access to the DJI video driver is exclusive. We would have to build some kind of userspace frame-buffer sharing system to get this to work. The `dji_glasses` system uses DirectFB which provides this functionality on paper, but the DJI backend driver as well as the overall stack are not configured to use it properly.
+
+### I can't change channels / see my bitrate / record video / etc. while the overlay is running?
+
+See above - `dji_glasses` has three primary purposes:
+1. turning user input into commands for the radio/CP layer
+2. displaying the UI
+3. for whatever reason, recording video
+
+Without `dji_glasses` running we will have to replicate these functionalities.
+
+### How do I create a new font (for iNav, Ardupilot, etc.)?
+
+Use [mcm2img](https://github.com/bri3d/mcm2img).
+
+```
+python3 mcm2img.py mcmfile.mcm font.bin RGBA
+```
+
+# Compiling (development and debugging)
 
 To build for DJI, install the [Android NDK](https://developer.android.com/ndk/downloads) and add the NDK toolchain to your PATH, then use `make -f Makefile.dji` to build the targets. Set `DJI_LIB_PATH` to point to the content of `/system/lib` pulled from your DJI hardware or a firmware dump, so that the linker can find `libduml_hal.so`.
 
@@ -22,41 +102,16 @@ Provided targets and tools are:
 * `osd_dji` - Listens for these MSP DisplayPort messages over UDP and blits them to a DJI framebuffer screen using the DJI framebuffer HAL `libduml_hal` access library, and a converted Betaflight font font stored in `font.bin`.
 * `osd_sfml` - The same thing as `osd_dji`, but for a desktop PC using SFML and `bold.png`.
 
-## Installation
+Additional debugging can be enabled using `-DDEBUG` as a CFLAG.
 
-Build the needed targets or install using WTFOS:
+## Custom Build Installation
+
+Build the needed targets
 
 ```
 make -f Makefile.dji msp_displayport_mux
 make -f Makefile.dji osd_dji
 ```
-
-### Flight Controller
-
-* Ensure that the correct UART is set to use MSP
-* Enable MSP DisplayPort
-
-On *Betaflight*, this is done using the following commands:
-
-```
-set osd_displayport_device = MSP
-set displayport_msp_serial = <ConfiguratorUART - 1>
-```
-
-Eg.: If the Configurator says UART2, the value for **<ConfiguratorUART - 1>** is **1**.
-
-On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral.
-
-On *Ardupilot*, this is done by setting:
-
-```
-SERIALx_PROTOCOL = 42
-OSD_TYPE = 5
-```
-
-and optionally
-
-`MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 ### Air Unit / Air Unit Lite (Vista)
 
@@ -89,29 +144,6 @@ To restart the DJI goggles, hold the BACK button for 5 seconds again.
 Rebooting will kill the process and return the goggles to "normal."
 
 Enjoy.
-
-## FAQ / Suggestions
-
-### Why can't we keep dji_glasses (the Goggles UI) running while we render the OSD?
-
-Access to the DJI video driver is exclusive. We would have to build some kind of userspace frame-buffer sharing system to get this to work. The `dji_glasses` system uses DirectFB which provides this functionality on paper, but the DJI backend driver as well as the overall stack are not configured to use it properly.
-
-### I can't change channels / see my bitrate / record video / etc. while the overlay is running?
-
-See above - `dji_glasses` has three primary purposes:
-1. turning user input into commands for the radio/CP layer
-2. displaying the UI
-3. for whatever reason, recording video
-
-Without `dji_glasses` running we will have to replicate these functionalities.
-
-### How do I create a new font (for iNav, Ardupilot, etc.)?
-
-Use [mcm2img](https://github.com/bri3d/mcm2img).
-
-```
-python3 mcm2img.py mcmfile.mcm font.bin RGBA
-```
 
 ## Additional Reading / Learning
 
