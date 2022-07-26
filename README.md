@@ -43,7 +43,15 @@ and optionally
 
 `MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
-### Custom Fonts
+### Choose a Font
+
+* Download the latest fonts package from https://github.com/bri3d/mcm2img/releases/download/latest/mcm2img-fonts.tar.gz .
+* Rename the files for your desired font to `font` - so you should have four files: `font.bin, font_2.bin, font_hd.bin, font_hd_2.bin` .
+* Place these four files on the root of your Goggles SD card.
+* Unplug USB, if connected.
+* Restart `msp-osd` by cycling to the DJI OSD and back using the BACK button. 
+
+### Generate your own Font (advanced)
 
 * Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
 
