@@ -12,10 +12,10 @@
 #include <SFML/Graphics.h>
 #include <SFML/Window.h>
 
-#include "msp.h"
-#include "msp_displayport.h"
-#include "serial.h"
-#include "network.h"
+#include "msp/msp.h"
+#include "msp/msp_displayport.h"
+#include "net/serial.h"
+#include "net/network.h"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)

@@ -1,8 +1,9 @@
 CC=armv7a-linux-androideabi19-clang
 CFLAGS=-I. -O2
-DEPS = msp.h msp_displayport.h network.h serial.h
-DISPLAYPORT_MUX_OBJ = msp_displayport_mux.o serial.o network.o msp.o
-OSD_DJI_OBJ = osd_dji_udp.o network.o msp.o msp_displayport.o dji_display.o dji_services.o
+SRCDIR = src/
+DEPS = $(addprefix $(SRCDIR), msp/msp.h msp/msp_displayport.h net/network.h net/serial.h)
+DISPLAYPORT_MUX_OBJ = $(addprefix $(SRCDIR), msp_displayport_mux.o net/serial.o net/network.o msp/msp.o)
+OSD_DJI_OBJ = $(addprefix $(SRCDIR), osd_dji_udp.o net/network.o msp/msp.o msp/msp_displayport.o hw/dji_display.o hw/dji_services.o hw/dji_radio_shm.o)
 LIB_SHIMS = libshims/libduml_hal.so
 #OSD_DJI_LIBS := -lduml_hal
 #ifneq ($(DJI_LIB_PATH),)
@@ -30,7 +31,7 @@ libshims/%.c: %.h
 	stubgen -g -e .c -l -N -t libshims -p "../" -n $<
 
 libshims/lib%.so: libshims/%.c
-	$(CC) -Wno-c2x-extensions -O2 -shared -o $@ $<
+	$(CC) -Wno-c2x-extensions -O2 -shared -o $@ $< $(CFLAGS)
 	
 libshims: $(LIB_SHIMS)
 
@@ -79,6 +80,7 @@ repo: ipk
 	http-server -p 8042 ./repo/
 	
 clean:
+	rm -rf **/*.o
 	rm -rf *.o
 	rm -rf repo
 	rm -rf libshims/*.so

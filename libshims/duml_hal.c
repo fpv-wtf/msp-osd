@@ -1,4 +1,4 @@
-#include "../duml_hal.h"
+#include "src/hw/duml_hal.h"
 
 duss_result_t duss_hal_initialize(duss_hal_device_desc_t *)
 {

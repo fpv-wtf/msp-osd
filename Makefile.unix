@@ -1,8 +1,9 @@
 CC=gcc
 CFLAGS=-I. -O2
-DEPS = msp.h msp_displayport.h network.h serial.h
-OSD_OBJ = osd_sfml_udp.o network.o msp.o msp_displayport.o
-DISPLAYPORT_MUX_OBJ = msp_displayport_mux.o serial.o network.o msp.o
+SRCDIR = src/
+DEPS = $(addprefix $(SRCDIR), msp/msp.h msp/msp_displayport.h net/network.h net/serial.h)
+OSD_OBJ = $(addprefix $(SRCDIR), osd_sfml_udp.o net/network.o msp/msp.o msp/msp_displayport.o)
+DISPLAYPORT_MUX_OBJ = $(addprefix $(SRCDIR), msp_displayport_mux.o net/serial.o net/network.o msp/msp.o)
 OSD_LIBS=-lcsfml-graphics
 
 %.o: %.c $(DEPS)
@@ -16,3 +17,6 @@ msp_displayport_mux: $(DISPLAYPORT_MUX_OBJ)
 
 clean: 
 	rm -rf *.o
+	rm -rf **/*.o
+	rm -f msp_displayport_mux
+	rm -f osd_sfml
