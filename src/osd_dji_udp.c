@@ -15,11 +15,11 @@
 #include <time.h>
 #include <linux/input.h>
 
-#include "dji_display.h"
-#include "dji_services.h"
-#include "network.h"
-#include "msp.h"
-#include "msp_displayport.h"
+#include "hw/dji_display.h"
+#include "hw/dji_services.h"
+#include "net/network.h"
+#include "msp/msp.h"
+#include "msp/msp_displayport.h"
 
 #define PORT 7654
 

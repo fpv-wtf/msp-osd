@@ -5,9 +5,9 @@
 #include <sys/poll.h>
 #include <time.h>
 
-#include "network.h"
-#include "serial.h"
-#include "msp.h"
+#include "net/network.h"
+#include "net/serial.h"
+#include "msp/msp.h"
 
 #define PORT 7654
 
