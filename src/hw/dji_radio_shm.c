@@ -23,5 +23,6 @@ uint16_t dji_radio_latency_ms(dji_shm_state_t *shm) {
 }
 
 float dji_radio_mbits(dji_shm_state_t *shm) {
+    printf("bitrate %04X\n", shm->modem_info->channel_status);
     return (float)((double)(uint16_t)shm->modem_info->channel_status + 50.0f);
 }

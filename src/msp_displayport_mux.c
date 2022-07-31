@@ -5,11 +5,22 @@
 #include <sys/poll.h>
 #include <time.h>
 
+#include "hw/dji_radio_shm.h"
+#include "net/data_protocol.h"
 #include "net/network.h"
 #include "net/serial.h"
 #include "msp/msp.h"
+#include "util/time_util.h"
+#include "util/fs_util.h"
 
-#define PORT 7654
+#define CPU_TEMP_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/temp1"
+#define AU_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage4"
+
+// The MSP_PORT is used to send MSP passthrough messages.
+// The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
+
+#define MSP_PORT 7654
+#define DATA_PORT 7655
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -149,6 +160,16 @@ static void tx_msp_callback(msp_msg_t *msp_message)
     }
 }
 
+static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
+    packet_data_t data;
+    memset(&data, 0, sizeof(data));
+    data.tx_bitrate = dji_radio_mbits(dji_shm);
+    data.tx_temperature = get_int_from_fs(CPU_TEMP_PATH);
+    data.tx_voltage = get_int_from_fs(AU_VOLTAGE_PATH);
+    printf("got bitrate %f voltage %d temp %d\n", data.tx_bitrate, data.tx_voltage, data.tx_temperature);
+    write(data_socket_fd, &data, sizeof(data));
+}
+
 int main(int argc, char *argv[]) {
     int opt;
     uint8_t fast_serial = 0;
@@ -174,6 +195,10 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    dji_shm_state_t dji_radio;
+    memset(&dji_radio, 0, sizeof(dji_radio));
+    open_dji_radio_shm(&dji_radio);
+
     char *ip_address = argv[optind];
     char *serial_port = argv[optind + 1];
     signal(SIGINT, sig_handler);
@@ -195,10 +220,13 @@ int main(int argc, char *argv[]) {
         symlink(pty_name_ptr, argv[optind + 2]);   
         printf("Relinked %s to %s\n", argv[optind + 2], pty_name_ptr); 
     }
-    socket_fd = connect_to_server(ip_address, PORT);
+    socket_fd = connect_to_server(ip_address, MSP_PORT);
+    int data_fd = connect_to_server(ip_address, DATA_PORT);
     uint8_t serial_data[256];
     ssize_t serial_data_size;
     struct timespec now, last;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    clock_gettime(CLOCK_MONOTONIC, &last);
     while (!quit) {
         poll_fds[0].fd = serial_fd;
         poll_fds[1].fd = pty_fd;
@@ -206,6 +234,7 @@ int main(int argc, char *argv[]) {
         poll_fds[1].events = POLLIN;
 
         poll(poll_fds, 2, 250);
+        
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
             DEBUG_PRINT("RECEIVED data! length %d\n", serial_data_size);
@@ -231,10 +260,18 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if(timespec_subtract_ns(&now, &last) > (NSEC_PER_SEC / 2)) {
+            // More than 500ms have elapsed, let's go ahead and send a data frame
+            clock_gettime(CLOCK_MONOTONIC, &last);
+            send_data_packet(data_fd, &dji_radio);
+        }
     }
+    close_dji_radio_shm(&dji_radio);
     close(serial_fd);
     close(pty_fd);
     close(socket_fd);
+    close(data_fd);
     free(rx_msp_state);
     free(tx_msp_state);
 }
