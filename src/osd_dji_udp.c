@@ -16,11 +16,13 @@
 #include <linux/input.h>
 
 #include "hw/dji_display.h"
+#include "hw/dji_radio_shm.h"
 #include "hw/dji_services.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
+#include "util/fs_util.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -33,14 +35,14 @@
 #define NUM_CHARS 256
 
 #define INPUT_FILENAME "/dev/input/event0"
-#define SPLASH_STRING "MSP OSD WAITING FOR DATA..."
-#define SHUTDOWN_STRING "MSP OSD SHUTTING DOWN..."
+#define SPLASH_STRING "OSD WAITING..."
+#define SHUTDOWN_STRING "SHUTTING DOWN..."
 
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
-#define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage4"
+#define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
 #define EV_CODE_BACK 0xc9
 
@@ -104,7 +106,7 @@ static display_info_t overlay_display_info = {
     .char_height = 10,
     .font_width = 24,
     .font_height = 36,
-    .x_offset = 1080,
+    .x_offset = 960,
     .y_offset = 450,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
@@ -316,19 +318,22 @@ static void stop_display() {
     dji_display_state_free(dji_display);
 }
 
-static void process_data_packet(uint8_t *buf, int len) {
+static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
     DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
     memset(overlay_character_map, 0, sizeof(overlay_character_map));
     char str[8];
-    snprintf(str, 8, "%2.1fMB", packet->tx_bitrate / 1000.0f);
+    snprintf(str, 8, "%2.1fMB ", packet->tx_bitrate / 1000.0f);
+    display_print_string(overlay_display_info.char_width - 6, overlay_display_info.char_height - 5, str, 6);
+    uint16_t latency = dji_radio_latency_ms(radio_shm);
+    snprintf(str, 8, "%d MS", latency);
     display_print_string(overlay_display_info.char_width - 6, overlay_display_info.char_height - 4, str, 6);
     snprintf(str, 8, "%d C", packet->tx_temperature);
     display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 3, str, 5);
     snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
     display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 2, str, 7);
     uint16_t goggle_voltage = get_int_from_fs(GOGGLES_VOLTAGE_PATH);
-    snprintf(str, 8, "G %2.1fV", goggle_voltage / 64.0f);
+    snprintf(str, 8, "G %2.1fV", (goggle_voltage / 45.0f) - 0.65f);
     display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 1, str, 7);
 }
 
@@ -352,10 +357,14 @@ int main(int argc, char *argv[])
 
     int event_fd = open(INPUT_FILENAME, O_RDONLY);
     assert(event_fd > 0);
+    
+    dji_shm_state_t radio_shm;
+    memset(&radio_shm, 0, sizeof(radio_shm));
 
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
     printf("started up, listening on port %d\n", MSP_PORT);
+
 
     struct pollfd poll_fds[3];
     int recv_len = 0;
@@ -381,6 +390,7 @@ int main(int argc, char *argv[])
             // Wait 1 second between stopping Glasses service and trying to start OSD.
             memset(&display_start, 0, sizeof(display_start));
             load_font();
+            open_dji_radio_shm(&radio_shm);
             start_display(is_v2_goggles);
             display_mode = DISPLAY_RUNNING;
         }
@@ -394,8 +404,10 @@ int main(int argc, char *argv[])
                 display_mode = DISPLAY_WAITING;
             } else {
                 printf("Switching Enabled/Waiting -> Disabled!\n");
-                if(display_mode == DISPLAY_RUNNING)
+                if(display_mode == DISPLAY_RUNNING) {
                     stop_display();
+                    close_dji_radio_shm(&radio_shm);
+                }
                 close_fonts(&sd_display_info);
                 close_fonts(&hd_display_info);
                 close_fonts(&overlay_display_info);
@@ -439,13 +451,16 @@ int main(int argc, char *argv[])
             if (0 < (recv_len = recvfrom(data_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
             {
                 DEBUG_PRINT("got DATA packet len %d\n", recv_len);
-                process_data_packet(buffer, recv_len);
+                if(display_mode == DISPLAY_RUNNING) {
+                    process_data_packet(buffer, recv_len, &radio_shm);
+                }
             }
         }
     }
     if(display_mode == DISPLAY_RUNNING) {
         stop_display();
     }
+    
     free(display_driver);
     free(msp_state);
     close(msp_socket_fd);
