@@ -3,7 +3,7 @@ CFLAGS=-I. -O2
 SRCDIR = src/
 DEPS = $(addprefix $(SRCDIR), msp/msp.h msp/msp_displayport.h net/network.h net/serial.h)
 DISPLAYPORT_MUX_OBJ = $(addprefix $(SRCDIR), msp_displayport_mux.o net/serial.o net/network.o msp/msp.o util/fs_util.o hw/dji_radio_shm.o)
-OSD_DJI_OBJ = $(addprefix $(SRCDIR), osd_dji_udp.o net/network.o msp/msp.o msp/msp_displayport.o hw/dji_display.o hw/dji_services.o hw/dji_radio_shm.o)
+OSD_DJI_OBJ = $(addprefix $(SRCDIR), osd_dji_udp.o net/network.o msp/msp.o msp/msp_displayport.o hw/dji_display.o hw/dji_services.o hw/dji_radio_shm.o util/fs_util.o)
 LIB_SHIMS = libshims/libduml_hal.so
 #OSD_DJI_LIBS := -lduml_hal
 #ifneq ($(DJI_LIB_PATH),)

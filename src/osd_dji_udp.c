@@ -40,6 +40,8 @@
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
+#define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage4"
+
 #define EV_CODE_BACK 0xc9
 
 #define BACK_BUTTON_DELAY 4
@@ -93,6 +95,17 @@ static display_info_t hd_display_info = {
     .font_height = 36,
     .x_offset = 120,
     .y_offset = 80,
+    .font_page_1 = NULL,
+    .font_page_2 = NULL,
+};
+
+static display_info_t overlay_display_info = {
+    .char_width = 20,
+    .char_height = 10,
+    .font_width = 24,
+    .font_height = 36,
+    .x_offset = 1080,
+    .y_offset = 450,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
 };
@@ -161,7 +174,7 @@ static void draw_screen() {
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
     
     draw_character_map(current_display_info, fb_addr, msp_character_map);
-    draw_character_map(&hd_display_info, fb_addr, overlay_character_map);
+    draw_character_map(&overlay_display_info, fb_addr, overlay_character_map);
 }
 
 static void msp_clear_screen()
@@ -249,6 +262,16 @@ static void load_font() {
           open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1);
         }
     }
+    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
+          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_1, 0, 1);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
+          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_2, 1, 1);
+        }
+    }
 }
 
 static void close_fonts(display_info_t *display_info) {
@@ -273,7 +296,7 @@ static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
 
 static void display_print_string(uint8_t init_x, uint8_t y, const char *string, uint8_t len) {
     for(uint8_t x = 0; x < len; x++) {
-        draw_character(&hd_display_info, overlay_character_map, x + init_x, y, string[x]);
+        draw_character(&overlay_display_info, overlay_character_map, x + init_x, y, string[x]);
     }
 }
 
@@ -283,12 +306,12 @@ static void start_display(uint8_t is_v2_goggles) {
 
     dji_display = dji_display_state_alloc(is_v2_goggles);
     dji_display_open_framebuffer(dji_display, PLANE_ID);
-    display_print_string(0, hd_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    display_print_string(0, overlay_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
     msp_draw_complete();
 }
 
 static void stop_display() {
-    display_print_string(0, hd_display_info.char_height -1, SHUTDOWN_STRING, sizeof(SHUTDOWN_STRING));
+    display_print_string(0, overlay_display_info.char_height -1, SHUTDOWN_STRING, sizeof(SHUTDOWN_STRING));
     dji_display_close_framebuffer(dji_display);
     dji_display_state_free(dji_display);
 }
@@ -299,11 +322,14 @@ static void process_data_packet(uint8_t *buf, int len) {
     memset(overlay_character_map, 0, sizeof(overlay_character_map));
     char str[8];
     snprintf(str, 8, "%2.1fMB", packet->tx_bitrate / 1000.0f);
-    display_print_string(hd_display_info.char_width - 6, hd_display_info.char_height - 3, str, 6);
+    display_print_string(overlay_display_info.char_width - 6, overlay_display_info.char_height - 4, str, 6);
     snprintf(str, 8, "%d C", packet->tx_temperature);
-    display_print_string(hd_display_info.char_width - 5, hd_display_info.char_height - 2, str, 5);
-    snprintf(str, 8, "%2.1fV", packet->tx_voltage / 64.0f);
-    display_print_string(hd_display_info.char_width - 5, hd_display_info.char_height - 1, str, 5);
+    display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 3, str, 5);
+    snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
+    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 2, str, 7);
+    uint16_t goggle_voltage = get_int_from_fs(GOGGLES_VOLTAGE_PATH);
+    snprintf(str, 8, "G %2.1fV", goggle_voltage / 64.0f);
+    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 1, str, 7);
 }
 
 int main(int argc, char *argv[])
@@ -372,6 +398,7 @@ int main(int argc, char *argv[])
                     stop_display();
                 close_fonts(&sd_display_info);
                 close_fonts(&hd_display_info);
+                close_fonts(&overlay_display_info);
                 display_mode = DISPLAY_DISABLED;
                 dji_start_goggles(is_v2_goggles);
             }
