@@ -107,6 +107,6 @@ typedef struct dji_shm_state_s {
 } dji_shm_state_t;
 
 uint16_t dji_radio_latency_ms(dji_shm_state_t *shm);
-float dji_radio_mbits(dji_shm_state_t *shm);
+uint16_t dji_radio_mbits(dji_shm_state_t *shm);
 void close_dji_radio_shm(dji_shm_state_t *shm);
 void open_dji_radio_shm(dji_shm_state_t *shm);

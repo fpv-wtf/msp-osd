@@ -166,7 +166,7 @@ static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
     data.tx_bitrate = dji_radio_mbits(dji_shm);
     data.tx_temperature = get_int_from_fs(CPU_TEMP_PATH);
     data.tx_voltage = get_int_from_fs(AU_VOLTAGE_PATH);
-    printf("got bitrate %f voltage %d temp %d\n", data.tx_bitrate, data.tx_voltage, data.tx_temperature);
+    DEBUG_PRINT("got bitrate %f Mbit voltage %f V temp %d C\n", (float)(data.tx_bitrate / 1000.0f), (float)(data.tx_voltage / 64.0f), data.tx_temperature);
     write(data_socket_fd, &data, sizeof(data));
 }
 

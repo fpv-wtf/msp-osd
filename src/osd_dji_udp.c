@@ -18,10 +18,12 @@
 #include "hw/dji_display.h"
 #include "hw/dji_services.h"
 #include "net/network.h"
+#include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
 
-#define PORT 7654
+#define MSP_PORT 7654
+#define DATA_PORT 7655
 
 #define WIDTH 1440
 #define HEIGHT 810
@@ -62,19 +64,27 @@ typedef struct display_info_s {
     uint8_t font_height;
     uint16_t x_offset;
     uint16_t y_offset;
+    void *font_page_1;
+    void *font_page_2;
 } display_info_t; 
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
-static uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static uint16_t msp_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
-static void *font_page_1 = NULL;
-static void *font_page_2 = NULL;
 static uint8_t which_fb = 0;
 
-#define SD_DISPLAY_INFO {.char_width = 31, .char_height = 15, .font_width = 36, .font_height = 54, .x_offset = 180, .y_offset = 0}
-
-static display_info_t sd_display_info = SD_DISPLAY_INFO;
+static display_info_t sd_display_info = {
+    .char_width = 31,
+    .char_height = 15,
+    .font_width = 36,
+    .font_height = 54,
+    .x_offset = 180,
+    .y_offset = 0,
+    .font_page_1 = NULL,
+    .font_page_2 = NULL,
+};
 
 static display_info_t hd_display_info = {
     .char_width = 50,
@@ -82,51 +92,54 @@ static display_info_t hd_display_info = {
     .font_width = 24,
     .font_height = 36,
     .x_offset = 120,
-    .y_offset = 80
+    .y_offset = 80,
+    .font_page_1 = NULL,
+    .font_page_2 = NULL,
 };
 
-static display_info_t current_display_info = SD_DISPLAY_INFO;
+static display_info_t *current_display_info;
 
 static void sig_handler(int _)
 {
     quit = 1;
 }
 
-static void draw_character(uint32_t x, uint32_t y, uint16_t c)
+static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
-    if ((x > (current_display_info.char_width - 1)) || (y > (current_display_info.char_height - 1))) {
+    if ((x > (display_info->char_width - 1)) || (y > (display_info->char_height - 1))) {
         return;
     }
     character_map[x][y] = c;
 }
 
-static void draw_screen() {
-    if (font_page_1 == NULL) {
+static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
+    draw_character(current_display_info, msp_character_map, x, y, c);
+}
+
+static void draw_character_map(display_info_t *display_info, void *fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
+    if (display_info->font_page_1 == NULL) {
         // give up if we don't have a font loaded
         return;
     }
     void *font;
-    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
-    // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
-    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    for(int y = 0; y < current_display_info.char_height; y++) {
-        for(int x = 0; x < current_display_info.char_width; x++) {
+    for(int y = 0; y < display_info->char_height; y++) {
+        for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
             if (c != 0) {
-                font = font_page_1;
+                font = display_info->font_page_1;
                 if (c > 255) {
                     c = c & 0xFF;
-                    if (font_page_2 != NULL) {
+                    if (display_info->font_page_2 != NULL) {
                         // fall back to writing page 1 chars if we don't have a page 2 font
-                        font = font_page_2;
+                        font = display_info->font_page_2;
                     }
                 } 
-                uint32_t pixel_x = (x * current_display_info.font_width) + current_display_info.x_offset;
-                uint32_t pixel_y = (y * current_display_info.font_height) + current_display_info.y_offset;
-                uint32_t character_offset = (((current_display_info.font_height * current_display_info.font_width) * BYTES_PER_PIXEL) * c);
-                for(uint8_t gx = 0; gx < current_display_info.font_width; gx++) {
-                    for(uint8_t gy = 0; gy < current_display_info.font_height; gy++) {
-                        uint32_t font_offset = character_offset + (gy * current_display_info.font_width * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
+                uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
+                uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
+                uint32_t character_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
+                for(uint8_t gx = 0; gx < display_info->font_width; gx++) {
+                    for(uint8_t gy = 0; gy < display_info->font_height; gy++) {
+                        uint32_t font_offset = character_offset + (gy * display_info->font_width * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
                         uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
                         *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);
                         *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);
@@ -142,12 +155,21 @@ static void draw_screen() {
     }
 }
 
-static void clear_screen()
-{
-    memset(character_map, 0, sizeof(character_map));
+static void draw_screen() {
+    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
+    // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
+    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+    
+    draw_character_map(current_display_info, fb_addr, msp_character_map);
+    draw_character_map(&hd_display_info, fb_addr, overlay_character_map);
 }
 
-static void draw_complete() {
+static void msp_clear_screen()
+{
+    memset(msp_character_map, 0, sizeof(msp_character_map));
+}
+
+static void msp_draw_complete() {
     draw_screen();
     dji_display_push_frame(dji_display, which_fb);
     which_fb = !which_fb;
@@ -173,15 +195,16 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
     }
 }
 
-static int open_font(const char *filename, void** font, uint8_t page) {
+static int open_font(const char *filename, void** font, uint8_t page, uint8_t is_hd) {
     char file_path[255];
-    get_font_path_with_prefix(file_path, filename, 255, (current_display_info.font_width < sd_display_info.font_width), page);
+    get_font_path_with_prefix(file_path, filename, 255, is_hd, page);
     printf("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
     stat(file_path, &st);
     size_t filesize = st.st_size;
-    size_t desired_filesize = current_display_info.font_height * current_display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
+    display_info_t display_info = is_hd ? hd_display_info : sd_display_info;
+    size_t desired_filesize = display_info.font_height *  display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
     if(filesize != desired_filesize) {
         if (filesize != 0) {
             printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
@@ -206,69 +229,97 @@ static int open_font(const char *filename, void** font, uint8_t page) {
 }
 
 static void load_font() {
-    if (open_font(SDCARD_FONT_PATH, &font_page_1, 0) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &font_page_1, 0) < 0) {
-          open_font(FALLBACK_FONT_PATH, &font_page_1, 0);
+    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
+          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_1, 0, 0);
         }
     }
-    if (open_font(SDCARD_FONT_PATH, &font_page_2, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &font_page_2, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &font_page_2, 1);
+    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
+          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_2, 1, 0);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
+          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_1, 0, 1);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
+          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1);
         }
     }
 }
 
-static void close_font(void *font) {
-    if (font != NULL)
+static void close_fonts(display_info_t *display_info) {
+    if (display_info->font_page_1 != NULL)
     {
-        munmap(font, current_display_info.font_height * current_display_info.font_width * NUM_CHARS * 4);
+        munmap(display_info->font_page_1, display_info->font_height * display_info->font_width * NUM_CHARS * 4);
+    }
+    if (display_info->font_page_2 != NULL)
+    {
+        munmap(display_info->font_page_2, display_info->font_height * display_info->font_width * NUM_CHARS * 4);
     }
 }
 
-static void set_options(uint8_t font_num, uint8_t is_hd) {
-    clear_screen();
-    close_font(font_page_1);
-    close_font(font_page_2);
+static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
+    msp_clear_screen();
     if(is_hd) { 
-        current_display_info = hd_display_info;
+        current_display_info = &hd_display_info;
     } else {
-        current_display_info = sd_display_info;
+        current_display_info = &sd_display_info;
     }
-    load_font();
 }
 
-static void display_print_string(const char *string, uint8_t len) {
-    for(int x = 0; x < len; x++) {
-        character_map[x][current_display_info.char_height - 2] = string[x];
+static void display_print_string(uint8_t init_x, uint8_t y, const char *string, uint8_t len) {
+    for(uint8_t x = 0; x < len; x++) {
+        draw_character(&hd_display_info, overlay_character_map, x + init_x, y, string[x]);
     }
-    draw_complete();
 }
 
 static void start_display(uint8_t is_v2_goggles) {
-    memset(character_map, 0, sizeof(character_map));
+    memset(msp_character_map, 0, sizeof(msp_character_map));
+    memset(overlay_character_map, 0, sizeof(overlay_character_map));
+
     dji_display = dji_display_state_alloc(is_v2_goggles);
     dji_display_open_framebuffer(dji_display, PLANE_ID);
-    display_print_string(SPLASH_STRING, sizeof(SPLASH_STRING));
+    display_print_string(0, hd_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    msp_draw_complete();
 }
 
 static void stop_display() {
-    display_print_string(SHUTDOWN_STRING, sizeof(SHUTDOWN_STRING));
+    display_print_string(0, hd_display_info.char_height -1, SHUTDOWN_STRING, sizeof(SHUTDOWN_STRING));
     dji_display_close_framebuffer(dji_display);
     dji_display_state_free(dji_display);
+}
+
+static void process_data_packet(uint8_t *buf, int len) {
+    packet_data_t *packet = (packet_data_t *)buf;
+    DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
+    memset(overlay_character_map, 0, sizeof(overlay_character_map));
+    char str[8];
+    snprintf(str, 8, "%2.1fMB", packet->tx_bitrate / 1000.0f);
+    display_print_string(hd_display_info.char_width - 6, hd_display_info.char_height - 3, str, 6);
+    snprintf(str, 8, "%d C", packet->tx_temperature);
+    display_print_string(hd_display_info.char_width - 5, hd_display_info.char_height - 2, str, 5);
+    snprintf(str, 8, "%2.1fV", packet->tx_voltage / 64.0f);
+    display_print_string(hd_display_info.char_width - 5, hd_display_info.char_height - 1, str, 5);
 }
 
 int main(int argc, char *argv[])
 {
     signal(SIGINT, sig_handler);
 
+    current_display_info = &sd_display_info;
+
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
     display_driver = calloc(1, sizeof(displayport_vtable_t));
-    display_driver->draw_character = &draw_character;
-    display_driver->clear_screen = &clear_screen;
-    display_driver->draw_complete = &draw_complete;
-    display_driver->set_options = &set_options;
+    display_driver->draw_character = &msp_draw_character;
+    display_driver->clear_screen = &msp_clear_screen;
+    display_driver->draw_complete = &msp_draw_complete;
+    display_driver->set_options = &msp_set_options;
 
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
@@ -276,10 +327,11 @@ int main(int argc, char *argv[])
     int event_fd = open(INPUT_FILENAME, O_RDONLY);
     assert(event_fd > 0);
 
-    int socket_fd = bind_socket(PORT);
-    printf("started up, listening on port %d\n", PORT);
+    int msp_socket_fd = bind_socket(MSP_PORT);
+    int data_socket_fd = bind_socket(DATA_PORT);
+    printf("started up, listening on port %d\n", MSP_PORT);
 
-    struct pollfd poll_fds[2];
+    struct pollfd poll_fds[3];
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[4096];
@@ -318,18 +370,20 @@ int main(int argc, char *argv[])
                 printf("Switching Enabled/Waiting -> Disabled!\n");
                 if(display_mode == DISPLAY_RUNNING)
                     stop_display();
-                close_font(font_page_1);
-                close_font(font_page_2);
+                close_fonts(&sd_display_info);
+                close_fonts(&hd_display_info);
                 display_mode = DISPLAY_DISABLED;
                 dji_start_goggles(is_v2_goggles);
             }
         }
 
-        poll_fds[0].fd = socket_fd;
+        poll_fds[0].fd = msp_socket_fd;
         poll_fds[0].events = POLLIN;
         poll_fds[1].fd = event_fd;
         poll_fds[1].events = POLLIN;
-        poll(poll_fds, 2, 100);
+        poll_fds[2].fd = data_socket_fd;
+        poll_fds[2].events = POLLIN;
+        poll(poll_fds, 3, 100);
 
         if(poll_fds[1].revents) {
             read(event_fd, &ev, sizeof(struct input_event));
@@ -343,14 +397,22 @@ int main(int argc, char *argv[])
             DEBUG_PRINT("input type: %i, code: %i, value: %i\n", ev.type, ev.code, ev.value);
         }
         if(poll_fds[0].revents) {
-            // Got UDP packet
-            if (0 < (recv_len = recvfrom(socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            // Got MSP UDP packet
+            if (0 < (recv_len = recvfrom(msp_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
             {
-                DEBUG_PRINT("got packet len %d\n", recv_len);
+                DEBUG_PRINT("got MSP packet len %d\n", recv_len);
                 if(display_mode == DISPLAY_RUNNING) {
                     for (int i=0; i<recv_len; i++)
                         msp_process_data(msp_state, buffer[i]);
                 }
+            }
+        }
+         if(poll_fds[2].revents) {
+            // Got data UDP packet
+            if (0 < (recv_len = recvfrom(data_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            {
+                DEBUG_PRINT("got DATA packet len %d\n", recv_len);
+                process_data_packet(buffer, recv_len);
             }
         }
     }
@@ -359,8 +421,8 @@ int main(int argc, char *argv[])
     }
     free(display_driver);
     free(msp_state);
-    close(socket_fd);
+    close(msp_socket_fd);
+    close(data_socket_fd);
     close(event_fd);
-
     return 0;
 }
