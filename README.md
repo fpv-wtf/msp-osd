@@ -86,6 +86,8 @@ See above - `dji_glasses` has three primary purposes:
 
 Without `dji_glasses` running we will have to replicate these functionalities.
 
+Additionally, you will need to switch back to DJI glasses in order for channel/bitrate settings to be applied after power cycling the air side (IE: between every battery) + then restart MSP-OSD again.
+
 ### How do I create a new font (for iNav, Ardupilot, etc.)?
 
 Use [mcm2img](https://github.com/bri3d/mcm2img).
