@@ -30,6 +30,8 @@ set displayport_msp_serial = <ConfiguratorUART - 1>
 
 Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1**.
 
+For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area.
+
 On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time. 
 
 On *Ardupilot*, this is done by setting:
@@ -91,6 +93,12 @@ Use [mcm2img](https://github.com/bri3d/mcm2img).
 ```
 python3 mcm2img.py mcmfile.mcm font.bin RGBA
 ```
+
+### Why is everything so big / can I make the text smaller (betaflight)?
+
+Betaflight does not support HD OSD. So you have the same 30 * 16 grid as analog uses. The field of view in the DJI goggles makes this look big. 
+
+You can swap to a different font to make the characters smaller, but the grid spacing is the same.
 
 # Compiling (development and debugging)
 
