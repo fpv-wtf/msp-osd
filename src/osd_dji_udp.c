@@ -47,6 +47,8 @@
 #define EV_CODE_BACK 0xc9
 
 #define BACK_BUTTON_DELAY 4
+#define BACK_BUTTON_DOUBLETAP_TIME 2
+#define CYCLE_SLEEP_TIME 6`
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -70,7 +72,7 @@ typedef struct display_info_s {
     uint16_t y_offset;
     void *font_page_1;
     void *font_page_2;
-} display_info_t; 
+} display_info_t;
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
@@ -148,7 +150,7 @@ static void draw_character_map(display_info_t *display_info, void *fb_addr, uint
                         // fall back to writing page 1 chars if we don't have a page 2 font
                         font = display_info->font_page_2;
                     }
-                } 
+                }
                 uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
                 uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
                 uint32_t character_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
@@ -174,7 +176,7 @@ static void draw_screen() {
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    
+
     draw_character_map(current_display_info, fb_addr, msp_character_map);
     draw_character_map(&overlay_display_info, fb_addr, overlay_character_map);
 }
@@ -289,7 +291,7 @@ static void close_fonts(display_info_t *display_info) {
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
-    if(is_hd) { 
+    if(is_hd) {
         current_display_info = &hd_display_info;
     } else {
         current_display_info = &sd_display_info;
@@ -337,6 +339,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 1, str, 7);
 }
 
+
 int main(int argc, char *argv[])
 {
     signal(SIGINT, sig_handler);
@@ -357,7 +360,7 @@ int main(int argc, char *argv[])
 
     int event_fd = open(INPUT_FILENAME, O_RDONLY);
     assert(event_fd > 0);
-    
+
     dji_shm_state_t radio_shm;
     memset(&radio_shm, 0, sizeof(radio_shm));
 
@@ -373,9 +376,11 @@ int main(int argc, char *argv[])
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
-    struct timespec button_start, display_start, now;
+    struct timespec button_start, display_start, now, last_back, doubletap_sleep_start;
     memset(&display_start, 0, sizeof(display_start));
     memset(&button_start, 0, sizeof(button_start));
+    memset(&last_back, 0, sizeof(last_back));
+    memset(&doubletap_sleep_start, 0, sizeof(doubletap_sleep_start));
 
     enum display_mode_s {
         DISPLAY_DISABLED = 0,
@@ -394,7 +399,31 @@ int main(int argc, char *argv[])
             start_display(is_v2_goggles);
             display_mode = DISPLAY_RUNNING;
         }
-        if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > BACK_BUTTON_DELAY)) {
+        if ((display_mode == DISPLAY_RUNNING) && (button_start.tv_sec > 0) && ((now.tv_sec - last_back.tv_sec) < BACK_BUTTON_DOUBLETAP_TIME))
+        {
+            printf("Cycling Enabled -> Disabled -> Enabled\n");
+            printf("Disabling\n");
+            stop_display();
+            close_dji_radio_shm(&radio_shm);
+            close_fonts(&sd_display_info);
+            close_fonts(&hd_display_info);
+            close_fonts(&overlay_display_info);
+            display_mode = DISPLAY_DISABLED;
+            dji_start_goggles(is_v2_goggles);
+            printf("Waiting\n");
+            clock_gettime(CLOCK_MONOTONIC, &doubletap_sleep_start);
+        }
+        else if (doubletap_sleep_start.tv_sec > 0 && ((now.tv_sec - doubletap_sleep_start.tv_sec) > CYCLE_SLEEP_TIME))
+        {
+            printf("Enabling\n");
+            dji_stop_goggles(is_v2_goggles);
+            clock_gettime(CLOCK_MONOTONIC, &display_start);
+            display_mode = DISPLAY_WAITING;
+
+            memset(&last_back, 0, sizeof(last_back));
+            memset(&doubletap_sleep_start, 0, sizeof(doubletap_sleep_start));
+        }
+        else if(button_start.tv_sec > 0 && ((now.tv_sec - button_start.tv_sec) > BACK_BUTTON_DELAY)) {
             // We held the back button down for 5 seconds.
             memset(&button_start, 0, sizeof(button_start));
             if (display_mode == DISPLAY_DISABLED) {
@@ -430,6 +459,7 @@ int main(int argc, char *argv[])
                 if(ev.value == 1) {
                     clock_gettime(CLOCK_MONOTONIC, &button_start);
                 } else {
+                    clock_gettime(CLOCK_MONOTONIC, &last_back);
                     memset(&button_start, 0, sizeof(button_start));
                 }
             }
@@ -460,7 +490,7 @@ int main(int argc, char *argv[])
     if(display_mode == DISPLAY_RUNNING) {
         stop_display();
     }
-    
+
     free(display_driver);
     free(msp_state);
     close(msp_socket_fd);
