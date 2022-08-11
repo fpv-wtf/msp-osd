@@ -32,7 +32,7 @@ Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the 
 
 For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area.
 
-On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time. 
+On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time.
 
 On *Ardupilot*, this is done by setting:
 
@@ -51,13 +51,13 @@ and optionally
 * Rename the files for your desired font to `font` - so you should have four files: `font.bin, font_2.bin, font_hd.bin, font_hd_2.bin` .
 * Place these four files on the root of your Goggles SD card.
 * Unplug USB, if connected.
-* Restart `msp-osd` by cycling to the DJI OSD and back using the BACK button. 
+* Restart `msp-osd` by cycling to the DJI OSD and back using the BACK button.
 
 ### Generate your own Font (advanced)
 
 * Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
 
-* Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller. 
+* Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller.
 
 * For Betaflight: https://github.com/betaflight/betaflight-configurator/tree/master/resources/osd/2
 * For iNav: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
@@ -86,7 +86,7 @@ See above - `dji_glasses` has three primary purposes:
 
 Without `dji_glasses` running we will have to replicate these functionalities.
 
-Additionally, you will need to switch back to DJI glasses in order for channel/bitrate settings to be applied after power cycling the air side (IE: between every battery) + then restart MSP-OSD again.
+Additionally, you will need to switch back to DJI glasses in order for channel/bitrate settings to be applied after power cycling the air side (IE: between every battery) + then restart MSP-OSD again. To make this easier, a double tap of the back button will trigger a return to the DJI UI, a brief pause to let it do it's thing and then return you to MSP-OSD.
 
 ### How do I create a new font (for iNav, Ardupilot, etc.)?
 
@@ -98,7 +98,7 @@ python3 mcm2img.py mcmfile.mcm font.bin RGBA
 
 ### Why is everything so big / can I make the text smaller (betaflight)?
 
-Betaflight does not support HD OSD. So you have the same 30 * 16 grid as analog uses. The field of view in the DJI goggles makes this look big. 
+Betaflight does not support HD OSD. So you have the same 30 * 16 grid as analog uses. The field of view in the DJI goggles makes this look big.
 
 You can swap to a different font to make the characters smaller, but the grid spacing is the same.
 
