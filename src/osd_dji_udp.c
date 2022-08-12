@@ -48,7 +48,7 @@
 
 #define BACK_BUTTON_DELAY 4
 #define BACK_BUTTON_DOUBLETAP_TIME 2
-#define CYCLE_SLEEP_TIME 6`
+#define CYCLE_SLEEP_TIME 9
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
