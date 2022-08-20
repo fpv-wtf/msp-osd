@@ -84,7 +84,6 @@ jobs:
         id: setup-ndk
         with:
           ndk-version: r23b
-          add-to-path: false
 
       - name: Build .ipk
         env:
