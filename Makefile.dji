@@ -1,28 +1,11 @@
 CC=armv7a-linux-androideabi19-clang
 CFLAGS=-I. -O2
-SRCDIR = src/
-DEPS = $(addprefix $(SRCDIR), msp/msp.h msp/msp_displayport.h net/network.h net/serial.h)
-DISPLAYPORT_MUX_OBJ = $(addprefix $(SRCDIR), msp_displayport_mux.o net/serial.o net/network.o msp/msp.o util/fs_util.o hw/dji_radio_shm.o)
-OSD_DJI_OBJ = $(addprefix $(SRCDIR), osd_dji_udp.o net/network.o msp/msp.o msp/msp_displayport.o hw/dji_display.o hw/dji_services.o hw/dji_radio_shm.o util/fs_util.o)
 LIB_SHIMS = libshims/libduml_hal.so
-#OSD_DJI_LIBS := -lduml_hal
-#ifneq ($(DJI_LIB_PATH),)
-OSD_DJI_LIBS := -L./libshims -lduml_hal
-#endif
 
 .PHONY: repo
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
-
-all: msp_displayport_mux osd_dji
-
-msp_displayport_mux: $(DISPLAYPORT_MUX_OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
-
-osd_dji: $(OSD_DJI_OBJ)
-	$(MAKE) -f Makefile.dji libshims
-	$(CC) -o $@ $^ $(CFLAGS) $(OSD_DJI_LIBS)
 
 #this doesn't work by default
 #an extra duss_result_t(frame_pop_handler)
@@ -31,32 +14,34 @@ libshims/%.c: %.h
 	stubgen -g -e .c -l -N -t libshims -p "../" -n $<
 
 libshims/lib%.so: libshims/%.c
-	$(CC) -Wno-c2x-extensions -O2 -shared -o $@ $< $(CFLAGS)
+	$(CC) -Wno-c2x-extensions -O2 -shared -Wl,-soname,libduml_hal.so -o $@ $< $(CFLAGS)
 	
 libshims: $(LIB_SHIMS)
 
-goggle_ipk: osd_dji
+all: jni/*
+	ndk-build	
+
+install: all
+	install -d ipk/goggle/build/data/opt/fonts/
+	install font*.bin ipk/goggle/build/data/opt/fonts/
+	install -d ipk/goggle/build/data/opt/etc/preload.d/
+	install libs/armeabi-v7a/libdisplayport_osd_shim.so ipk/goggle/build/data/opt/etc/preload.d/
+	install -d ipk/airunit/build/data/opt/bin/
+	install libs/armeabi-v7a/msp_displayport_mux ipk/airunit/build/data/opt/bin/
+
+goggle_ipk: install
 	$(eval PKG_NAME := $(shell cat ./ipk/goggle/control/control | grep Package | cut -d" " -f2))
 	$(eval ARCH := $(shell cat ./ipk/goggle/control/control | grep Architecture | cut -d" " -f2))
 	$(eval VERSION :=$(shell cat ./ipk/goggle/control/control | grep Version | cut -d" " -f2))
 	$(eval IPK_NAME := "${PKG_NAME}_${VERSION}_${ARCH}.ipk")
-	mkdir -p ipk/goggle/build
 	cp -r ipk/goggle/data ipk/goggle/build/
-	mkdir -p ipk/goggle/build/data/opt/bin
-	mkdir -p ipk/goggle/build/opt/fonts
 	echo "2.0" > ipk/goggle/build/debian-binary
 	cp -r ipk/goggle/control ipk/goggle/build/
-	cp osd_dji ipk/goggle/build/data/opt/bin
-	chmod +x ipk/goggle/build/data/opt/bin/osd_dji
-	mkdir -p ipk/goggle/build/data/opt/fonts
-	cp font.bin ipk/goggle/build/data/opt/fonts/
-	cp font_hd.bin ipk/goggle/build/data/opt/fonts/
-	cp font_hd_2.bin ipk/goggle/build/data/opt/fonts/
 	cd ipk/goggle/build/control && tar czvf ../control.tar.gz .
 	cd ipk/goggle/build/data && tar czvf ../data.tar.gz .
 	cd ipk/goggle/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
 
-airunit_ipk: msp_displayport_mux
+airunit_ipk: install
 	$(eval PKG_NAME := $(shell cat ./ipk/airunit/control/control | grep Package | cut -d" " -f2))
 	$(eval ARCH := $(shell cat ./ipk/airunit/control/control | grep Architecture | cut -d" " -f2))
 	$(eval VERSION :=$(shell cat ./ipk/airunit/control/control | grep Version | cut -d" " -f2))
@@ -64,14 +49,12 @@ airunit_ipk: msp_displayport_mux
 	mkdir -p ipk/airunit/build
 	echo "2.0" > ipk/airunit/build/debian-binary
 	cp -r ipk/airunit/data ipk/airunit/build/
-	cp msp_displayport_mux ipk/airunit/build/data/opt/bin
-	chmod +x ipk/airunit/build/data/opt/bin/msp_displayport_mux
 	cp -r ipk/airunit/control ipk/airunit/build/
 	cd ipk/airunit/build/control && tar czvf ../control.tar.gz .
 	cd ipk/airunit/build/data && tar czvf ../data.tar.gz .
 	cd ipk/airunit/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
 
-ipk: goggle_ipk airunit_ipk
+ipk: install goggle_ipk airunit_ipk
 
 repo: ipk
 	mkdir -p repo
@@ -89,3 +72,5 @@ clean:
 	rm -rf ipk/goggle/build
 	rm -rf ipk/airunit/build
 	rm -rf ipk/*.ipk
+	rm -rf obj
+	rm -rf libs

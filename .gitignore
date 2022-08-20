@@ -5,3 +5,5 @@ ipk/goggle/build
 ipk/airunit/build
 *.ipk
 repo
+obj
+libs
