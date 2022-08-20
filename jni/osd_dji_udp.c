@@ -323,18 +323,10 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
     memset(overlay_character_map, 0, sizeof(overlay_character_map));
     char str[8];
-    snprintf(str, 8, "%2.1fMB ", packet->tx_bitrate / 1000.0f);
-    display_print_string(overlay_display_info.char_width - 6, overlay_display_info.char_height - 5, str, 6);
-    uint16_t latency = dji_radio_latency_ms(radio_shm);
-    snprintf(str, 8, "%d MS", latency);
-    display_print_string(overlay_display_info.char_width - 6, overlay_display_info.char_height - 4, str, 6);
     snprintf(str, 8, "%d C", packet->tx_temperature);
-    display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 3, str, 5);
+    display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
     snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
-    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 2, str, 7);
-    uint16_t goggle_voltage = get_int_from_fs(GOGGLES_VOLTAGE_PATH);
-    snprintf(str, 8, "G %2.1fV", (goggle_voltage / 45.0f) - 0.65f);
-    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 1, str, 7);
+    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
 }
 
 int main(int argc, char *argv[])
