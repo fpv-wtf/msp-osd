@@ -234,15 +234,18 @@ static int open_font(const char *filename, void** font, uint8_t page, uint8_t is
         printf("Could not open file %s\n", file_path);
         return -1;
     }
+    void* font_data = malloc(desired_filesize);
     void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
-    // there is no need to keep an FD open after mmap
-    close(fd);
     if (mmappedData != MAP_FAILED) {
-        *font = mmappedData;
+        memcpy(font_data, mmappedData, desired_filesize);
+        *font = font_data;
     } else {
         printf("Could not map font %s\n", file_path);
+        free(font_data);
         *font = 0;
     }
+    close(fd);
+    munmap(mmappedData, desired_filesize);
     return 0;
 }
 
@@ -282,11 +285,11 @@ static void load_font() {
 static void close_fonts(display_info_t *display_info) {
     if (display_info->font_page_1 != NULL)
     {
-        munmap(display_info->font_page_1, display_info->font_height * display_info->font_width * NUM_CHARS * 4);
+        free(display_info->font_page_1);
     }
     if (display_info->font_page_2 != NULL)
     {
-        munmap(display_info->font_page_2, display_info->font_height * display_info->font_width * NUM_CHARS * 4);
+        free(display_info->font_page_2);
     }
 }
 
