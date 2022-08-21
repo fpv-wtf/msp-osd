@@ -134,13 +134,13 @@ static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
     draw_character(current_display_info, msp_character_map, x, y, c);
 }
 
-static void draw_character_map(display_info_t *display_info, void *fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
+static void draw_character_map(display_info_t *display_info, void* restrict fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
     if (display_info->font_page_1 == NULL) {
         // give up if we don't have a font loaded
         return;
     }
     void *font_page_2 = display_info->font_page_2 == NULL ? display_info->font_page_1 : display_info->font_page_2;
-    void *font;
+    void* restrict font;
     for(int y = 0; y < display_info->char_height; y++) {
         for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
