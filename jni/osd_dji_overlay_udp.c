@@ -139,31 +139,31 @@ static void draw_character_map(display_info_t *display_info, void *fb_addr, uint
         // give up if we don't have a font loaded
         return;
     }
+    void *font_page_2 = display_info->font_page_2 == NULL ? display_info->font_page_1 : display_info->font_page_2;
     void *font;
     for(int y = 0; y < display_info->char_height; y++) {
         for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
-            if (c != 0) {
+            if (c != 0 && c != 20) {
                 font = display_info->font_page_1;
                 if (c > 255) {
                     c = c & 0xFF;
-                    if (display_info->font_page_2 != NULL) {
-                        // fall back to writing page 1 chars if we don't have a page 2 font
-                        font = display_info->font_page_2;
-                    }
+                    font = font_page_2;
                 } 
                 uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
                 uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
-                uint32_t character_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
-                for(uint8_t gx = 0; gx < display_info->font_width; gx++) {
-                    for(uint8_t gy = 0; gy < display_info->font_height; gy++) {
-                        uint32_t font_offset = character_offset + (gy * display_info->font_width * BYTES_PER_PIXEL) + (gx * BYTES_PER_PIXEL);
-                        uint32_t target_offset = ((((pixel_x + gx) * BYTES_PER_PIXEL) + ((pixel_y + gy) * WIDTH * BYTES_PER_PIXEL)));
+                uint32_t font_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
+                uint32_t target_offset = ((pixel_x * BYTES_PER_PIXEL) + (pixel_y * WIDTH * BYTES_PER_PIXEL));
+                for(uint8_t gy = 0; gy < display_info->font_height; gy++) {
+                    for(uint8_t gx = 0; gx < display_info->font_width; gx++) {
                         *((uint8_t *)fb_addr + target_offset) = *(uint8_t *)((uint8_t *)font + font_offset + 2);
                         *((uint8_t *)fb_addr + target_offset + 1) = *(uint8_t *)((uint8_t *)font + font_offset + 1);
                         *((uint8_t *)fb_addr + target_offset + 2) = *(uint8_t *)((uint8_t *)font + font_offset);
                         *((uint8_t *)fb_addr + target_offset + 3) = ~*(uint8_t *)((uint8_t *)font + font_offset + 3);
+                        font_offset += BYTES_PER_PIXEL;
+                        target_offset += BYTES_PER_PIXEL;
                     }
+                    target_offset += WIDTH * BYTES_PER_PIXEL - (display_info->font_width * BYTES_PER_PIXEL);
                 }
                 DEBUG_PRINT("%c", c > 31 ? c : 20);
             }
@@ -321,6 +321,7 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     display_state->pb_0->is_enable = 1;
     display_state->pb_0->voffset = GOGGLES_V1_VOFFSET; // TODO just check hwid to figure this out
     display_state->pb_0->hoffset = 0;
+
     display_state->pb_0->order = 2;
 
     // Global alpha - disable as we want per pixel alpha.

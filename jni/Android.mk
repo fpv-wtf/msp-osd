@@ -8,10 +8,10 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_CFLAGS += -fPIC -std=c99
+LOCAL_CFLAGS += -fPIC -std=c99 -O3
 LOCAL_LDFLAGS += -fPIC 
 LOCAL_LDLIBS := -llog
-
+LOCAL_ARM_NEON := true
 LOCAL_MODULE    := displayport_osd_shim
 LOCAL_SRC_FILES := displayport_osd_shim.c osd_dji_overlay_udp.c msp/msp_displayport.c msp/msp.c net/network.c util/fs_util.c hw/dji_radio_shm.c hw/dji_display.c hw/dji_services.c
 LOCAL_SHARED_LIBRARIES := duml_hal
