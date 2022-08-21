@@ -109,13 +109,10 @@ msp_error_e msp_process_data(msp_state_t *msp_state, uint8_t dat)
         case MSP_CHECKSUM:
             if (msp_state->message.checksum == dat)
             {
-                msp_msg_t *msg_copy = malloc(sizeof(msp_msg_t));
-                memcpy(msg_copy, &msp_state->message, sizeof(msp_msg_t));
                 if (msp_state->cb != 0)
                 {
-                    msp_state->cb(msg_copy);
+                    msp_state->cb(&msp_state->message);
                 }
-                free(msg_copy);
                 memset(&msp_state->message, 0, sizeof(msp_msg_t));
                 msp_state->state = MSP_IDLE;
                 break;            

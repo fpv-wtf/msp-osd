@@ -14,6 +14,7 @@
 #include <sys/poll.h>
 #include <time.h>
 #include <linux/input.h>
+#include <sys/eventfd.h>
 
 #include "hw/dji_display.h"
 #include "hw/dji_radio_shm.h"
@@ -115,12 +116,15 @@ static display_info_t overlay_display_info = {
     .font_page_2 = NULL,
 };
 
+static enum display_mode_s {
+        DISPLAY_DISABLED = 0,
+        DISPLAY_RUNNING = 1,
+        DISPLAY_WAITING = 2
+} display_mode = DISPLAY_RUNNING;
+
 static display_info_t *current_display_info;
 
-static void sig_handler(int _)
-{
-    quit = 1;
-}
+int event_fd;
 
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
@@ -173,25 +177,40 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
     }
 }
 
+static void clear_framebuffer() {
+    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
+    // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
+    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+}
+
 static void draw_screen() {
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    
     draw_character_map(current_display_info, fb_addr, msp_character_map);
     draw_character_map(&overlay_display_info, fb_addr, overlay_character_map);
 }
 
-static void msp_clear_screen()
-{
+static void clear_overlay() {
+    memset(overlay_character_map, 0, sizeof(overlay_character_map));
+}
+
+static void msp_clear_screen() {
     memset(msp_character_map, 0, sizeof(msp_character_map));
 }
 
-static void msp_draw_complete() {
+static void render_screen() {
     draw_screen();
+    if (display_mode == DISPLAY_DISABLED) {
+        clear_framebuffer();
+    }
     dji_display_push_frame(dji_display, which_fb);
     which_fb = !which_fb;
     DEBUG_PRINT("drew a frame\n");
+}
+
+static void msp_draw_complete() {
+    render_screen();
 }
 
 static void msp_callback(msp_msg_t *msp_message)
@@ -322,22 +341,29 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     // PLANE BLENDING
 
     display_state->pb_0->is_enable = 1;
-    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET; // TODO just check hwid to figure this out
+
+    // TODO just check hwid to figure this out. Not actually V1/V2 related but an HW version ID.
+
+    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET; 
     display_state->pb_0->hoffset = 0;
 
-    display_state->pb_0->order = 2;
+    // On Goggles V1, the UI and video are in Z-Order 1. On Goggles V2, they're in Z-Order 4.
+    // Unfortunately, this means we cannot draw below the DJI UI on Goggles V1. But, on Goggles V2 we get what we want.
+
+    display_state->pb_0->order = 2; 
 
     // Global alpha - disable as we want per pixel alpha.
 
     display_state->pb_0->glb_alpha_en = 0;
     display_state->pb_0->glb_alpha_val = 0;
 
-    // Blending algorithm 1 seems to work.
+    // These aren't documented. Blending algorithm 0 is employed for menus and 1 for screensaver.
 
     display_state->pb_0->blending_alg = 1;
     
     // No idea what this "plane mode" actually does but it's different on V2
     uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
+
     printf("acquire plane\n");
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
@@ -425,12 +451,22 @@ static void stop_display() {
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
     DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
-    memset(overlay_character_map, 0, sizeof(overlay_character_map));
     char str[8];
+    clear_overlay();
     snprintf(str, 8, "%d C", packet->tx_temperature);
     display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
     snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
     display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+}
+
+void osd_disable() {
+    uint64_t disable = 1;
+    write(event_fd, &disable, sizeof(uint64_t));
+}
+
+void osd_enable() {
+    uint64_t enable = 2;
+    write(event_fd, &enable, sizeof(uint64_t));
 }
 
 void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle)
@@ -449,7 +485,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
 
-    int event_fd = open(INPUT_FILENAME, O_RDONLY);
+    event_fd = eventfd(0, NULL);
     assert(event_fd > 0);
     
     dji_shm_state_t radio_shm;
@@ -471,15 +507,11 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     memset(&display_start, 0, sizeof(display_start));
     memset(&button_start, 0, sizeof(button_start));
 
-    enum display_mode_s {
-        DISPLAY_DISABLED = 0,
-        DISPLAY_RUNNING = 1,
-        DISPLAY_WAITING = 2
-    } display_mode = DISPLAY_RUNNING;
-
     load_font();
     open_dji_radio_shm(&radio_shm);
     start_display(is_v2_goggles, disp, ion_handle);
+
+    uint64_t event_number;
 
     while (!quit)
     {       
@@ -502,7 +534,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 }
             }
         }
-         if(poll_fds[2].revents) {
+        if(poll_fds[2].revents) {
             // Got data UDP packet
             if (0 < (recv_len = recvfrom(data_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
             {
@@ -510,6 +542,16 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 if(display_mode == DISPLAY_RUNNING) {
                     process_data_packet(buffer, recv_len, &radio_shm);
                 }
+            }
+        }
+        if(poll_fds[1].revents) {
+            if (0 < (recv_len = read(event_fd, &event_number, sizeof(uint64_t)))) {
+                if(event_number > 1) {
+                    display_mode = DISPLAY_RUNNING;
+                } else {
+                    display_mode = DISPLAY_DISABLED;
+                }
+                render_screen();
             }
         }
     }

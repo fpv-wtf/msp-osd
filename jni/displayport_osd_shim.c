@@ -7,12 +7,17 @@
 #include "osd.h"
 #include "hw/dji_display.h"
 
+// Which window in the creation order is the overlay / top menu. Usually 1.
+#define MENU_WINDOW_ORDER 1
+
 static duss_disp_instance_handle_t *disp_instance = NULL;
 static duss_hal_obj_handle_t ion_handle = NULL;
 static int started = 0;
 
-// Patch a seemingly unused window management thread in libtp2801.so to inject our code into the dji_glasses process.
+static int window_count = 0;
+static void *menu_window = NULL;
 
+// Patch a seemingly unused window management thread in libtp2801.so to inject our code into the dji_glasses process.
 void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
     printf("ENTERING MAIN \n");
     while(1) {
@@ -23,6 +28,44 @@ void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
         }
         usleep(50000);
     }
+}
+
+// Patch the toplevel window management functions so we can know when the menu is visible or not.
+
+static void(*_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2)(void*, void*) = NULL;
+void _ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow(void *this, void *window) {
+	if (_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 == NULL) {
+		_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 = dlsym(RTLD_NEXT, "_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow");
+		if (_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 == NULL) {
+			void* mms_lib = dlopen("/system/lib/libmmscore.so", 1);
+			_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 = dlsym(mms_lib, "_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow");
+		}
+	}
+	if (menu_window != NULL && window == menu_window && started != 0) {
+		osd_enable();
+	}
+	_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2(this, window);
+}
+
+static void (*_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2)(void *, void *) = NULL;
+void _ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow(void *this, void *window) {
+	if(_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 == NULL) {
+		_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 = dlsym (RTLD_NEXT, "_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow");
+		if (_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 == NULL) {
+				void* mms_lib = dlopen("/system/lib/libmmscore.so", 1);
+				_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 = dlsym(mms_lib, "_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow");
+		}
+	}
+
+	if (menu_window == NULL && window_count == MENU_WINDOW_ORDER) {
+		menu_window = window;
+	} else {
+		window_count++;
+	}
+	_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2(this, window);
+	if (window == menu_window && started != 0) {
+		osd_disable();
+	}
 }
 
 static void *hal_lib = NULL;
