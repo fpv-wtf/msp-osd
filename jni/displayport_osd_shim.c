@@ -6,6 +6,7 @@
 
 #include "osd.h"
 #include "hw/dji_display.h"
+#include "hw/dji_services.h"
 
 // Which window in the creation order is the overlay / top menu. Usually 1.
 #define MENU_WINDOW_ORDER 1
@@ -13,13 +14,14 @@
 static duss_disp_instance_handle_t *disp_instance = NULL;
 static duss_hal_obj_handle_t ion_handle = NULL;
 static int started = 0;
-
+static int are_v2 = 0;
 static int window_count = 0;
 static void *menu_window = NULL;
 
 // Patch a seemingly unused window management thread in libtp2801.so to inject our code into the dji_glasses process.
 void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
     printf("ENTERING MAIN \n");
+    are_v2 = dji_goggles_are_v2();
     while(1) {
         if(started == 0 && disp_instance != NULL && ion_handle != NULL) {
             printf("ENTERING OSD! fbdev disp %x ion %x\n", disp_instance, ion_handle);
@@ -41,7 +43,7 @@ void _ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow(void *this, voi
 			_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 = dlsym(mms_lib, "_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow");
 		}
 	}
-	if (menu_window != NULL && window == menu_window && started != 0) {
+	if (menu_window != NULL && window == menu_window && started != 0 && !are_v2) {
 		osd_enable();
 	}
 	_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2(this, window);
@@ -63,7 +65,7 @@ void _ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow(void *this, void *wind
 		window_count++;
 	}
 	_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2(this, window);
-	if (window == menu_window && started != 0) {
+	if (window == menu_window && started != 0 && !are_v2) {
 		osd_disable();
 	}
 }
