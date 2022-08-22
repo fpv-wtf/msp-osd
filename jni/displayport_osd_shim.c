@@ -32,44 +32,6 @@ void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
     }
 }
 
-// Patch the toplevel window management functions so we can know when the menu is visible or not.
-
-static void(*_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2)(void*, void*) = NULL;
-void _ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow(void *this, void *window) {
-	if (_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 == NULL) {
-		_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 = dlsym(RTLD_NEXT, "_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow");
-		if (_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 == NULL) {
-			void* mms_lib = dlopen("/system/lib/libmmscore.so", 1);
-			_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2 = dlsym(mms_lib, "_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow");
-		}
-	}
-	if (menu_window != NULL && window == menu_window && started != 0 && !are_v2) {
-		osd_enable();
-	}
-	_ZN16MMSWindowManager24removeWindowFromToplevelEP9MMSWindow2(this, window);
-}
-
-static void (*_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2)(void *, void *) = NULL;
-void _ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow(void *this, void *window) {
-	if(_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 == NULL) {
-		_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 = dlsym (RTLD_NEXT, "_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow");
-		if (_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 == NULL) {
-				void* mms_lib = dlopen("/system/lib/libmmscore.so", 1);
-				_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2 = dlsym(mms_lib, "_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow");
-		}
-	}
-
-	if (menu_window == NULL && window_count == MENU_WINDOW_ORDER) {
-		menu_window = window;
-	} else {
-		window_count++;
-	}
-	_ZN16MMSWindowManager17setToplevelWindowEP9MMSWindow2(this, window);
-	if (window == menu_window && started != 0 && !are_v2) {
-		osd_disable();
-	}
-}
-
 static void *hal_lib = NULL;
 
 static duss_result_t (*duss_hal_mem_alloc2)(duss_hal_obj_handle_t handle, duss_hal_mem_handle_t *mem_handle, uint32_t size, uint32_t param1, uint32_t param2, uint32_t param3) = 0;
@@ -77,15 +39,13 @@ static duss_result_t (*duss_hal_mem_alloc2)(duss_hal_obj_handle_t handle, duss_h
 // Use the first invocation of this to steal the duss_hal_obj_handle_t pointing to the ion shared memory service.
 duss_result_t duss_hal_mem_alloc(duss_hal_obj_handle_t handle, duss_hal_mem_handle_t *mem_handle, uint32_t size, uint32_t param1, uint32_t param2, uint32_t param3) {
     if (duss_hal_mem_alloc2 == NULL) {
-	    duss_hal_mem_alloc2 = dlsym (RTLD_NEXT, "duss_hal_mem_alloc");
+	    duss_hal_mem_alloc2 = dlsym(RTLD_NEXT, "duss_hal_mem_alloc");
 		if (duss_hal_mem_alloc2 == 0){
-			if(hal_lib == NULL)
-			{
+			if (hal_lib == NULL){
 				hal_lib = dlopen("/system/lib/libduml_hal.so", 1);
 			}
-			duss_hal_mem_alloc2 = dlsym (hal_lib, "duss_hal_mem_alloc");
-			if (duss_hal_mem_alloc2 == 0)
-			{
+			duss_hal_mem_alloc2 = dlsym(hal_lib, "duss_hal_mem_alloc");
+			if (duss_hal_mem_alloc2 == 0) {
 				printf("dlsym: %s\n", dlerror());
 				return -1;
 			}
@@ -103,15 +63,13 @@ static duss_result_t (*duss_hal_display_aquire_plane2)(duss_disp_instance_handle
 // Use the first invocation of this with plane == 5 to steal the duss_hal_instance_handle_t pointing to the display driver.
 duss_result_t duss_hal_display_aquire_plane(duss_disp_instance_handle_t *disp, duss_disp_plane_type_t plane_type, duss_disp_plane_id_t *plane_id) {
 	if (duss_hal_display_aquire_plane2 == NULL) {
-	    duss_hal_display_aquire_plane2 = dlsym (RTLD_NEXT, "duss_hal_display_aquire_plane");
+	    duss_hal_display_aquire_plane2 = dlsym(RTLD_NEXT, "duss_hal_display_aquire_plane");
 		if (duss_hal_display_aquire_plane2 == 0){
-			if(hal_lib == NULL)
-			{
+			if(hal_lib == NULL) {
 				hal_lib = dlopen("/system/lib/libduml_hal.so", 1);
 			}
-			duss_hal_display_aquire_plane2 = dlsym (hal_lib, "duss_hal_display_aquire_plane");
-			if (duss_hal_display_aquire_plane2 == 0)
-			{
+			duss_hal_display_aquire_plane2 = dlsym(hal_lib, "duss_hal_display_aquire_plane");
+			if (duss_hal_display_aquire_plane2 == 0) {
 				printf("dlsym: %s\n", dlerror());
 				return -1;
 			}
@@ -121,4 +79,26 @@ duss_result_t duss_hal_display_aquire_plane(duss_disp_instance_handle_t *disp, d
 		disp_instance = disp;
 	}
 	return duss_hal_display_aquire_plane2(disp, plane_type, plane_id);
+}
+
+duss_result_t (*duss_hal_display_plane_blending_set2)(duss_disp_instance_handle_t *disp, duss_disp_plane_id_t plane_id, duss_disp_plane_blending_t *blending) = NULL;
+duss_result_t duss_hal_display_plane_blending_set(duss_disp_instance_handle_t *disp, duss_disp_plane_id_t plane_id, duss_disp_plane_blending_t *blending) {
+    if (duss_hal_display_plane_blending_set2 == NULL) {
+	   duss_hal_display_plane_blending_set2 = dlsym(RTLD_NEXT, "duss_hal_display_plane_blending_set");
+		if (duss_hal_display_plane_blending_set2 == NULL) {
+			if (hal_lib == NULL) {
+				hal_lib = dlopen("/system/lib/libduml_hal.so", 1);
+			}
+			duss_hal_display_plane_blending_set2 = dlsym(hal_lib, "duss_hal_display_plane_blending_set");
+			if (duss_hal_display_plane_blending_set2 == NULL) {
+				printf("dlsym: %s\n", dlerror());
+				return -1;
+			}
+		}
+    }
+    // Patch blending order for DJI UI on V1 Goggles to match V2, so we can draw under them.
+    if (blending->order == 1) {
+        blending->order = 4;
+    }
+    return duss_hal_display_plane_blending_set2(disp, plane_id, blending);
 }
