@@ -1,3 +1,5 @@
+#ifndef DJI_DISPLAY_H
+#define DJI_DISPLAY_H
 #include "duml_hal.h"
 
 typedef struct dji_display_state_s {
@@ -24,3 +26,4 @@ void dji_display_close_framebuffer(dji_display_state_t *display_state);
 dji_display_state_t *dji_display_state_alloc(uint8_t is_v2_goggles);
 void dji_display_state_free(dji_display_state_t *display_state);
 void *dji_display_get_fb_address(dji_display_state_t *display_state, uint8_t which_fb);
+#endif

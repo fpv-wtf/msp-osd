@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 int32_t get_int_from_fs(char* path) {
     int32_t val;
