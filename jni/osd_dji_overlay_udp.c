@@ -148,7 +148,7 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
     for(int y = 0; y < display_info->char_height; y++) {
         for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
-            if (c != 0 && c != 20) {
+            if (c != 0) {
                 font = display_info->font_page_1;
                 if (c > 255) {
                     c = c & 0xFF;
