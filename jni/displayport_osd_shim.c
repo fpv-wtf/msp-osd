@@ -18,7 +18,7 @@ static int are_v2 = 0;
 static int window_count = 0;
 static void *menu_window = NULL;
 
-// Patch a seemingly unused window management thread in libtp2801.so to inject our code into the dji_glasses process.
+// Patch a seemingly unused window management thread in libtp1801_gui.so to inject our code into the dji_glasses process.
 void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
     printf("ENTERING MAIN \n");
     are_v2 = dji_goggles_are_v2();
@@ -30,6 +30,33 @@ void _ZN24MMSFBWindowManagerThread10threadMainEv(void *this) {
         }
         usleep(50000);
     }
+}
+
+static void (*_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2)(void *this, uint32_t channel_id) = NULL;
+static void *tp1801_gui_lib = NULL;
+
+void _ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId(void *this, uint32_t channel_id) {
+    if (_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2 == NULL) {
+        _ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2 = dlsym(RTLD_NEXT, "_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId");
+        if (_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2 == NULL) {
+            tp1801_gui_lib = dlopen("/system/lib/libtp1801_gui.so", 1);
+            _ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2 = dlsym(tp1801_gui_lib, "_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId");
+            if (_ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2 == NULL) {
+                printf("dlsym: %s\n", dlerror());
+            }
+        }
+    }
+    // RTOS video channels:
+    // 1 = Playback
+    // 2 = Unknown
+    // 3 = Live Video
+    // 4 = AV-IN
+    if(channel_id == 3) {
+        osd_enable();
+    } else {
+        osd_disable();
+    }
+    _ZN23GlassVideoChnlUIManager19setNextVideoChannelE19GlassVideoChannelId2(this, channel_id);
 }
 
 static void *hal_lib = NULL;
