@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "hw/dji_radio_shm.h"
+#include "json/osd_config.h"
 #include "net/data_protocol.h"
 #include "net/network.h"
 #include "net/serial.h"
@@ -15,6 +16,9 @@
 
 #define CPU_TEMP_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/temp1"
 #define AU_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage4"
+
+#define FAST_SERIAL_KEY "fast_serial"
+#define CACHE_SERIAL_KEY "cache_serial"
 
 // The MSP_PORT is used to send MSP passthrough messages.
 // The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
@@ -178,21 +182,35 @@ int main(int argc, char *argv[]) {
         switch(opt){
         case 'f':
             fast_serial = 1;
-            printf("Configuring serial to 230400 baud\n");
-            break;  
+            break;
         case 's':
             serial_passthrough = 0;
-            printf("Disabling serial passthrough, enabling caching\n");
             break;
         case '?':
             printf("unknown option: %c\n", optopt);
             break;
         }
     }
-  
+
     if((argc - optind) < 2) {
         printf("usage: msp_displayport_mux [-f] [-s] ipaddr serial_port [pty_target]\n-s : enable serial caching\n-f : 230400 baud serial\n");
         return 0;
+    }
+
+    if(get_boolean_config_value(FAST_SERIAL_KEY)) {
+        fast_serial = 1;
+    }
+
+    if(get_boolean_config_value(CACHE_SERIAL_KEY)) {
+        serial_passthrough = 0;
+    }
+
+    if(fast_serial == 1) {
+        printf("Configured to use 230400 baud rate. \n");
+    }
+
+    if(serial_passthrough == 0) {
+        printf("Configured to use serial caching. \n");
     }
 
     dji_shm_state_t dji_radio;
