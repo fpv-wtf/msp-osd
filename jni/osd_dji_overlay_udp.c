@@ -19,6 +19,7 @@
 #include "hw/dji_display.h"
 #include "hw/dji_radio_shm.h"
 #include "hw/dji_services.h"
+#include "json/osd_config.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
@@ -41,6 +42,7 @@
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "OSD WAITING..."
 #define SHUTDOWN_STRING "SHUTTING DOWN..."
+#define SPLASH_KEY "show_waiting"
 
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
@@ -438,7 +440,9 @@ static void start_display(uint8_t is_v2_goggles,duss_disp_instance_handle_t *dis
 
     dji_display = dji_display_state_alloc(is_v2_goggles);
     dji_display_open_framebuffer_injected(dji_display, disp, ion_handle, PLANE_ID);
-    display_print_string(0, overlay_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    if(get_boolean_config_value(SPLASH_KEY)) {
+        display_print_string(0, overlay_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    }
     msp_draw_complete();
 }
 

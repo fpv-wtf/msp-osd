@@ -30,6 +30,8 @@ install: all
 	install libs/armeabi-v7a/msp_displayport_mux ipk/airunit/build/data/opt/bin/
 	install -d ipk/airunit/build/data/opt/etc/package-config/msp-osd/
 	install config/airunit/* ipk/airunit/build/data/opt/etc/package-config/msp-osd/
+	install -d ipk/goggle/build/data/opt/etc/package-config/msp-osd/
+	install config/goggles/* ipk/goggle/build/data/opt/etc/package-config/msp-osd/
 
 goggle_ipk: install
 	$(eval PKG_NAME := $(shell cat ./ipk/goggle/control/control | grep Package | cut -d" " -f2))
