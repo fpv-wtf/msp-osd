@@ -19,6 +19,7 @@
 #include "hw/dji_display.h"
 #include "hw/dji_radio_shm.h"
 #include "hw/dji_services.h"
+#include "json/osd_config.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
@@ -41,6 +42,7 @@
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "OSD WAITING..."
 #define SHUTDOWN_STRING "SHUTTING DOWN..."
+#define SPLASH_KEY "show_waiting"
 
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
@@ -62,9 +64,8 @@
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
   (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) )
 
-#define MAX_DISPLAY_X 50
-#define MAX_DISPLAY_Y 18
-
+#define MAX_DISPLAY_X 60
+#define MAX_DISPLAY_Y 22
 typedef struct display_info_s {
     uint8_t char_width;
     uint8_t char_height;
@@ -74,11 +75,12 @@ typedef struct display_info_s {
     uint16_t y_offset;
     void *font_page_1;
     void *font_page_2;
-} display_info_t; 
+} display_info_t;
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
 static uint16_t msp_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static uint16_t msp_render_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
 static uint8_t which_fb = 0;
@@ -90,6 +92,17 @@ static display_info_t sd_display_info = {
     .font_height = 54,
     .x_offset = 180,
     .y_offset = 0,
+    .font_page_1 = NULL,
+    .font_page_2 = NULL,
+};
+
+static display_info_t full_display_info = {
+    .char_width = 60,
+    .char_height = 22,
+    .font_width = 24,
+    .font_height = 36,
+    .x_offset = 0,
+    .y_offset = 9,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
 };
@@ -126,6 +139,92 @@ static display_info_t *current_display_info;
 
 int event_fd;
 
+#define FAKEHD_ENABLE_KEY "fakehd_enable"
+static int fakehd_enabled = 0;
+static int fakehd_trigger_x = 99;
+static int fakehd_trigger_y = 99;
+
+static void check_is_fakehd_enabled()
+{
+    DEBUG_PRINT("checking for fakehd\n");
+    if (get_boolean_config_value(FAKEHD_ENABLE_KEY))
+    {
+        DEBUG_PRINT("fakehd enabled\n");
+        fakehd_enabled = 1;
+    } else {
+        DEBUG_PRINT("fakehd disabled\n");
+    }
+}
+
+static void fakehd_map_sd_character_map_to_hd()
+{
+    int render_x = 0;
+    int render_y = 0;
+    for (int y = 15; y >= 0; y--)
+    {
+        for (int x = 29; x >= 0; x--)
+        {
+            // skip if it's not a character
+            if (msp_character_map[x][y] != 0)
+            {
+                // if current element is fly min icon
+                // record the current position as the 'trigger' position
+                if (fakehd_trigger_x == 99 &&
+                msp_character_map[x][y] == 0x9c)
+                {
+                    DEBUG_PRINT("found fakehd triggger \n");
+                    fakehd_trigger_x = x;
+                    fakehd_trigger_y = y;
+                }
+
+                // if we have seen a trigger (see above) - and it's now gone, switch to centering
+                // this is intented to center the menu + postflight stats, which don't contain
+                // timer/battery symbols
+                if (
+                    fakehd_trigger_x != 99 &&
+                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c
+                )
+                {
+                    render_x = x + 15;
+                    render_y = y + 3;
+                } else {
+                    render_y = y;
+                    if (y >= 10)
+                    {
+                        render_y += 6;
+                    }
+                    else if (y >= 5)
+                    {
+                        render_y += 3;
+                    }
+                    // else
+                    // {
+                    //     render_y += 0;
+                    // }
+
+                    render_x = x;
+                    // a full/unspaced couple of rows for warnings...
+                    if (y == 6 || y == 7) {
+                        render_x += 15;
+                    } else if (x >= 20)
+                    {
+                        render_x += 29;
+                    }
+                    else if (x >= 10)
+                    {
+                        render_x += 15;
+                    }
+                    else
+                    {
+                        render_x += 1;
+                    }
+                }
+                msp_render_character_map[render_x][render_y] = msp_character_map[x][y];
+            }
+        }
+    }
+}
+
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
     if ((x > (display_info->char_width - 1)) || (y > (display_info->char_height - 1))) {
@@ -153,7 +252,7 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
                 if (c > 255) {
                     c = c & 0xFF;
                     font = font_page_2;
-                } 
+                }
                 uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
                 uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
                 uint32_t font_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
@@ -187,7 +286,13 @@ static void draw_screen() {
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    draw_character_map(current_display_info, fb_addr, msp_character_map);
+
+    if (fakehd_enabled) {
+        fakehd_map_sd_character_map_to_hd();
+        draw_character_map(current_display_info, fb_addr, msp_render_character_map);
+    } else {
+        draw_character_map(current_display_info, fb_addr, msp_character_map);
+    }
     draw_character_map(&overlay_display_info, fb_addr, overlay_character_map);
 }
 
@@ -197,6 +302,7 @@ static void clear_overlay() {
 
 static void msp_clear_screen() {
     memset(msp_character_map, 0, sizeof(msp_character_map));
+    memset(msp_render_character_map, 0, sizeof(msp_render_character_map));
 }
 
 static void render_screen() {
@@ -289,6 +395,20 @@ static void load_font() {
           open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1);
         }
     }
+    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
+    {
+        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
+        {
+            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_1, 0, 1);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
+    {
+        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
+        {
+            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_2, 1, 1);
+        }
+    }
     if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
         if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
           open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_1, 0, 1);
@@ -300,6 +420,7 @@ static void load_font() {
         }
     }
 }
+
 
 static void close_fonts(display_info_t *display_info) {
     if (display_info->font_page_1 != NULL)
@@ -314,7 +435,7 @@ static void close_fonts(display_info_t *display_info) {
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
-    if(is_hd) { 
+    if(is_hd) {
         current_display_info = &hd_display_info;
     } else {
         current_display_info = &sd_display_info;
@@ -344,13 +465,13 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
 
     // TODO just check hwid to figure this out. Not actually V1/V2 related but an HW version ID.
 
-    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET; 
+    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET;
     display_state->pb_0->hoffset = 0;
 
     // On Goggles V1, the UI and video are in Z-Order 1. On Goggles V2, they're in Z-Order 4.
     // Unfortunately, this means we cannot draw below the DJI UI on Goggles V1. But, on Goggles V2 we get what we want.
 
-    display_state->pb_0->order = 2; 
+    display_state->pb_0->order = 2;
 
     // Global alpha - disable as we want per pixel alpha.
 
@@ -360,7 +481,7 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     // These aren't documented. Blending algorithm 0 is employed for menus and 1 for screensaver.
 
     display_state->pb_0->blending_alg = 1;
-    
+
     // No idea what this "plane mode" actually does but it's different on V2
     uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
 
@@ -377,7 +498,7 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     }
 
     res = duss_hal_display_plane_blending_set(display_state->disp_instance_handle, plane_id, display_state->pb_0);
-    
+
     if (res != 0) {
         printf("failed to set blending");
         exit(0);
@@ -416,7 +537,7 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
         exit(0);
     }
     printf("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
-    
+
     for(int i = 0; i < 2; i++) {
         duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
         fb->buffer = i ? display_state->ion_buf_1 : display_state->ion_buf_0;
@@ -434,11 +555,14 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
 
 static void start_display(uint8_t is_v2_goggles,duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle) {
     memset(msp_character_map, 0, sizeof(msp_character_map));
+    memset(msp_render_character_map, 0, sizeof(msp_render_character_map));
     memset(overlay_character_map, 0, sizeof(overlay_character_map));
 
     dji_display = dji_display_state_alloc(is_v2_goggles);
     dji_display_open_framebuffer_injected(dji_display, disp, ion_handle, PLANE_ID);
-    display_print_string(0, overlay_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    if(get_boolean_config_value(SPLASH_KEY)) {
+        display_print_string(0, overlay_display_info.char_height -1, SPLASH_STRING, sizeof(SPLASH_STRING));
+    }
     msp_draw_complete();
 }
 
@@ -471,10 +595,16 @@ void osd_enable() {
 
 void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle)
 {
-    current_display_info = &sd_display_info;
+    check_is_fakehd_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
+
+    if (fakehd_enabled) {
+        current_display_info = &full_display_info;
+    } else {
+        current_display_info = &sd_display_info;
+    }
 
     display_driver = calloc(1, sizeof(displayport_vtable_t));
     display_driver->draw_character = &msp_draw_character;
@@ -487,7 +617,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     event_fd = eventfd(0, NULL);
     assert(event_fd > 0);
-    
+
     dji_shm_state_t radio_shm;
     memset(&radio_shm, 0, sizeof(radio_shm));
 
@@ -514,7 +644,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     uint64_t event_number;
 
     while (!quit)
-    {       
+    {
         poll_fds[0].fd = msp_socket_fd;
         poll_fds[0].events = POLLIN;
         poll_fds[1].fd = event_fd;
@@ -555,7 +685,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             }
         }
     }
-    
+
     free(display_driver);
     free(msp_state);
     close(msp_socket_fd);

@@ -1,0 +1,11 @@
+{
+    "settings": {
+      "show_waiting": {
+        "name": "Show Waiting Message",
+        "widget": "checkbox"
+      },
+    },
+    "units": [
+      "msp-osd-goggles"
+    ]
+  }
