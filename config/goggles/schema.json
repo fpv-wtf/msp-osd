@@ -4,6 +4,10 @@
         "name": "Show Waiting Message",
         "widget": "checkbox"
       },
+      "fakehd_enable": {
+        "name": "Enable Fake HD Mode",
+        "widget": "checkbox"
+      }
     },
     "units": [
       "msp-osd-goggles"
