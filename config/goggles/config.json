@@ -1,3 +1,5 @@
 {
-    "show_waiting": true
+    "show_waiting": true,
+    "show_au_data": false,
+    "fakehd_enable": false
 }

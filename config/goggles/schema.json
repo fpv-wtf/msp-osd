@@ -7,6 +7,10 @@
       "fakehd_enable": {
         "name": "Enable Fake HD Mode",
         "widget": "checkbox"
+      },
+      "show_au_data": {
+        "name": "Show VTx Temperature and Voltage",
+        "widget": "checkbox"
       }
     },
     "units": [

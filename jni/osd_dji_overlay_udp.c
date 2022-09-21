@@ -66,6 +66,7 @@
 
 #define MAX_DISPLAY_X 60
 #define MAX_DISPLAY_Y 22
+
 typedef struct display_info_s {
     uint8_t char_width;
     uint8_t char_height;
@@ -138,6 +139,8 @@ static enum display_mode_s {
 static display_info_t *current_display_info;
 
 int event_fd;
+
+/* FakeHD: spread characters for a small OSD across the whole screen */
 
 #define FAKEHD_ENABLE_KEY "fakehd_enable"
 static int fakehd_enabled = 0;
@@ -225,6 +228,8 @@ static void fakehd_map_sd_character_map_to_hd()
     }
 }
 
+/* Character map helpers */
+
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
     if ((x > (display_info->char_width - 1)) || (y > (display_info->char_height - 1))) {
@@ -236,6 +241,8 @@ static void draw_character(display_info_t *display_info, uint16_t character_map[
 static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
     draw_character(current_display_info, msp_character_map, x, y, c);
 }
+
+/* Main rendering function: take a character_map and a display_info and draw it into a framebuffer */
 
 static void draw_character_map(display_info_t *display_info, void* restrict fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
     if (display_info->font_page_1 == NULL) {
@@ -323,6 +330,8 @@ static void msp_callback(msp_msg_t *msp_message)
 {
     displayport_process_message(display_driver, msp_message);
 }
+
+/* Font helper methods */
 
 static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t page) {
     char name_buf[len];
@@ -448,6 +457,8 @@ static void display_print_string(uint8_t init_x, uint8_t y, const char *string, 
     }
 }
 
+/* DJI framebuffer configuration */
+
 static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
     return 0;
 }
@@ -553,6 +564,8 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     }
 }
 
+/* Display initialization and deinitialization */
+
 static void start_display(uint8_t is_v2_goggles,duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle) {
     memset(msp_character_map, 0, sizeof(msp_character_map));
     memset(msp_render_character_map, 0, sizeof(msp_render_character_map));
@@ -572,16 +585,37 @@ static void stop_display() {
     dji_display_state_free(dji_display);
 }
 
+/* AU Voltage and Temp overlay */
+
+#define SHOW_AU_DATA_KEY "show_au_data"
+static int au_overlay_enabled = 0;
+
+static void check_is_au_overlay_enabled()
+{
+    DEBUG_PRINT("Checking for AU overlay enabled: ");
+    if (get_boolean_config_value(SHOW_AU_DATA_KEY))
+    {
+        DEBUG_PRINT("Enabled\n");
+        au_overlay_enabled = 1;
+    } else {
+        DEBUG_PRINT("Disabled\n");
+    }
+}
+
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
     DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
     char str[8];
     clear_overlay();
-    snprintf(str, 8, "%d C", packet->tx_temperature);
-    display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
-    snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
-    display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+    if(au_overlay_enabled) {
+        snprintf(str, 8, "%d C", packet->tx_temperature);
+        display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
+        snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
+        display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+    }
 }
+
+/* Public OSD enable/disable methods */
 
 void osd_disable() {
     uint64_t disable = 1;
@@ -593,9 +627,12 @@ void osd_enable() {
     write(event_fd, &enable, sizeof(uint64_t));
 }
 
+/* Entry point and main loop */
+
 void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle)
 {
     check_is_fakehd_enabled();
+    check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
@@ -675,6 +712,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             }
         }
         if(poll_fds[1].revents) {
+            // Got eventfd message from another thread to enable/disable OSD
             if (0 < (recv_len = read(event_fd, &event_number, sizeof(uint64_t)))) {
                 if(event_number > 1) {
                     display_mode = DISPLAY_RUNNING;
