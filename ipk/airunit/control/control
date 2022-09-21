@@ -1,5 +1,5 @@
 Package: msp-osd
-Version: 0.6.4
+Version: 0.6.5
 Maintainer: bri3d
 Description: MSP OSD service for the DJI HD FPV airunit.
 Architecture: pigeon-airside
