@@ -48,8 +48,9 @@ A diagram to help...
 ##### To configure/enable:
 
 1. Put an HD version of a Betaflight font in the root of your SD card - see 'Custom Fonts' below. (The default HD font is an iNav one - you will get the wrong glyphs for the various icons if you use it)
-2. Make a file called `fakehd` in the root of the sd card.
-3. Reboot your Goggles.
+2. Click into the `CLI` tab in the WTFOS Configurator
+3. Type `package-config set msp-osd fakehd_enable true` and press Enter.
+4. Type `package-config apply msp-osd`
 
 ##### Notes:
 
@@ -98,6 +99,22 @@ and optionally
 * Reboot
 
 You can customize the font color by changing the 255 255 255 RGB values.
+
+## Configuration options
+
+Configuration options can be set using the CLI function in the WTFOS Configurator.
+
+To see available options, type `package-config get msp-osd` and press Enter.
+
+To set an option, type `package-config set msp-osd key value` and press Enter. Options do NOT set immediately, see next step:
+
+To apply options, type `package-config apply msp-osd`.
+
+Current available options:
+
+`fakehd_enable` : enables FakeHD, true/false
+`show_au_data` : enables AU data overlay on the right, true/false
+`show_waiting` : enables or disables MSP WAITING message, true/false.
 
 ## FAQ / Suggestions
 
