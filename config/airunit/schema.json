@@ -1,0 +1,15 @@
+{
+    "settings": {
+      "fast_serial": {
+        "name": "Fast Serial",
+        "widget": "checkbox"
+      },
+      "cache_serial": {
+        "name": "Cache Responses",
+        "widget": "checkbox"
+      }
+    },
+    "units": [
+      "msp-osd-airside"
+    ]
+  }
