@@ -58,6 +58,8 @@ a) If you use the Fly Min OSD element, fakehd will find the associated icon (Fly
 
 b) Because of a, if you switch to a different quad or OSD config (specifically the Fly Min element is in different place), fakehd will center - you will need to reboot your Goggles to get it back.
 
+c) Also because of a, if you are editing OSD in the configurator with the goggles on to preview and you move the Fly Min element around, it will cause the gaps to be disabled and everything to center. The new location of the Fly Min element will be found next time you reboot the goggles and it'll work as normal.
+
 ### iNav
 
 On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time.
