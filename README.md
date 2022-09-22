@@ -59,7 +59,7 @@ No air unit/vista config is required.
 
 ##### Notes:
 
-a) If you use the Fly Min OSD element, fakehd will find the associated icon (Fly Min glyph) and then use it's presence/absence to enable/disable the gaps so that it doesn't put gaps into the menus and post flight stats - they appear in the center of the screen instead. If you don't use this element, fakehd will still work; but you will see the gaps in the menus + post flight stats.
+a) In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using fakehd, you can add the `Timer 2` OSD element (which appears as "Fly Min" in the OSD) to indicate when you are in or out of those situations. Fakehd will find the associated icon (Fly Min glyph) and then use its presence/absence to enable/disable the gaps. If you don't use this element, fakehd will still work; but you will see the gaps in the menus + post flight stats.
 
 b) Because of a, if you switch to a different quad or OSD config (specifically the Fly Min element is in different place), fakehd will center - you will need to reboot your Goggles to get it back.
 
