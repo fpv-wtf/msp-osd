@@ -47,10 +47,15 @@ A diagram to help...
 
 ##### To configure/enable:
 
-1. Put an HD version of a Betaflight font in the root of your SD card - see 'Custom Fonts' below. (The default HD font is an iNav one - you will get the wrong glyphs for the various icons if you use it)
-2. Click into the `CLI` tab in the WTFOS Configurator
-3. Type `package-config set msp-osd fakehd_enable true` and press Enter.
-4. Type `package-config apply msp-osd`
+1. Put an HD version of a Betaflight font in the root of your Goggles SD card - see 'Custom Fonts' below. (The default HD font is an iNav one - you will get the wrong glyphs for the various icons if you use it).
+2. Plug in your Goggles + connect them to the WTFOS Configurator.
+3. Click into the `CLI` tab.
+4. Type/paste `package-config set msp-osd fakehd_enable true` and press Enter.
+5. Type/paste `package-config apply msp-osd` and press Enter.
+
+NB: If you get an error doing the above in the CLI ensure `wtfos-package-config` package is installed; it should get installed automatically with MSP-OSD but we have had a couple of reports of this not happening on upgrades. If it is not - install it and then try the above steps again.
+
+No air unit/vista config is required.
 
 ##### Notes:
 
@@ -112,7 +117,7 @@ To set an option, type `package-config set msp-osd key value` and press Enter. O
 
 To apply options, type `package-config apply msp-osd`.
 
-Current available options:
+### Current available options (Goggles):
 
 ```
 fakehd_enable : enables FakeHD, true/false
@@ -127,6 +132,10 @@ Click the CLI tab.
 Type `package-config set msp-osd show_waiting false` and press ENTER.
 
 Next, Type `package-config apply msp-osd` and press ENTER.
+
+### Current available options (Air Unit/Vista):
+
+None
 
 ## FAQ / Suggestions
 
