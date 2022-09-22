@@ -59,7 +59,7 @@ No air unit/vista config is required.
 
 ##### Notes:
 
-a) In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using fakehd, you can add the `Timer 2` OSD element (which appears as "Fly Min" in the OSD) to indicate when you are in or out of those situations. Fakehd will find the associated icon (Fly Min glyph) and then use its presence/absence to enable/disable the gaps. If you don't use this element, fakehd will still work; but you will see the gaps in the menus + post flight stats.
+a) In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using fakehd, you can add the `Timer 2` (more specifically - it's the `Total Armed Time` timer, which is the default for Timer 2 - it needs the "Fly Min" icon in the OSD) to indicate when you are in or out of the menu/stats. Fakehd will find the associated icon (Fly Min glyph) and then use its presence/absence to enable/disable the gaps. If you don't use this element, fakehd will still work; but you will see the gaps in the menus + post flight stats.
 
 b) Because of a, if you switch to a different quad or OSD config (specifically the Fly Min element is in different place), fakehd will center - you will need to reboot your Goggles to get it back.
 
