@@ -1,6 +1,6 @@
 Package: msp-osd
-Version: 0.6.5
+Version: 0.6.6
 Maintainer: bri3d
 Description: MSP OSD service for the DJI HD FPV goggles.
 Architecture: pigeon-glasses
-Depends: wtfos-modloader wtfos-package-config
+Depends: wtfos-modloader, wtfos-package-config
