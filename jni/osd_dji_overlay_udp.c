@@ -48,6 +48,11 @@
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
+#define FONT_VARIANT_GENERIC 0
+#define FONT_VARIANT_BETAFLIGHT 1
+#define FONT_VARIANT_INAV 2
+#define FONT_VARIANT_ARDUPILOT 3
+
 #define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
 #define EV_CODE_BACK 0xc9
@@ -98,12 +103,12 @@ static display_info_t sd_display_info = {
 };
 
 static display_info_t full_display_info = {
-    .char_width = 60,
+    .char_width = 59,
     .char_height = 22,
     .font_width = 24,
     .font_height = 36,
-    .x_offset = 0,
-    .y_offset = 9,
+    .x_offset = 24,
+    .y_offset = 0,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
 };
@@ -143,19 +148,44 @@ int event_fd;
 /* FakeHD: spread characters for a small OSD across the whole screen */
 
 #define FAKEHD_ENABLE_KEY "fakehd_enable"
+#define FAKEHD_LOCK_CENTER_KEY "fakehd_lock_center"
+#define FAKEHD_HIDE_THROTTLE_KEY "fakehd_hide_throttle_element"
 static int fakehd_enabled = 0;
+static int fakehd_hide_throttle_element = 0;
+static int fakehd_lock_center = 0;
 static int fakehd_trigger_x = 99;
 static int fakehd_trigger_y = 99;
 
-static void check_is_fakehd_enabled()
+static void load_fake_hd_config()
 {
-    DEBUG_PRINT("checking for fakehd\n");
+    DEBUG_PRINT("checking for fakehd enabled\n");
     if (get_boolean_config_value(FAKEHD_ENABLE_KEY))
     {
         DEBUG_PRINT("fakehd enabled\n");
         fakehd_enabled = 1;
     } else {
         DEBUG_PRINT("fakehd disabled\n");
+    }
+
+    DEBUG_PRINT("checking for fakehd hide throttle \n");
+    if (get_boolean_config_value(FAKEHD_HIDE_THROTTLE_KEY))
+    {
+        DEBUG_PRINT("fakehd hide throttle\n");
+        fakehd_hide_throttle_element = 1;
+    }
+    else
+    {
+        DEBUG_PRINT("fakehd no hide throttle\n");
+    }
+    DEBUG_PRINT("checking for fakehd lock center \n");
+    if (get_boolean_config_value(FAKEHD_LOCK_CENTER_KEY))
+    {
+        DEBUG_PRINT("fakehd lock center\n");
+        fakehd_lock_center = 1;
+    }
+    else
+    {
+        DEBUG_PRINT("fakehd no lock center\n");
     }
 }
 
@@ -170,10 +200,15 @@ static void fakehd_map_sd_character_map_to_hd()
             // skip if it's not a character
             if (msp_character_map[x][y] != 0)
             {
-                // if current element is fly min icon
+                // if current element is fly min or throttle icon
                 // record the current position as the 'trigger' position
                 if (fakehd_trigger_x == 99 &&
-                msp_character_map[x][y] == 0x9c)
+                        (
+                            msp_character_map[x][y] == 0x9c // fly minutes icon (armed time)
+                            ||
+                            msp_character_map[x][y] == 0x04 // throttle icon
+                        )
+                    )
                 {
                     DEBUG_PRINT("found fakehd triggger \n");
                     fakehd_trigger_x = x;
@@ -184,8 +219,10 @@ static void fakehd_map_sd_character_map_to_hd()
                 // this is intented to center the menu + postflight stats, which don't contain
                 // timer/battery symbols
                 if (
-                    fakehd_trigger_x != 99 &&
-                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c
+                    fakehd_lock_center ||
+                    (fakehd_trigger_x != 99 &&
+                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c &&
+                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x04)
                 )
                 {
                     render_x = x + 15;
@@ -200,16 +237,18 @@ static void fakehd_map_sd_character_map_to_hd()
                     {
                         render_y += 3;
                     }
-                    // else
-                    // {
-                    //     render_y += 0;
-                    // }
 
                     render_x = x;
                     // a full/unspaced couple of rows for warnings...
+                    // and the bottom row may as well be as the edges just overlap the DJI built in bits
                     if (y == 6 || y == 7) {
                         render_x += 15;
-                    } else if (x >= 20)
+                    }
+                    else if (y == 15)
+                    {
+                        render_x += 11;
+                    }
+                    else if (x >= 20)
                     {
                         render_x += 29;
                     }
@@ -217,12 +256,22 @@ static void fakehd_map_sd_character_map_to_hd()
                     {
                         render_x += 15;
                     }
-                    else
-                    {
-                        render_x += 1;
-                    }
                 }
-                msp_render_character_map[render_x][render_y] = msp_character_map[x][y];
+
+                // 0 out the throttle element if configured to do so
+                // and also the three adjacent positions where the thottle percent will be
+                if (fakehd_trigger_x != 99 &&
+                    fakehd_hide_throttle_element &&
+                    msp_character_map[x][y] == 0x04)
+                {
+                    msp_render_character_map[render_x][render_y] = 0;
+                    (render_x <= 57) && (msp_render_character_map[render_x+1][render_y] = 0);
+                    (render_x <= 56) && (msp_render_character_map[render_x+2][render_y] = 0);
+                    (render_x <= 55) && (msp_render_character_map[render_x+3][render_y] = 0);
+                } else {
+                    // otherwise, the normal path
+                    msp_render_character_map[render_x][render_y] = msp_character_map[x][y];
+                }
             }
         }
     }
@@ -332,24 +381,48 @@ static void msp_callback(msp_msg_t *msp_message)
 }
 
 /* Font helper methods */
-
-static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t page) {
+static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t font_variant, uint8_t page)
+{
     char name_buf[len];
-    if (is_hd) {
-        snprintf(name_buf, len, "%s_hd", font_path);
-    } else {
-        snprintf(name_buf, len, "%s", font_path);
+    char res_buf[len];
+
+    switch (font_variant)
+    {
+        case FONT_VARIANT_BETAFLIGHT:
+            snprintf(name_buf, len, "%s_bf", font_path);
+            break;
+        case FONT_VARIANT_INAV:
+            snprintf(name_buf, len, "%s_inav", font_path);
+            break;
+        case FONT_VARIANT_ARDUPILOT:
+            snprintf(name_buf, len, "%s_ardu", font_path);
+            break;
+        default:
+            snprintf(name_buf, len, "%s", font_path);
     }
-    if (page > 0) {
-        snprintf(font_path_dest, len, "%s_%d.bin", name_buf, page + 1);
+
+    if (is_hd)
+    {
+        // surely there's a better way...
+        snprintf(res_buf, len, "%s", "_hd");
     } else {
-        snprintf(font_path_dest, len, "%s.bin", name_buf);
+        snprintf(res_buf, len, "%s", "");
+    }
+
+    if (page > 0)
+    {
+        snprintf(font_path_dest, len, "%s%s_%d.bin", name_buf, res_buf, page + 1);
+    }
+    else
+    {
+        snprintf(font_path_dest, len, "%s%s.bin", name_buf, res_buf);
     }
 }
 
-static int open_font(const char *filename, void** font, uint8_t page, uint8_t is_hd) {
+static int open_font(const char *filename, void **font, uint8_t page, uint8_t is_hd, uint8_t font_variant)
+{
     char file_path[255];
-    get_font_path_with_prefix(file_path, filename, 255, is_hd, page);
+    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant, page);
     printf("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
@@ -384,48 +457,51 @@ static int open_font(const char *filename, void** font, uint8_t page, uint8_t is
 }
 
 static void load_font() {
-    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
-          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_1, 0, 0);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
-          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_2, 1, 0);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_1, 0, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
-    {
-        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
+    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_1, 0, 0, FONT_VARIANT_GENERIC) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_1, 0, 0, FONT_VARIANT_GENERIC) < 0)
         {
-            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_1, 0, 1);
+            open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_1, 0, 0, FONT_VARIANT_GENERIC);
         }
     }
-    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
+    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_2, 1, 0, FONT_VARIANT_GENERIC) < 0)
     {
-        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
+        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_2, 1, 0, FONT_VARIANT_GENERIC) < 0)
         {
-            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_2, 1, 1);
+            open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_2, 1, 0, FONT_VARIANT_GENERIC);
         }
     }
-    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_1, 0, 1);
+    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC) < 0) {
+          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC);
         }
     }
-    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_2, 1, 1);
+    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC) < 0) {
+          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_1, 0, 1, FONT_VARIANT_BETAFLIGHT) < 0)
+    {
+        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_1, 0, 1, FONT_VARIANT_BETAFLIGHT) < 0)
+        {
+            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_1, 0, 1, FONT_VARIANT_BETAFLIGHT);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_2, 1, 1, FONT_VARIANT_BETAFLIGHT) < 0)
+    {
+        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_2, 1, 1, FONT_VARIANT_BETAFLIGHT) < 0)
+        {
+            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_2, 1, 1, FONT_VARIANT_BETAFLIGHT);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC) < 0) {
+          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_1, 0, 1, FONT_VARIANT_GENERIC);
+        }
+    }
+    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC) < 0) {
+        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC) < 0) {
+          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_2, 1, 1, FONT_VARIANT_GENERIC);
         }
     }
 }
@@ -631,7 +707,7 @@ void osd_enable() {
 
 void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle)
 {
-    check_is_fakehd_enabled();
+    load_fake_hd_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();

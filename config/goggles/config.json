@@ -1,5 +1,7 @@
 {
     "show_waiting": true,
     "show_au_data": false,
-    "fakehd_enable": false
+    "fakehd_enable": false,
+    "fakehd_hide_throttle_element": false,
+    "fakehd_lock_center": false
 }

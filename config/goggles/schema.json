@@ -8,6 +8,14 @@
         "name": "Enable Fake HD Mode",
         "widget": "checkbox"
       },
+      "fakehd_hide_throttle_element": {
+        "name": "Fake HD hide throttle element",
+        "widget": "checkbox"
+      },
+      "fakehd_lock_center": {
+        "name": "Lock Fake HD to centered mode",
+        "widget": "checkbox"
+      },
       "show_au_data": {
         "name": "Show VTx Temperature and Voltage",
         "widget": "checkbox"
@@ -16,4 +24,4 @@
     "units": [
       "msp-osd-goggles"
     ]
-  }
+}
