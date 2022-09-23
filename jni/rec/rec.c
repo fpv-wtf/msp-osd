@@ -139,8 +139,6 @@ static bool rec_is_ready()
 
 static uint32_t rec_get_frame_idx()
 {
-    if (rec_is_ready() == false)
-        return 0;
 
     return rec_lv_transcode->last_frame_idx;
 }
