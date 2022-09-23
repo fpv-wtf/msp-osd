@@ -30,8 +30,21 @@ set vcd_video_system = PAL
 ```
 
 Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1** - so you would use ```set displayport_msp_serial = 1```.
+Test if the value is correct by typing `save` and after the reboot `get displayport_msp_serial` This command should return the value you set it to. If it returns -1 (and that was not the value you set) then the value was not correct.
 
-For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area. Note that currently BF Configurator hides these options once you switch to MSP for OSD; the last command above should have done this for you.
+For Betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area. Note that currently BF Configurator hides these options once you switch to MSP for OSD; the last command above should have done this for you.
+
+#### Softserial
+If you have connected the Vista/Airunit to a softserial port (not recommended  but sometimes necessary) run the `serial` command to list serial ports
+Use the value after _serial_ with set `displayport_msp_serial` but do **not** subtract 1 from the value. E.g.:
+```
+# serial
+serial 20 1 115200 57600 0 115200
+serial 0 64 115200 57600 0 115200
+serial 1 0 115200 57600 0 115200
+serial 30 1 115200 57600 0 115200
+# set displayport_msp_serial = 30
+```
 
 #### Fake HD
 
