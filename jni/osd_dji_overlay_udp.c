@@ -521,6 +521,7 @@ static void close_fonts(display_info_t *display_info) {
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
     if(is_hd) {
+        fakehd_enabled = 0;
         current_display_info = &hd_display_info;
     } else {
         current_display_info = &sd_display_info;
