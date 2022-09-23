@@ -26,6 +26,7 @@
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
 #include "util/fs_util.h"
+#include "rec/rec.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -149,8 +150,6 @@ static display_info_t *current_display_info;
 
 int event_fd;
 
-/* Character map helpers */
-
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
     if ((x > (display_info->char_width - 1)) || (y > (display_info->char_height - 1))) {
@@ -161,6 +160,35 @@ static void draw_character(display_info_t *display_info, uint16_t character_map[
 
 static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
     draw_character(current_display_info, msp_character_map, x, y, c);
+}
+
+/* Recording hooks */
+
+void rec_msp_draw_complete_hook()
+{
+    if (rec_is_osd_recording() == false && rec_is_gls_recording() == true)
+    {
+        if (current_fc_variant[0] == '\0')
+        {
+            DEBUG_PRINT("msp_osd: gls started recording, but no fc variant yet!?\n");
+            return;
+        }
+
+        DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
+
+        rec_start_config_t config = {
+            .frame_width = current_display_info->char_width,
+            .frame_height = current_display_info->char_height,
+            .font_variant = font_variant_from_string(current_fc_variant),
+        };
+
+        rec_start(&config);
+    }
+    else if (rec_is_osd_recording() == true && rec_is_gls_recording() == false)
+    {
+        DEBUG_PRINT("msp_osd: gls stopped recording, stop osd rec\n");
+        rec_stop();
+    }
 }
 
 /* Main rendering function: take a character_map and a display_info and draw it into a framebuffer */
@@ -245,6 +273,14 @@ static void render_screen() {
 
 static void msp_draw_complete() {
     render_screen();
+
+    rec_msp_draw_complete_hook();
+    if (rec_is_osd_recording() == true)
+    {
+        rec_write_frame(
+            fakehd_enabled ? msp_render_character_map : msp_character_map,
+            MAX_DISPLAY_X * MAX_DISPLAY_Y);
+    }
 }
 
 static void msp_callback(msp_msg_t *msp_message)
@@ -253,6 +289,7 @@ static void msp_callback(msp_msg_t *msp_message)
 }
 
 /* Font helper methods */
+
 static uint8_t font_variant_from_string(char *variant_string) {
     uint8_t font_variant = FONT_VARIANT_GENERIC;
     if(strncmp(current_fc_variant, "ARDU", 4) == 0) {
@@ -671,6 +708,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 }
             }
         }
+
         if(poll_fds[1].revents) {
             // Got eventfd message from another thread to enable/disable OSD
             if (0 < (recv_len = read(event_fd, &event_number, sizeof(uint64_t)))) {
