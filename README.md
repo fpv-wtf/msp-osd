@@ -10,7 +10,7 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 ## Easy Installation
 
-* Install WTFOS from https://testing.fpv.wtf . WTFOS must be installed on both the goggles and each AU/Vista.
+* Install WTFOS from https://fpv.wtf. WTFOS must be installed on both the goggles and each AU/Vista.
 * Install the msp-osd package on each device using WTFOS.
 * Reboot.
 
@@ -31,13 +31,13 @@ set vcd_video_system = PAL
 
 Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1** - so you would use ```set displayport_msp_serial = 1```.
 
-For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area. Note that currently BF Configurator hides these options once you switch to MSP for OSD; the last command above should have done this for you.
+For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise, you don't get access to the whole OSD area. Note that currently, BF Configurator hides these options once you switch to MSP for OSD; the last command above should have done this for you.
 
 #### Fake HD
 
 Betaflight's OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
 
-Until Betaflight adds support for a larger grid, as a workaround, we have have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings. This then allows use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
+Until Betaflight adds support for a larger grid, as a workaround, we have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
 
 A diagram to help...
 
@@ -48,7 +48,7 @@ A diagram to help...
 ##### To configure/enable:
 
 1. Plug in your Goggles + connect them to the WTFOS Configurator.
-2. Click into the `CLI` tab.
+2. Click on the `CLI` tab.
 3. Type/paste `package-config set msp-osd fakehd_enable true` and press Enter.
 4. Type/paste `package-config apply msp-osd` and press Enter.
 5. Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
@@ -68,7 +68,7 @@ If you want to use this feature, but don't want either of these elements to show
 
 Notes:
 
- - Because of this switching feature, if you chaneg to a different quad or OSD config (specifically the switch element is in different place), FakeHD will center - you will need to reboot your Goggles to get it to recognise the switch element in a different location.
+ - Because of this switching feature, if you change to a different quad or OSD config (specifically the switch element is in a different place), FakeHD will center - you will need to reboot your Goggles to get it to recognise the switch element in a different location.
 
  - Also because of this switching, if you are editing OSD in the configurator with the goggles on to preview and you move the switching element around, it will cause the gaps to be disabled and everything to center. The new location of the switching element will be found next time you reboot the goggles and it'll work as normal.
 
@@ -78,7 +78,7 @@ Set config `fakehd_lock_center` to true and the center locking used for the menu
 
 ### INAV
 
-On *INAV*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
+On *INAV*, this is done by selecting "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
 
 ### Ardupilot
 
@@ -181,7 +181,7 @@ make -f Makefile.unix
 
 Provided targets and tools are:
 
-* `msp_displayport_mux` - takes MSP DisplayPort messages, bundles each frame (all DisplayPort messages between Draw commands) into a single UDP Datagram, and then blasts it over UDP. Also creates a PTY which passes through all _other_ MSP messages, for `dji_hdvt_uav` to connect to.
+* `msp_displayport_mux` - takes MSP DisplayPort messages, bundles each frame (all DisplayPort messages between Draw commands) into a single UDP Datagram, and then blasts it over UDP. Also creates a PTY that passes through all _other_ MSP messages, for `dji_hdvt_uav` to connect to.
 * `libdisplayport_osd_shim.so` - Patches the `dji_glasses` process to listen for these MSP DisplayPort messages over UDP, and blits them to a DJI framebuffer screen using the DJI framebuffer HAL `libduml_hal` access library, and a converted Betaflight font stored in `font.bin`.
 * `osd_sfml` - The same thing as `osd_dji`, but for a desktop PC using SFML and `bold.png`.
 
@@ -189,7 +189,7 @@ Additional debugging can be enabled using `-DDEBUG` as a CFLAG.
 
 ## Custom Build Installation (Goggles)
 
-Slightly different process for V1 vs V2 Goggles, they renamed some bits between the two.
+There's a slightly different process for V1 vs V2 Goggles, they renamed some bits between the two.
 
 ### FPV Goggles V1
 
