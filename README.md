@@ -76,9 +76,9 @@ Notes:
 
 Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently.
 
-### iNav
+### INAV
 
-On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. And then selecting "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time.
+On *INAV*, this is done by selecting "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
 
 ### Ardupilot
 
@@ -108,7 +108,7 @@ and optionally
 * Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller.
 
 * For Betaflight: https://github.com/betaflight/betaflight-configurator/tree/master/resources/osd/2
-* For iNav: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
+* For INAV: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
 * For Ardupilot: https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_OSD/fonts
 
 * Run `python3 mcm2img.py mcmfile.mcm font RGBA 255 255 255`
@@ -153,7 +153,7 @@ None
 
 ## FAQ / Suggestions
 
-### How do I create a new font (for iNav, Ardupilot, etc.)?
+### How do I create a new font (for INAV, Ardupilot, etc.)?
 
 Use [mcm2img](https://github.com/bri3d/mcm2img).
 
