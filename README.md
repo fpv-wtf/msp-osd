@@ -37,7 +37,7 @@ For betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab -
 
 Betaflight's OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
 
-Until Betaflight adds support for a larger grid, as a workaround, we have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
+Until Betaflight adds support for a larger grid, as a workaround, we have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings, and the bottom row is unsplit/offset to sit between the DJI OSD elements. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
 
 A diagram to help...
 
@@ -74,7 +74,11 @@ Notes:
 
 ##### I don't want gaps at all...
 
-Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently.
+Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently (ie: you fly with it as well) - basically it places your 30 x 16 SD grid into the middle of an HD grid, there's never any gaps - see diagram below(/docs/img/fakehd_centered.png) (+ compare to before diagram above).
+
+| After/Centered (in Goggles) `fakehd_lock_center` |
+|-------|
+|<img src="/docs/img/fakehd_centered.png" alt="After / Centered"  height=200 /> |
 
 ### INAV
 
