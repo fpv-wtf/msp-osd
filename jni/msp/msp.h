@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#define MSP_CMD_FC_VARIANT 2
 #define MSP_CMD_FC_VERSION 3
 #define MSP_CMD_NAME 10
 #define MSP_CMD_FILTER_CONFIG 92
