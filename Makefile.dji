@@ -23,7 +23,7 @@ all: jni/*
 
 install: all
 	install -d ipk/goggle/build/data/opt/fonts/
-	install font*.bin ipk/goggle/build/data/opt/fonts/
+	install fonts/*.bin ipk/goggle/build/data/opt/fonts/
 	install -d ipk/goggle/build/data/opt/etc/preload.d/
 	install libs/armeabi-v7a/libdisplayport_osd_shim.so ipk/goggle/build/data/opt/etc/preload.d/
 	install -d ipk/airunit/build/data/opt/bin/
