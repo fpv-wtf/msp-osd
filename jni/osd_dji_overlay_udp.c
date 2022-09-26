@@ -676,7 +676,7 @@ static void check_is_au_overlay_enabled()
 
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
-    DEBUG_PRINT("got data %f version spec %d C %f V\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f);
+    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant);
     char str[8];
     clear_overlay();
     if(au_overlay_enabled) {
@@ -685,10 +685,11 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
     }
-    if(packet->version_specifier == 0xFFFF) {
+    if(len > 6) {
+        DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
         // should have FC type
         if(strncmp(current_fc_variant, packet->fc_variant, 4) != 0) {
-            memcpy(current_fc_variant, packet->fc_variant, 4);
+            memcpy(current_fc_variant, &packet->fc_variant, 4);
             DEBUG_PRINT("Changed current FC variant to %.4s\n", current_fc_variant);
             close_all_fonts();
             load_fonts(font_variant_from_string(current_fc_variant));

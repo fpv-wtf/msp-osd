@@ -172,7 +172,7 @@ static void tx_msp_callback(msp_msg_t *msp_message)
 }
 
 static void send_variant_request(int serial_fd) {
-    uint8_t buffer[255];
+    uint8_t buffer[6];
     construct_msp_command(buffer, MSP_CMD_FC_VARIANT, NULL, 0, MSP_OUTBOUND);
     write(serial_fd, &buffer, 6);
 }
