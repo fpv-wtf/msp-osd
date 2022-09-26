@@ -74,7 +74,7 @@ Notes:
 
 ##### I don't want gaps at all...
 
-Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently (ie: you fly with it as well) - basically it places your 30 x 16 SD grid into the middle of an HD grid, there's never any gaps - see diagram below(/docs/img/fakehd_centered.png) (+ compare to before diagram above).
+Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently (ie: you fly with it as well) - basically it places your 30 x 16 SD grid into the middle of an HD grid, there's never any gaps - see diagram below + compare to diagrams above.
 
 | After/Centered (in Goggles) `fakehd_lock_center` |
 |-------|
