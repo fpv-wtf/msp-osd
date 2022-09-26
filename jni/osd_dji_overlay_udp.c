@@ -297,7 +297,7 @@ static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
 
 static void draw_character_map(display_info_t *display_info, void* restrict fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
     if (display_info->font_page_1 == NULL) {
-        // give up if we don't have a font loaded
+        DEBUG_PRINT("No font available, failed to draw.\n");
         return;
     }
     void *font_page_2 = display_info->font_page_2 == NULL ? display_info->font_page_1 : display_info->font_page_2;
@@ -437,7 +437,7 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
 {
     char file_path[255];
     get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant, page);
-    printf("Opening font: %s\n", file_path);
+    DEBUG_PRINT("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
     stat(file_path, &st);
@@ -446,13 +446,13 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
     size_t desired_filesize = display_info.font_height *  display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
     if(filesize != desired_filesize) {
         if (filesize != 0) {
-            printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
+            DEBUG_PRINT("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
         }
         return -1;
     }
     int fd = open(file_path, O_RDONLY, 0);
     if (!fd) {
-        printf("Could not open file %s\n", file_path);
+        DEBUG_PRINT("Could not open file %s\n", file_path);
         return -1;
     }
     void* font_data = malloc(desired_filesize);
@@ -461,7 +461,7 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
         memcpy(font_data, mmappedData, desired_filesize);
         *font = font_data;
     } else {
-        printf("Could not map font %s\n", file_path);
+        DEBUG_PRINT("Could not map font %s\n", file_path);
         free(font_data);
         *font = 0;
     }
@@ -470,26 +470,26 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
     return 0;
 }
 
-static void load_font(void *font_buffer, uint8_t page, uint8_t is_hd, uint8_t font_variant) {
+static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, uint8_t font_variant) {
     // Note: load_font will not replace an existing font.
-    if(font_buffer == NULL) {
-        if (open_font(SDCARD_FONT_PATH, &font_buffer, page, is_hd, font_variant) < 0) {
-            if (open_font(ENTWARE_FONT_PATH, &font_buffer, page, is_hd, font_variant) < 0) {
-                open_font(FALLBACK_FONT_PATH, &font_buffer, page, is_hd, font_variant);
+    if(*font_buffer == NULL) {
+        if (open_font(SDCARD_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
+            if (open_font(ENTWARE_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
+                open_font(FALLBACK_FONT_PATH, font_buffer, page, is_hd, font_variant);
             }
         }
     }
 }
 
 static void load_fonts(uint8_t font_variant) {
-    load_font(sd_display_info.font_page_1, 0, 0, font_variant);
-    load_font(sd_display_info.font_page_2, 1, 0, font_variant);
-    load_font(hd_display_info.font_page_1, 0, 1, font_variant);
-    load_font(hd_display_info.font_page_2, 1, 1, font_variant);
-    load_font(fakehd_display_info.font_page_1, 0, 1, font_variant);
-    load_font(fakehd_display_info.font_page_2, 1, 1, font_variant);
-    load_font(overlay_display_info.font_page_1, 0, 1, font_variant);
-    load_font(overlay_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&sd_display_info.font_page_1, 0, 0, font_variant);
+    load_font(&sd_display_info.font_page_2, 1, 0, font_variant);
+    load_font(&hd_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&hd_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&fakehd_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&fakehd_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&overlay_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&overlay_display_info.font_page_2, 1, 1, font_variant);
 }
 
 
@@ -568,58 +568,58 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     // No idea what this "plane mode" actually does but it's different on V2
     uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
 
-    printf("acquire plane\n");
+    DEBUG_PRINT("acquire plane\n");
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
-        printf("failed to acquire plane");
+        DEBUG_PRINT("failed to acquire plane");
         exit(0);
     }
     res = duss_hal_display_register_frame_cycle_callback(display_state->disp_instance_handle, plane_id, &pop_func, 0);
     if (res != 0) {
-        printf("failed to register callback");
+        DEBUG_PRINT("failed to register callback");
         exit(0);
     }
 
     res = duss_hal_display_plane_blending_set(display_state->disp_instance_handle, plane_id, display_state->pb_0);
 
     if (res != 0) {
-        printf("failed to set blending");
+        DEBUG_PRINT("failed to set blending");
         exit(0);
     }
-    printf("alloc ion buf\n");
+    DEBUG_PRINT("alloc ion buf\n");
     res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_0,0x473100,0x400,0,0x17);
     if (res != 0) {
-        printf("failed to allocate VRAM");
+        DEBUG_PRINT("failed to allocate VRAM");
         exit(0);
     }
     res = duss_hal_mem_map(display_state->ion_buf_0, &display_state->fb0_virtual_addr);
     if (res != 0) {
-        printf("failed to map VRAM");
+        DEBUG_PRINT("failed to map VRAM");
         exit(0);
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_0, &display_state->fb0_physical_addr);
     if (res != 0) {
-        printf("failed to get FB0 phys addr");
+        DEBUG_PRINT("failed to get FB0 phys addr");
         exit(0);
     }
-    printf("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
+    DEBUG_PRINT("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
 
     res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_1,0x473100,0x400,0,0x17);
     if (res != 0) {
-        printf("failed to allocate FB1 VRAM");
+        DEBUG_PRINT("failed to allocate FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_map(display_state->ion_buf_1,&display_state->fb1_virtual_addr);
     if (res != 0) {
-        printf("failed to map FB1 VRAM");
+        DEBUG_PRINT("failed to map FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_1, &display_state->fb1_physical_addr);
     if (res != 0) {
-        printf("failed to get FB1 phys addr");
+        DEBUG_PRINT("failed to get FB1 phys addr");
         exit(0);
     }
-    printf("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
+    DEBUG_PRINT("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
 
     for(int i = 0; i < 2; i++) {
         duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
@@ -689,8 +689,10 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         // should have FC type
         if(strncmp(current_fc_variant, packet->fc_variant, 4) != 0) {
             memcpy(current_fc_variant, packet->fc_variant, 4);
+            DEBUG_PRINT("Changed current FC variant to %.4s\n", current_fc_variant);
             close_all_fonts();
             load_fonts(font_variant_from_string(current_fc_variant));
+            // This is not a typo - fill in any missing fonts for the current variant with the generic one.
             load_fonts(FONT_VARIANT_GENERIC);
         }
     }
@@ -718,7 +720,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
-    printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
+    DEBUG_PRINT("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
     if (fakehd_enabled) {
         current_display_info = &fakehd_display_info;
@@ -743,8 +745,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
-    printf("started up, listening on port %d\n", MSP_PORT);
-
+    printf("*** MSP-OSD: MSP-OSD started up, listening on port %d\n", MSP_PORT);
 
     struct pollfd poll_fds[3];
     int recv_len = 0;
