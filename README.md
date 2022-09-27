@@ -100,8 +100,7 @@ and optionally
 ## Choose a Font
 
 * Download the latest fonts package from https://github.com/bri3d/mcm2img/releases/download/latest/mcm2img-fonts.tar.gz .
-* Rename the files for your desired font to `font` - so you should have four files: `font.bin, font_2.bin, font_hd.bin, font_hd_2.bin` .
-* Optionally, you can add firmware specific versions of fonts; currently only supported by FakeHD - which uses Betaflight specific fonts - filenames font_bf_hd.bin / font_bf_hd_2.bin.
+* Rename the files for your desired font to `font_<fc variant>` - so for Betaflight you should have four files: `font_bf.bin, font_bf_2.bin, font_bf_hd.bin, font_bf_hd_2.bin` . For INAV, you would have `font_inav.bin, font_inav_2.bin, font_inav_hd.bin, font_inav_hd_2.bin` . And for Ardu, you would have `font_ardu.bin, font_ardu_2.bin, font_ardu_hd.bin, font_ardu_hd_2.bin` . Take a look at the `fonts` directory for a template for how the file names should look. 
 * Place these four files on the root of your Goggles SD card.
 * Reboot.
 
