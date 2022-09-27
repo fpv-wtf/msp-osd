@@ -44,6 +44,8 @@ static uint32_t fb_cursor = 0;
 
 static uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
 
+static char current_fc_identifier[4];
+
 int pty_fd;
 int serial_fd;
 int socket_fd;
@@ -122,6 +124,11 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         }
     } else {
         uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+        // This is an FC Variant response, so we want to use it to set our FC variant.
+        if(msp_message->cmd == MSP_CMD_FC_VARIANT) {
+            DEBUG_PRINT("Got FC Variant response!\n");
+            memcpy(current_fc_identifier, msp_message->payload, 4);
+        }
         // This isn't an MSP DisplayPort message, so send it to either DJI directly or to the cache.
         if(serial_passthrough) {
             write(pty_fd, message_buffer, size);
@@ -164,17 +171,26 @@ static void tx_msp_callback(msp_msg_t *msp_message)
     }
 }
 
+static void send_variant_request(int serial_fd) {
+    uint8_t buffer[6];
+    construct_msp_command(buffer, MSP_CMD_FC_VARIANT, NULL, 0, MSP_OUTBOUND);
+    write(serial_fd, &buffer, 6);
+}
+
 static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
     packet_data_t data;
     memset(&data, 0, sizeof(data));
-    data.tx_bitrate = dji_radio_mbits(dji_shm);
+    data.version_specifier = 0xFFFF;
     data.tx_temperature = get_int_from_fs(CPU_TEMP_PATH);
     data.tx_voltage = get_int_from_fs(AU_VOLTAGE_PATH);
-    DEBUG_PRINT("got bitrate %f Mbit voltage %f V temp %d C\n", (float)(data.tx_bitrate / 1000.0f), (float)(data.tx_voltage / 64.0f), data.tx_temperature);
+    memcpy(data.fc_variant, current_fc_identifier, sizeof(current_fc_identifier));
+    DEBUG_PRINT("got voltage %f V temp %d C variant %.4s\n", (float)(data.tx_voltage / 64.0f), data.tx_temperature, data.fc_variant);
     write(data_socket_fd, &data, sizeof(data));
 }
 
 int main(int argc, char *argv[]) {
+    memset(current_fc_identifier, 0, sizeof(current_fc_identifier));
+
     int opt;
     uint8_t fast_serial = 0;
     uint8_t msp_command_number = 0;
@@ -283,6 +299,9 @@ int main(int argc, char *argv[]) {
             // More than 500ms have elapsed, let's go ahead and send a data frame
             clock_gettime(CLOCK_MONOTONIC, &last);
             send_data_packet(data_fd, &dji_radio);
+            if(current_fc_identifier[0] == 0) {
+                send_variant_request(serial_fd);
+            }
         }
     }
     close_dji_radio_shm(&dji_radio);
