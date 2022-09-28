@@ -52,6 +52,7 @@
 #define FONT_VARIANT_BETAFLIGHT 1
 #define FONT_VARIANT_INAV 2
 #define FONT_VARIANT_ARDUPILOT 3
+#define FONT_VARIANT_KISS_ULTRA 4
 
 #define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
@@ -391,6 +392,8 @@ static uint8_t font_variant_from_string(char *variant_string) {
         font_variant = FONT_VARIANT_BETAFLIGHT;
     } else if (strncmp(current_fc_variant, "INAV", 4) == 0) {
         font_variant = FONT_VARIANT_INAV;
+    } else if (strncmp(current_fc_variant, "ULTR", 4) == 0) {
+        font_variant = FONT_VARIANT_KISS_ULTRA;
     }
     return font_variant;
 }
@@ -410,6 +413,9 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
             break;
         case FONT_VARIANT_ARDUPILOT:
             snprintf(name_buf, len, "%s_ardu", font_path);
+            break;
+        case FONT_VARIANT_KISS_ULTRA:
+            snprintf(name_buf, len, "%s_ultra", font_path);
             break;
         default:
             snprintf(name_buf, len, "%s", font_path);
