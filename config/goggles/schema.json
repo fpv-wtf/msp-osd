@@ -1,27 +1,52 @@
 {
-    "settings": {
-      "show_waiting": {
-        "name": "Show Waiting Message",
-        "widget": "checkbox"
-      },
-      "fakehd_enable": {
-        "name": "Enable Fake HD Mode",
-        "widget": "checkbox"
-      },
-      "fakehd_hide_throttle_element": {
-        "name": "Fake HD hide throttle element",
-        "widget": "checkbox"
-      },
-      "fakehd_lock_center": {
-        "name": "Lock Fake HD to centered mode",
-        "widget": "checkbox"
-      },
-      "show_au_data": {
-        "name": "Show VTx Temperature and Voltage",
-        "widget": "checkbox"
-      }
-    },
-    "units": [
-      "msp-osd-goggles"
-    ]
+	"settings": {
+		"show_waiting": {
+			"name": "Show Waiting Message",
+			"widget": "checkbox"
+		},
+		"fakehd_enable": {
+			"name": "Enable FakeHD Mode",
+			"widget": "checkbox"
+		},
+		"fakehd_hide_throttle_element": {
+			"name": "FakeHD hide throttle element",
+			"widget": "checkbox"
+		},
+		"fakehd_lock_center": {
+			"name": "Lock FakeHD to centered mode",
+			"widget": "checkbox"
+		},
+		"fakehd_menu_switch": {
+			"name": "FakeHD menu switch character",
+			"widget": "range",
+			"min": 1,
+			"max": 512,
+			"step":1
+		},
+		"fakehd_hide_menu_switch": {
+			"name": "FakeHD hide the menu switch",
+			"widget": "checkbox"
+		},
+		"fakehd_layout_debug": {
+			"name": "Undocumented feature to fill the grid with numbers for layout debugging",
+			"widget": "checkbox"
+		},
+		"fakehd_columns": {
+			"name": "FakeHD column config",
+			"widget": "text",
+			"pattern": "[TMBS]",
+			"minLength": 1,
+			"maxLength": 1
+		},
+		"fakehd_rows": {
+			"name": "FakeHD row config",
+			"widget": "text",
+			"pattern": "[LCRWTFD]{16}",
+			"minLength": 16,
+			"maxLength": 16
+		}
+	},
+	"units": [
+		"msp-osd-goggles"
+	]
 }

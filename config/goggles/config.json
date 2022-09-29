@@ -3,5 +3,11 @@
     "show_au_data": false,
     "fakehd_enable": false,
     "fakehd_hide_throttle_element": false,
-    "fakehd_lock_center": false
+    "fakehd_lock_center": false,
+    "fakehd_menu_switch": 4,
+    "fakehd_hide_menu_switch": false,
+    "fakehd_layout_debug": false,
+    "fakehd_columns": "S",
+    "fakehd_rows": "WWWWWWCCWWWWWWWD"
+
 }
