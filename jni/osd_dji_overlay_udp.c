@@ -86,6 +86,9 @@ typedef struct display_info_s {
     void *font_page_2;
 } display_info_t;
 
+static void rec_msp_draw_complete_hook();
+static uint8_t font_variant_from_string(char *variant_string);
+
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
 static uint16_t msp_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
@@ -160,35 +163,6 @@ static void draw_character(display_info_t *display_info, uint16_t character_map[
 
 static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
     draw_character(current_display_info, msp_character_map, x, y, c);
-}
-
-/* Recording hooks */
-
-void rec_msp_draw_complete_hook()
-{
-    if (rec_is_osd_recording() == false && rec_is_gls_recording() == true)
-    {
-        if (current_fc_variant[0] == '\0')
-        {
-            DEBUG_PRINT("msp_osd: gls started recording, but no fc variant yet!?\n");
-            return;
-        }
-
-        DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
-
-        rec_start_config_t config = {
-            .frame_width = current_display_info->char_width,
-            .frame_height = current_display_info->char_height,
-            .font_variant = font_variant_from_string(current_fc_variant),
-        };
-
-        rec_start(&config);
-    }
-    else if (rec_is_osd_recording() == true && rec_is_gls_recording() == false)
-    {
-        DEBUG_PRINT("msp_osd: gls stopped recording, stop osd rec\n");
-        rec_stop();
-    }
 }
 
 /* Main rendering function: take a character_map and a display_info and draw it into a framebuffer */
@@ -608,6 +582,35 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
             // This is not a typo - fill in any missing fonts for the current variant with the generic one.
             load_fonts(FONT_VARIANT_GENERIC);
         }
+    }
+}
+
+/* Recording hooks */
+
+static void rec_msp_draw_complete_hook()
+{
+    if (rec_is_osd_recording() == false && rec_is_gls_recording() == true)
+    {
+        if (current_fc_variant[0] == '\0')
+        {
+            DEBUG_PRINT("msp_osd: gls started recording, but no fc variant yet!?\n");
+            return;
+        }
+
+        DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
+
+        rec_start_config_t config = {
+            .frame_width = current_display_info->char_width,
+            .frame_height = current_display_info->char_height,
+            .font_variant = font_variant_from_string(current_fc_variant),
+        };
+
+        rec_start(&config);
+    }
+    else if (rec_is_osd_recording() == true && rec_is_gls_recording() == false)
+    {
+        DEBUG_PRINT("msp_osd: gls stopped recording, stop osd rec\n");
+        rec_stop();
     }
 }
 
