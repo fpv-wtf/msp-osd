@@ -139,26 +139,29 @@ The characters are case sensitive, but the configurator will reject invalid char
 
 ### INAV
 
-On *INAV*, this is done by selecting "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
+Select "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab if you'd like to use the HD Canvas.
+
+If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
+
+Due to a known issue, the INAV artificial horizon and other elements can become corrupted in packet loss situations. To work around this, assign a blank OSD screen to a switch, or assign a switch to the OSD feature. Toggling to a blank screen or turning the OSD on and then off will fix display corruption.
 
 ### Ardupilot
 
-On *Ardupilot*, this is done by setting:
+Please install an Ardupilot Custom or Nightly build from after 8/29/2022 for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
+
+Settings:
 
 ```
 SERIALx_PROTOCOL = 42
 OSD_TYPE = 5
 ```
-
-and optionally
-
-`MSP_OPTIONS = 4` to allow the use of a Betaflight font.
+If you wish to use a Betaflight font instead of an Ardupilot font, you can also set ``MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
 
 ### KISS Ultra
 
-Select MSP on serial and select DJI WTF as canvas dialect. Thats it.
+Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 ## Choose a Font
 
@@ -175,7 +178,9 @@ Select MSP on serial and select DJI WTF as canvas dialect. Thats it.
 | INAV       | `font_inav.bin`, `font_inav_2.bin` | `font_inav_hd.bin`, `font_inav_hd_2.bin`|
 | Ardupilot       | `font_ardu.bin`, `font_ardu_2.bin` | `font_ardu_hd.bin`, `font_ardu_hd_2.bin`|
 | KISS Ultra       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
-| Generic/Fallback       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
+| Generic/Fallback       | `font.bin`, `font_2.bin` | `font_hd.bin`, `font_hd_2.bin`|
+
+VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
 
 ### Suggested Third Party Fonts
 
