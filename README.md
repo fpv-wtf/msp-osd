@@ -21,12 +21,13 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 ### Betaflight
 
-On *Betaflight*, this is done using the following commands:
+On *Betaflight*, this is done using the following commands in the CLI tab:
 
 ```
 set osd_displayport_device = MSP
 set displayport_msp_serial = <ConfiguratorUART - 1>
 set vcd_video_system = PAL
+save
 ```
 
 Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1** - so you would use ```set displayport_msp_serial = 1```.
