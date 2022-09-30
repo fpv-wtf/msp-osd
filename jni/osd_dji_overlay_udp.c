@@ -20,6 +20,7 @@
 #include "hw/dji_radio_shm.h"
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
+#include "fakehd/fakehd.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
@@ -148,138 +149,6 @@ static display_info_t *current_display_info;
 
 int event_fd;
 
-/* FakeHD: spread characters for a small OSD across the whole screen */
-
-#define FAKEHD_ENABLE_KEY "fakehd_enable"
-#define FAKEHD_LOCK_CENTER_KEY "fakehd_lock_center"
-#define FAKEHD_HIDE_THROTTLE_KEY "fakehd_hide_throttle_element"
-static int fakehd_enabled = 0;
-static int fakehd_hide_throttle_element = 0;
-static int fakehd_lock_center = 0;
-static int fakehd_trigger_x = 99;
-static int fakehd_trigger_y = 99;
-
-static void load_fake_hd_config()
-{
-    DEBUG_PRINT("checking for fakehd enabled\n");
-    if (get_boolean_config_value(FAKEHD_ENABLE_KEY))
-    {
-        DEBUG_PRINT("fakehd enabled\n");
-        fakehd_enabled = 1;
-    } else {
-        DEBUG_PRINT("fakehd disabled\n");
-    }
-
-    DEBUG_PRINT("checking for fakehd hide throttle \n");
-    if (get_boolean_config_value(FAKEHD_HIDE_THROTTLE_KEY))
-    {
-        DEBUG_PRINT("fakehd hide throttle\n");
-        fakehd_hide_throttle_element = 1;
-    }
-    else
-    {
-        DEBUG_PRINT("fakehd no hide throttle\n");
-    }
-    DEBUG_PRINT("checking for fakehd lock center \n");
-    if (get_boolean_config_value(FAKEHD_LOCK_CENTER_KEY))
-    {
-        DEBUG_PRINT("fakehd lock center\n");
-        fakehd_lock_center = 1;
-    }
-    else
-    {
-        DEBUG_PRINT("fakehd no lock center\n");
-    }
-}
-
-static void fakehd_map_sd_character_map_to_hd()
-{
-    int render_x = 0;
-    int render_y = 0;
-    for (int y = 15; y >= 0; y--)
-    {
-        for (int x = 29; x >= 0; x--)
-        {
-            // skip if it's not a character
-            if (msp_character_map[x][y] != 0)
-            {
-                // if current element is fly min or throttle icon
-                // record the current position as the 'trigger' position
-                if (fakehd_trigger_x == 99 &&
-                        (
-                            msp_character_map[x][y] == 0x9c // fly minutes icon (armed time)
-                            ||
-                            msp_character_map[x][y] == 0x04 // throttle icon
-                        )
-                    )
-                {
-                    DEBUG_PRINT("found fakehd triggger \n");
-                    fakehd_trigger_x = x;
-                    fakehd_trigger_y = y;
-                }
-
-                // if we have seen a trigger (see above) - and it's now gone, switch to centering
-                // this is intented to center the menu + postflight stats, which don't contain
-                // timer/battery symbols
-                if (
-                    fakehd_lock_center ||
-                    (fakehd_trigger_x != 99 &&
-                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c &&
-                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x04)
-                )
-                {
-                    render_x = x + 15;
-                    render_y = y + 3;
-                } else {
-                    render_y = y;
-                    if (y >= 10)
-                    {
-                        render_y += 6;
-                    }
-                    else if (y >= 5)
-                    {
-                        render_y += 3;
-                    }
-
-                    render_x = x;
-                    // a full/unspaced couple of rows for warnings...
-                    // and the bottom row may as well be as the edges just overlap the DJI built in bits
-                    if (y == 6 || y == 7) {
-                        render_x += 15;
-                    }
-                    else if (y == 15)
-                    {
-                        render_x += 11;
-                    }
-                    else if (x >= 20)
-                    {
-                        render_x += 29;
-                    }
-                    else if (x >= 10)
-                    {
-                        render_x += 15;
-                    }
-                }
-
-                // 0 out the throttle element if configured to do so
-                // and also the three adjacent positions where the thottle percent will be
-                if (fakehd_trigger_x != 99 &&
-                    fakehd_hide_throttle_element &&
-                    msp_character_map[x][y] == 0x04)
-                {
-                    msp_render_character_map[render_x][render_y] = 0;
-                    (render_x <= 57) && (msp_render_character_map[render_x+1][render_y] = 0);
-                    (render_x <= 56) && (msp_render_character_map[render_x+2][render_y] = 0);
-                    (render_x <= 55) && (msp_render_character_map[render_x+3][render_y] = 0);
-                } else {
-                    // otherwise, the normal path
-                    msp_render_character_map[render_x][render_y] = msp_character_map[x][y];
-                }
-            }
-        }
-    }
-}
-
 /* Character map helpers */
 
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
@@ -347,7 +216,7 @@ static void draw_screen() {
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
 
     if (fakehd_enabled) {
-        fakehd_map_sd_character_map_to_hd();
+        fakehd_map_sd_character_map_to_hd(msp_character_map, msp_render_character_map);
         draw_character_map(current_display_info, fb_addr, msp_render_character_map);
     } else {
         draw_character_map(current_display_info, fb_addr, msp_character_map);
@@ -723,7 +592,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 {
     memset(current_fc_variant, 0, sizeof(current_fc_variant));
 
-    load_fake_hd_config();
+    load_fakehd_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();

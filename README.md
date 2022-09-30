@@ -53,18 +53,24 @@ A diagram to help...
 4. Type/paste `package-config apply msp-osd` and press Enter.
 5. Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
 
+Configuration of the grid is also possible; see below.
+
 No air unit/vista config is required.
 
-##### Getting rid of gaps in Menu / Post Flight Stats:
+##### Menu Switching - Getting rid of gaps when displaying Menu / Post Flight Stats + displaying centered:
 
-In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using FakeHD, ensure you have one of the following in your OSD:
+In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using FakeHD, rather than having gaps + looking broken, you should set up menu switching.
 
- -  `Timer 2` (more specifically - it's the `Total Armed Time` timer, which is the default for Timer 2 - it needs the "Fly Min" icon in the OSD)
- -  `Throttle position`
+FakeHD can use the presence/absence of a character in the OSD as a switch to indicate when you are in reular OSD mode or in the menu/stats and switch to centering temporarily when needed.
 
-FakeHD uses the first of these two it finds as a switch to indicate when you are in or out of the menu/stats. FakeHD will find the associated icon from the element and then use its presence/absence to enable/disable the gaps. If you don't use either of these elements, FakeHD will still work; but you will see the gaps in the menus + post flight stats.
+By default, the `Throttle Position` icon is used (character 4) - but you can set any character you want. It needs to be something that doesn't flash or changge in the regular OSD, and ideally (but not essential) something that is never in the menu/post flight stats. The icons next to various elements are obvious choices here. You can set this using the `fakehd_menu_switch` configuration parameter.
 
-If you want to use this feature, but don't want either of these elements to show in the OSD,  add the throttle position element to the OSD somewhere, then set `package-config set msp-osd fakehd_hide_throttle_element true` and FakeHD will use the throttle element for switching but not display it on screen.
+Betaflight has a list here: https://github.com/betaflight/betaflight/blob/master/docs/osd.md
+
+
+If you want to use FakeHD with some other Flight Controller, you will need to find an appropriate icon. (Let us know - we can include the information here).
+
+Finally, if you don't have anything in your OSD that works for menu switching, you can hide the menu switching character and the subsequent 5 characters, allowing you to add the `Throttle Position` element but not have to see it on screen. This is enabled by setting `fakehd_hide_menu_switch` to true.
 
 Notes:
 
@@ -79,6 +85,57 @@ Set config `fakehd_lock_center` to true and the center locking used for the menu
 | After/Centered (in Goggles) `fakehd_lock_center` |
 |-------|
 |<img src="/docs/img/fakehd_centered.png" alt="After / Centered"  height=200 /> |
+
+##### Customising the default FakeHD grid.
+
+By default, FakeHD positions your SD grid into the HD grid as per the before/after diagram above.
+
+If this doesn't work for you for whatever reason, some customisation is available. It's necessarily a little complicated.
+
+Each row can be set to one of:
+
+| Code | Description |
+|---|----|
+| L | Left aligned, the SD row occupies cell 1-30, no gaps |
+| C | Center aligned, the SD row occupies cell 16-45, no gaps |
+| R | Right aligned, , the SD row occupies cell 30-59, no gaps |
+| W | Split A - Row is split in 3, the FakeHD default, filling cells 1-10, 26-35, 50-59 |
+| T | Split B - Row is split in 2, touching the sides - filling cells 1-15 + 45-59 |
+| F | Split C - Row is split in 2 and away from the sides - filling cells 11-25 + 35-49 |
+| D | DJI Special - Row is centered but pushed a little left; used to posiution the bottom row between the existing DJI OSD elements |
+
+<img src="/docs/img/fakehd_rows.png" alt="Columns"  height=200 />
+
+And then the columns as a whole can be set to one of:
+
+| Code | Description |
+|---|----|
+| T | Top aligned, OSD occupies rows 1-16  |
+| M | Center aligned, OSD occupies cells 4-19, no gaps |
+| B | Bottom aligned, , the OSD occupies rows 7-22 |
+| S | Split - FakeHD default - split in 3, OSD occupies rows 1 - 5, 9 - 13, 17-22 |
+
+Using the default row config; here's what they all look like:
+
+| T | M | B | S |
+| - | - | - | - |
+|<img src="/docs/img/fakehd_columns_t.png" alt="T" />|<img src="/docs/img/fakehd_columns_m.png" alt="M" />| <img src="/docs/img/fakehd_columns_b.png" alt="B" />| <img src="/docs/img/fakehd_after.png" alt="S" />|
+
+###### To configure rows
+
+Rows config accepts a 16 character long string; each character configuring it's corresponding row. The default FakeHD config would be set like this:
+
+`package-config set msp-osd fakehd_rows WWWWWWCCWWWWWWWD`
+
+The characters are case sensitive, but the configurator will reject invalid characters.
+
+###### To configure columns
+
+Columns accepts a single character configuring how the whole grid is aligned. The default would be set like this:
+
+`package-config set msp-osd fakehd_columns S`
+
+The characters are case sensitive, but the configurator will reject invalid characters.
 
 ### INAV
 
@@ -97,12 +154,35 @@ and optionally
 
 `MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
+More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
+
+### KISS Ultra
+
+Select MSP on serial and select DJI WTF as canvas dialect. Thats it.
+
 ## Choose a Font
 
 * Download the latest fonts package from https://github.com/bri3d/mcm2img/releases/download/latest/mcm2img-fonts.tar.gz .
-* Rename the files for your desired font to `font_<fc variant>` - so for Betaflight you should have four files: `font_bf.bin, font_bf_2.bin, font_bf_hd.bin, font_bf_hd_2.bin` . For INAV, you would have `font_inav.bin, font_inav_2.bin, font_inav_hd.bin, font_inav_hd_2.bin` . And for Ardu, you would have `font_ardu.bin, font_ardu_2.bin, font_ardu_hd.bin, font_ardu_hd_2.bin` . Take a look at the `fonts` directory for a template for how the file names should look. 
+* Rename the files for your desired font to `font_<fc variant>` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
 * Place these four files on the root of your Goggles SD card.
 * Reboot.
+
+### FC Specific Font File Names
+
+| Flight controller | SD | HD |
+| ----------------- | -- | -- |
+| Betaflight       | `font_bf.bin`, `font_bf_2.bin` | `font_bf_hd.bin`, `font_bf_hd_2.bin` |
+| INAV       | `font_inav.bin`, `font_inav_2.bin` | `font_inav_hd.bin`, `font_inav_hd_2.bin`|
+| Ardupilot       | `font_ardu.bin`, `font_ardu_2.bin` | `font_ardu_hd.bin`, `font_ardu_hd_2.bin`|
+| KISS Ultra       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
+| Generic/Fallback       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
+
+### Suggested Third Party Fonts
+
+Nicer/more modern looking ones:
+
+ - KNIFA / Material - https://github.com/Knifa/material-osd / https://github.com/Knifa/material-osd/releases
+ - Shannon Baker - https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95
 
 ### Generate your own Font (advanced)
 
@@ -134,13 +214,17 @@ To apply options, type `package-config apply msp-osd`.
 
 ### Current available options (Goggles):
 
-```
-fakehd_enable : enables FakeHD, true/false
-fakehd_hide_throttle_element : FakeHD will hide the throttle element when it is used as the gap mode/center mode switch.
-fakehd_lock_center : Lock FakeHD in centered mode.
-show_au_data : enables AU data overlay on the right, true/false
-show_waiting : enables or disables MSP WAITING message, true/false.
-```
+| Option | Description | Type |
+| ------ | ----------- | ---- |
+|`fakehd_enable`| enables FakeHD; the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled of the Flight Controller supports proper HD / RealHD | true/false|
+|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postfligght and triggger centering. Defaults to 4 (Betaflight Throttle). | integer/number |
+|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false |
+| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D |
+| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S |
+|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false |
+|`show_au_data`| enables AU data overlay on the right | true/false|
+|`show_waiting`| enables or disables MSP WAITING message | true/false.|
+
 
 So for example, to disable the WAITING message:
 
@@ -172,6 +256,18 @@ We have a workaround that will work for some use cases; see fakehd under Betafli
 
 Otherwise, you can swap to a different font to make the characters smaller, but the grid spacing is the same.
 
+### How can I get my INAV/ArduPilot/Kiss Ultra OSD closer to the edge of the screen / Why is FakeHD closer to the edges?
+
+ - The current MSP HD grid size (ie: hd in INAV/ArduPilot/Kiss Ultra) is 50 characters wide. We'll call this RealHD.
+ - The goggles need 60 characters to go edge to edge - so the 50 in the hd grid doesn't quite fill it
+ - So the RealHD grid is displayed centered in the goggles - gaps on both edges.
+ - FakeHD had no compatibility constraints like this so we were able to use the full width of the screens.
+ - Consequently, FakeHD can get nearer the edges.
+ - Currently no solution to get RealHD closer to the edges.
+
+### What is RealHD
+
+Sometimes we refer to the proper MSP OSD HD grid supported by ArduPilot / Kiss Ultra / INAV as RealHD, to distinguish from FakeHD.
 # Compiling (development and debugging)
 
 To build for DJI, install the [Android NDK](https://developer.android.com/ndk/downloads) and add the NDK toolchain to your PATH, then use `ndk-build` to build the targets.
