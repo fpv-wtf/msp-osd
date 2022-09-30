@@ -11,10 +11,27 @@
 #define DEBUG_PRINT(fmt, args...)
 #endif
 
-gs_lv_transcode_t *rec_lv_transcode = NULL;
+typedef struct rec_file_header_t
+{
+    char magic[7];
+    uint16_t version;
+    uint8_t frame_width;
+    uint8_t frame_height;
+    uint8_t font_variant;
+} __attribute__((packed)) rec_file_header_t;
 
+typedef struct rec_frame_header_t
+{
+    uint32_t frame_idx;
+    uint32_t size;
+} __attribute__((packed)) rec_frame_header_t;
+
+static bool rec_is_ready();
+static uint32_t rec_get_frame_idx();
+
+gs_lv_transcode_t *rec_lv_transcode = NULL;
 static FILE *rec_fd = NULL;
-bool rec_recording = false;
+static bool rec_recording = false;
 
 void rec_start(rec_start_config_t *config)
 {
@@ -87,11 +104,6 @@ void rec_write_frame(uint16_t *frame_data, size_t frame_size)
     // DEBUG_PRINT("wrote frame %u", frame_header.frame_idx, frame_header.size);
 }
 
-bool rec_is_ready()
-{
-    return rec_lv_transcode != NULL;
-}
-
 bool rec_is_osd_recording()
 {
     return rec_recording;
@@ -105,18 +117,15 @@ bool rec_is_gls_recording()
     return rec_lv_transcode->cur_state == RECORD_STATE_RECORDING;
 }
 
-uint32_t rec_get_frame_idx()
+static bool rec_is_ready()
+{
+    return rec_lv_transcode != NULL;
+}
+
+static uint32_t rec_get_frame_idx()
 {
     if (rec_is_ready() == false)
         return 0;
 
     return rec_lv_transcode->last_frame_idx;
-}
-
-int64_t rec_get_last_frame_ts()
-{
-    if (rec_is_ready() == false)
-        return 0;
-
-    return rec_lv_transcode->cur_rec_time_ms;
 }
