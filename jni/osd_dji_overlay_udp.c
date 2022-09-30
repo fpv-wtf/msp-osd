@@ -111,11 +111,11 @@ static display_info_t sd_display_info = {
 };
 
 static display_info_t fakehd_display_info = {
-    .char_width = 59,
+    .char_width = 60,
     .char_height = 22,
     .font_width = 24,
     .font_height = 36,
-    .x_offset = 24,
+    .x_offset = 0,
     .y_offset = 0,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
@@ -403,11 +403,19 @@ static void close_all_fonts() {
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
-    if(is_hd) {
-        fakehd_enabled = 0;
-        current_display_info = &hd_display_info;
-    } else {
-        current_display_info = &sd_display_info;
+    switch (is_hd) {
+        case 3:
+            fakehd_enabled = 0;
+            current_display_info = &fakehd_display_info;
+            break;
+        case 2:
+        case 1:
+            fakehd_enabled = 0;
+            current_display_info = &hd_display_info;
+            break;
+        default:
+            current_display_info = &sd_display_info;
+            break;
     }
 }
 
