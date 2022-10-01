@@ -715,7 +715,6 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 }
             }
         }
-
         if(poll_fds[1].revents) {
             // Got eventfd message from another thread to enable/disable OSD
             if (0 < (recv_len = read(event_fd, &event_number, sizeof(uint64_t)))) {
