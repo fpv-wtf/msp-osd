@@ -599,9 +599,13 @@ static void rec_msp_draw_complete_hook()
 
         DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
 
-        rec_start_config_t config = {
-            .frame_width = current_display_info->char_width,
-            .frame_height = current_display_info->char_height,
+        rec_config_t config = {
+            .char_width = current_display_info->char_width,
+            .char_height = current_display_info->char_height,
+            .font_width = current_display_info->font_width,
+            .font_height = current_display_info->font_height,
+            .x_offset = current_display_info->x_offset,
+            .y_offset = current_display_info->y_offset,
             .font_variant = font_variant_from_string(current_fc_variant),
         };
 

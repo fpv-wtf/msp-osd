@@ -15,9 +15,7 @@ typedef struct rec_file_header_t
 {
     char magic[7];
     uint16_t version;
-    uint8_t frame_width;
-    uint8_t frame_height;
-    uint8_t font_variant;
+    rec_config_t config;
 } __attribute__((packed)) rec_file_header_t;
 
 typedef struct rec_frame_header_t
@@ -33,7 +31,7 @@ gs_lv_transcode_t *rec_lv_transcode = NULL;
 static FILE *rec_fd = NULL;
 static bool rec_recording = false;
 
-void rec_start(rec_start_config_t *config)
+void rec_start(rec_config_t *config)
 {
     if (!rec_is_ready())
         return;
@@ -66,11 +64,8 @@ void rec_start(rec_start_config_t *config)
     rec_file_header_t file_header = {
         .magic = REC_MAGIC,
         .version = REC_VERSION,
-        .frame_width = config->frame_width,
-        .frame_height = config->frame_height,
-        .font_variant = config->font_variant,
     };
-
+    memcpy(&file_header.config, config, sizeof(rec_config_t));
     fwrite(&file_header, sizeof(rec_file_header_t), 1, rec_fd);
 
     rec_recording = true;
