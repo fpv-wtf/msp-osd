@@ -17,6 +17,19 @@ typedef struct rec_config_t
     uint8_t font_variant;
 } __attribute__((packed)) rec_config_t;
 
+typedef struct rec_file_header_t
+{
+    char magic[7];
+    uint16_t version;
+    rec_config_t config;
+} __attribute__((packed)) rec_file_header_t;
+
+typedef struct rec_frame_header_t
+{
+    uint32_t frame_idx;
+    uint32_t size;
+} __attribute__((packed)) rec_frame_header_t;
+
 void rec_start();
 void rec_stop();
 void rec_load_config();

@@ -27,9 +27,11 @@
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
-#include "rec/rec.h"
+
 #include "util/fs_util.h"
 #include "util/time_util.h"
+#include "rec/rec.h"
+#include "rec/rec_pb.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -209,11 +211,11 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
                     }
                     target_offset += WIDTH * BYTES_PER_PIXEL - (display_info->font_width * BYTES_PER_PIXEL);
                 }
-                DEBUG_PRINT("%c", c > 31 ? c : 20);
+                // DEBUG_PRINT("%c", c > 31 ? c : 20);
             }
-            DEBUG_PRINT(" ");
+            // DEBUG_PRINT(" ");
         }
-        DEBUG_PRINT("\n");
+        // DEBUG_PRINT("\n");
     }
 }
 
@@ -674,6 +676,100 @@ static void rec_msp_draw_complete_hook()
     }
 }
 
+static void rec_pb_play_loop()
+{
+    struct timespec last;
+    clock_gettime(CLOCK_MONOTONIC, &last);
+
+    int64_t target_diff = 16666666 * 2;
+    int64_t next_diff = target_diff;
+
+    while (rec_pb_gls_is_playing())
+    {
+        struct timespec now, diff;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        timespec_subtract(&diff, &now, &last);
+        int64_t diff_ns = diff.tv_nsec;
+
+        if (diff_ns >= next_diff)
+        {
+
+            if (rec_pb_get_next_frame(diff_ns, msp_character_map) != 0) {
+                break;
+            }
+
+            render_screen();
+
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            timespec_subtract(&diff, &now, &last);
+            last = now;
+
+            int64_t diff_ns = diff.tv_sec * 1000000000 + diff.tv_nsec;
+            next_diff = target_diff + (target_diff - diff_ns);
+        }
+    }
+
+    rec_pb_stop();
+
+    free(current_display_info->font_page_1);
+    free(current_display_info->font_page_2);
+    free(current_display_info);
+
+    current_display_info = &sd_display_info;
+    display_mode = DISPLAY_DISABLED;
+}
+
+static void rec_pb_timeout_hook()
+{
+    if (rec_pb_gls_is_playing() == true)
+    {
+        DEBUG_PRINT("msp_osd: gls playing dvr, let's try too!\n");
+
+        if (rec_pb_start() == 0)
+        {
+            rec_config_t *rec_config = rec_pb_get_config();
+            display_info_t *osd_display_info = malloc(sizeof(display_info_t));
+
+            osd_display_info->char_width = rec_config->char_width;
+            osd_display_info->char_height = rec_config->char_height;
+            osd_display_info->font_width = rec_config->font_width;
+            osd_display_info->font_height = rec_config->font_height;
+            osd_display_info->x_offset = rec_config->x_offset;
+            osd_display_info->y_offset = rec_config->y_offset;
+
+            DEBUG_PRINT("msd_osd: playback config, char_width: %d\n", osd_display_info->char_width);
+            DEBUG_PRINT("msd_osd: playback config, char_height: %d\n", osd_display_info->char_height);
+            DEBUG_PRINT("msd_osd: playback config, font_width: %d\n", osd_display_info->font_width);
+            DEBUG_PRINT("msd_osd: playback config, font_height: %d\n", osd_display_info->font_height);
+            DEBUG_PRINT("msd_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
+            DEBUG_PRINT("msd_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
+
+            DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
+
+            load_font(
+                &osd_display_info->font_page_1,
+                0,
+                sd_display_info.font_width != osd_display_info->font_width,
+                rec_config->font_variant);
+
+            load_font(
+                &osd_display_info->font_page_1,
+                1,
+                sd_display_info.font_width != osd_display_info->font_width,
+                rec_config->font_variant);
+
+            current_display_info = osd_display_info;
+
+            display_mode = DISPLAY_RUNNING;
+            rec_pb_play_loop();
+        }
+        else
+        {
+            DEBUG_PRINT("msp_osd: failed to init rec_pb\n");
+        }
+    }
+}
+
 /* Public OSD enable/disable methods */
 
 void osd_disable() {
@@ -759,7 +855,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[3].events = POLLIN;
 
         // spin every 250ms if we didn't get a packet, then check and see if we need to do the toast/overlay logic
-        poll(poll_fds, 4, 250);
+        int poll_status = poll(poll_fds, 4, 250);
 
         clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -817,6 +913,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / FORCE_RENDER_HZ)) {
             // More than 500ms have elapsed without a render, let's go ahead and manually render
             render_screen();
+        }
+
+        if (poll_status == 0) {
+            rec_pb_timeout_hook();
         }
     }
 
