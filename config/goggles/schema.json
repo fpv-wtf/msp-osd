@@ -44,6 +44,10 @@
 			"pattern": "[LCRWTFD]{16}",
 			"minLength": 16,
 			"maxLength": 16
+		},
+		"rec_enabled": {
+			"name": "Enable OSD recording",
+			"widget": "checkbox"
 		}
 	},
 	"units": [

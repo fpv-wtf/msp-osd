@@ -26,6 +26,7 @@
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
 #include "util/fs_util.h"
+#include "rec/rec.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -84,6 +85,9 @@ typedef struct display_info_s {
     void *font_page_1;
     void *font_page_2;
 } display_info_t;
+
+static void rec_msp_draw_complete_hook();
+static uint8_t font_variant_from_string(char *variant_string);
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
@@ -148,8 +152,6 @@ static enum display_mode_s {
 static display_info_t *current_display_info;
 
 int event_fd;
-
-/* Character map helpers */
 
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
@@ -245,6 +247,16 @@ static void render_screen() {
 
 static void msp_draw_complete() {
     render_screen();
+
+    if (rec_is_enabled()) {
+        rec_msp_draw_complete_hook();
+        if (rec_is_osd_recording() == true)
+        {
+            rec_write_frame(
+                fakehd_enabled ? msp_render_character_map : msp_character_map,
+                MAX_DISPLAY_X * MAX_DISPLAY_Y);
+        }
+    }
 }
 
 static void msp_callback(msp_msg_t *msp_message)
@@ -253,6 +265,7 @@ static void msp_callback(msp_msg_t *msp_message)
 }
 
 /* Font helper methods */
+
 static uint8_t font_variant_from_string(char *variant_string) {
     uint8_t font_variant = FONT_VARIANT_GENERIC;
     if(strncmp(current_fc_variant, "ARDU", 4) == 0) {
@@ -574,6 +587,39 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     }
 }
 
+/* Recording hooks */
+
+static void rec_msp_draw_complete_hook()
+{
+    if (rec_is_osd_recording() == false && rec_is_gls_recording() == true)
+    {
+        if (current_fc_variant[0] == '\0')
+        {
+            DEBUG_PRINT("msp_osd: gls started recording, but no fc variant yet!?\n");
+            return;
+        }
+
+        DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
+
+        rec_config_t config = {
+            .char_width = current_display_info->char_width,
+            .char_height = current_display_info->char_height,
+            .font_width = current_display_info->font_width,
+            .font_height = current_display_info->font_height,
+            .x_offset = current_display_info->x_offset,
+            .y_offset = current_display_info->y_offset,
+            .font_variant = font_variant_from_string(current_fc_variant),
+        };
+
+        rec_start(&config);
+    }
+    else if (rec_is_osd_recording() == true && rec_is_gls_recording() == false)
+    {
+        DEBUG_PRINT("msp_osd: gls stopped recording, stop osd rec\n");
+        rec_stop();
+    }
+}
+
 /* Public OSD enable/disable methods */
 
 void osd_disable() {
@@ -593,6 +639,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     memset(current_fc_variant, 0, sizeof(current_fc_variant));
 
     load_fakehd_config();
+    rec_load_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
