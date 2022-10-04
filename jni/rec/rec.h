@@ -19,6 +19,9 @@ typedef struct rec_config_t
 
 void rec_start();
 void rec_stop();
+void rec_load_config();
+void rec_write_frame(uint16_t *frame_data, size_t frame_size);
+bool rec_is_enabled();
 bool rec_is_osd_recording();
 bool rec_is_gls_recording();
 

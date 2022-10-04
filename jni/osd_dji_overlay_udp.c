@@ -248,12 +248,14 @@ static void render_screen() {
 static void msp_draw_complete() {
     render_screen();
 
-    rec_msp_draw_complete_hook();
-    if (rec_is_osd_recording() == true)
-    {
-        rec_write_frame(
-            fakehd_enabled ? msp_render_character_map : msp_character_map,
-            MAX_DISPLAY_X * MAX_DISPLAY_Y);
+    if (rec_is_enabled()) {
+        rec_msp_draw_complete_hook();
+        if (rec_is_osd_recording() == true)
+        {
+            rec_write_frame(
+                fakehd_enabled ? msp_render_character_map : msp_character_map,
+                MAX_DISPLAY_X * MAX_DISPLAY_Y);
+        }
     }
 }
 
@@ -637,6 +639,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     memset(current_fc_variant, 0, sizeof(current_fc_variant));
 
     load_fakehd_config();
+    rec_load_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();

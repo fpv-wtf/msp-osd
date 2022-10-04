@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../json/osd_config.h"
+
 #include "rec.h"
 #include "rec_shim.h"
+
+#define REC_CONFIG_ENABLED_KEY "rec_enabled"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec_shim: " fmt "\n", ##args)
@@ -27,6 +31,7 @@ typedef struct rec_frame_header_t
 static bool rec_is_ready();
 static uint32_t rec_get_frame_idx();
 
+static bool rec_enabled = false;
 gs_lv_transcode_t *rec_lv_transcode = NULL;
 static FILE *rec_fd = NULL;
 static bool rec_recording = false;
@@ -95,8 +100,18 @@ void rec_write_frame(uint16_t *frame_data, size_t frame_size)
 
     fwrite(&frame_header, sizeof(frame_header), 1, rec_fd);
     fwrite(frame_data, sizeof(uint16_t), frame_size, rec_fd);
+}
 
-    // DEBUG_PRINT("wrote frame %u", frame_header.frame_idx, frame_header.size);
+void rec_load_config()
+{
+    rec_enabled = get_boolean_config_value(REC_CONFIG_ENABLED_KEY);
+
+    DEBUG_PRINT("rec_enabled: %d", rec_enabled);
+}
+
+bool rec_is_enabled()
+{
+    return rec_enabled;
 }
 
 bool rec_is_osd_recording()
