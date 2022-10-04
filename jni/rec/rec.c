@@ -65,6 +65,11 @@ void rec_start(rec_config_t *config)
     DEBUG_PRINT("rec_file_name: %s", rec_file_name);
 
     rec_fd = fopen(rec_file_name, "wb");
+    if (rec_fd == NULL)
+    {
+        DEBUG_PRINT("Failed to open file: %s", rec_file_name);
+        return;
+    }
 
     rec_file_header_t file_header = {
         .magic = REC_MAGIC,
