@@ -110,7 +110,7 @@ static display_info_t sd_display_info = {
     .font_page_2 = NULL,
 };
 
-static display_info_t fakehd_display_info = {
+static display_info_t full_display_info = {
     .char_width = 60,
     .char_height = 22,
     .font_width = 24,
@@ -374,8 +374,8 @@ static void load_fonts(uint8_t font_variant) {
     load_font(&sd_display_info.font_page_2, 1, 0, font_variant);
     load_font(&hd_display_info.font_page_1, 0, 1, font_variant);
     load_font(&hd_display_info.font_page_2, 1, 1, font_variant);
-    load_font(&fakehd_display_info.font_page_1, 0, 1, font_variant);
-    load_font(&fakehd_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&full_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&full_display_info.font_page_2, 1, 1, font_variant);
     load_font(&overlay_display_info.font_page_1, 0, 1, font_variant);
     load_font(&overlay_display_info.font_page_2, 1, 1, font_variant);
 }
@@ -398,7 +398,7 @@ static void close_all_fonts() {
     close_fonts(&sd_display_info);
     close_fonts(&hd_display_info);
     close_fonts(&overlay_display_info);
-    close_fonts(&fakehd_display_info);
+    close_fonts(&full_display_info);
 }
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
@@ -406,7 +406,7 @@ static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     switch (is_hd) {
         case 3:
             fakehd_enabled = 0;
-            current_display_info = &fakehd_display_info;
+            current_display_info = &full_display_info;
             break;
         case 2:
         case 1:
@@ -654,7 +654,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     DEBUG_PRINT("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
     if (fakehd_enabled) {
-        current_display_info = &fakehd_display_info;
+        current_display_info = &full_display_info;
     } else {
         current_display_info = &sd_display_info;
     }

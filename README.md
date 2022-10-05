@@ -99,10 +99,10 @@ Each row can be set to one of:
 |---|----|
 | L | Left aligned, the SD row occupies cell 1-30, no gaps |
 | C | Center aligned, the SD row occupies cell 16-45, no gaps |
-| R | Right aligned, , the SD row occupies cell 30-59, no gaps |
-| W | Split A - Row is split in 3, the FakeHD default, filling cells 1-10, 26-35, 50-59 |
-| T | Split B - Row is split in 2, touching the sides - filling cells 1-15 + 45-59 |
-| F | Split C - Row is split in 2 and away from the sides - filling cells 11-25 + 35-49 |
+| R | Right aligned, , the SD row occupies cell 31-60, no gaps |
+| W | Split A - Row is split in 3, the FakeHD default, filling cells 1-10, 26-35, 51-60 |
+| T | Split B - Row is split in 2, touching the sides - filling cells 1-15 + 46-60 |
+| F | Split C - Row is split in 2 and away from the sides - filling cells 11-25 + 36-50 |
 | D | DJI Special - Row is centered but pushed a little left; used to posiution the bottom row between the existing DJI OSD elements |
 
 <img src="/docs/img/fakehd_rows.png" alt="Columns"  height=200 />
