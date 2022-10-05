@@ -4,6 +4,10 @@
 			"name": "Show Waiting Message",
 			"widget": "checkbox"
 		},
+		"show_au_data": {
+			"name": "Show VTx Temperature and Voltage",
+			"widget": "checkbox"
+		},
 		"fakehd_enable": {
 			"name": "Enable FakeHD Mode",
 			"widget": "checkbox"
