@@ -166,6 +166,21 @@ void fakehd_reset() {
     int fakehd_trigger_y = 99;
 }
 
+void fakehd_enable()
+{
+    fakehd_enabled = 1;
+}
+
+void fakehd_disable()
+{
+    fakehd_enabled = 0;
+    fakehd_reset();
+}
+
+int fakehd_is_enabled() {
+    return fakehd_enabled;
+}
+
 void fakehd_map_sd_character_map_to_hd(uint16_t sd_character_map[60][22], uint16_t hd_character_map[60][22])
 {
     int row[INPUT_COLS];
