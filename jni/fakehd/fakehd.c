@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "json/osd_config.h"
+#include "toast/toast.h"
 
 #define FAKEHD_ENABLE_KEY "fakehd_enable"
 #define FAKEHD_LOCK_CENTER_KEY "fakehd_lock_center"
@@ -38,6 +39,8 @@ void load_fakehd_config()
     if (get_boolean_config_value(FAKEHD_ENABLE_KEY))
     {
         DEBUG_PRINT("fakehd enabled\n");
+        toast("FAKEHD ENABLED");
+
         fakehd_enabled = 1;
     }
     else
@@ -82,6 +85,7 @@ void load_fakehd_config()
     {
         DEBUG_PRINT("fakehd found custom trigger\n");
         fakehd_menu_switch_char = trigger;
+        toast("FHD MENU SWITCH %c", 4);
     }
     // trigger
     // rows

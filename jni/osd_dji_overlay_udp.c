@@ -21,6 +21,7 @@
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
 #include "fakehd/fakehd.h"
+#include "toast/toast.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
@@ -370,6 +371,9 @@ static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, uint8_t f
 }
 
 static void load_fonts(uint8_t font_variant) {
+    char file_path[255];
+    get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant, 0);
+    toast(file_path);
     load_font(&sd_display_info.font_page_1, 0, 0, font_variant);
     load_font(&sd_display_info.font_page_2, 1, 0, font_variant);
     load_font(&hd_display_info.font_page_1, 0, 1, font_variant);
@@ -588,6 +592,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         if(strncmp(current_fc_variant, packet->fc_variant, 4) != 0) {
             memcpy(current_fc_variant, &packet->fc_variant, 4);
             DEBUG_PRINT("Changed current FC variant to %.4s\n", current_fc_variant);
+            toast("FC %.4s", current_fc_variant);
             close_all_fonts();
             load_fonts(font_variant_from_string(current_fc_variant));
             // This is not a typo - fill in any missing fonts for the current variant with the generic one.
@@ -696,7 +701,6 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     start_display(is_v2_goggles, disp, ion_handle);
 
     uint64_t event_number;
-
     while (!quit)
     {
         poll_fds[0].fd = msp_socket_fd;
@@ -705,7 +709,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[1].events = POLLIN;
         poll_fds[2].fd = data_socket_fd;
         poll_fds[2].events = POLLIN;
-        poll(poll_fds, 3, -1);
+
+        // wait 500ms for data; then do an update anyway
+        // needed for toast and au data without FC
+        poll(poll_fds, 3, 500);
 
         if(poll_fds[0].revents) {
             // Got MSP UDP packet
@@ -736,9 +743,12 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 } else {
                     display_mode = DISPLAY_DISABLED;
                 }
-                render_screen();
             }
         }
+        // lets toast run + update any notices
+        do_toast(display_print_string);
+
+        render_screen();
     }
 
     free(display_driver);

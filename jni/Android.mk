@@ -27,8 +27,10 @@ LOCAL_SRC_FILES := \
 	osd_dji_overlay_udp.c \
 	rec/rec_shim.c \
 	rec/rec.c \
-	util/fs_util.c
+	util/fs_util.c \
+	toast/toast.c
 include $(BUILD_SHARED_LIBRARY)
+
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
