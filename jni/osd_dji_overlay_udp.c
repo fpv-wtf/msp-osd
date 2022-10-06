@@ -20,11 +20,13 @@
 #include "hw/dji_radio_shm.h"
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
+#include "fakehd/fakehd.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
 #include "util/fs_util.h"
+#include "rec/rec.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -47,6 +49,12 @@
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
+
+#define FONT_VARIANT_GENERIC 0
+#define FONT_VARIANT_BETAFLIGHT 1
+#define FONT_VARIANT_INAV 2
+#define FONT_VARIANT_ARDUPILOT 3
+#define FONT_VARIANT_KISS_ULTRA 4
 
 #define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
@@ -78,6 +86,9 @@ typedef struct display_info_s {
     void *font_page_2;
 } display_info_t;
 
+static void rec_msp_draw_complete_hook();
+static uint8_t font_variant_from_string(char *variant_string);
+
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
 static uint16_t msp_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
@@ -85,6 +96,8 @@ static uint16_t msp_render_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
 static uint8_t which_fb = 0;
+
+static char current_fc_variant[5];
 
 static display_info_t sd_display_info = {
     .char_width = 31,
@@ -103,7 +116,7 @@ static display_info_t full_display_info = {
     .font_width = 24,
     .font_height = 36,
     .x_offset = 0,
-    .y_offset = 9,
+    .y_offset = 0,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
 };
@@ -140,96 +153,6 @@ static display_info_t *current_display_info;
 
 int event_fd;
 
-/* FakeHD: spread characters for a small OSD across the whole screen */
-
-#define FAKEHD_ENABLE_KEY "fakehd_enable"
-static int fakehd_enabled = 0;
-static int fakehd_trigger_x = 99;
-static int fakehd_trigger_y = 99;
-
-static void check_is_fakehd_enabled()
-{
-    DEBUG_PRINT("checking for fakehd\n");
-    if (get_boolean_config_value(FAKEHD_ENABLE_KEY))
-    {
-        DEBUG_PRINT("fakehd enabled\n");
-        fakehd_enabled = 1;
-    } else {
-        DEBUG_PRINT("fakehd disabled\n");
-    }
-}
-
-static void fakehd_map_sd_character_map_to_hd()
-{
-    int render_x = 0;
-    int render_y = 0;
-    for (int y = 15; y >= 0; y--)
-    {
-        for (int x = 29; x >= 0; x--)
-        {
-            // skip if it's not a character
-            if (msp_character_map[x][y] != 0)
-            {
-                // if current element is fly min icon
-                // record the current position as the 'trigger' position
-                if (fakehd_trigger_x == 99 &&
-                msp_character_map[x][y] == 0x9c)
-                {
-                    DEBUG_PRINT("found fakehd triggger \n");
-                    fakehd_trigger_x = x;
-                    fakehd_trigger_y = y;
-                }
-
-                // if we have seen a trigger (see above) - and it's now gone, switch to centering
-                // this is intented to center the menu + postflight stats, which don't contain
-                // timer/battery symbols
-                if (
-                    fakehd_trigger_x != 99 &&
-                    msp_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c
-                )
-                {
-                    render_x = x + 15;
-                    render_y = y + 3;
-                } else {
-                    render_y = y;
-                    if (y >= 10)
-                    {
-                        render_y += 6;
-                    }
-                    else if (y >= 5)
-                    {
-                        render_y += 3;
-                    }
-                    // else
-                    // {
-                    //     render_y += 0;
-                    // }
-
-                    render_x = x;
-                    // a full/unspaced couple of rows for warnings...
-                    if (y == 6 || y == 7) {
-                        render_x += 15;
-                    } else if (x >= 20)
-                    {
-                        render_x += 29;
-                    }
-                    else if (x >= 10)
-                    {
-                        render_x += 15;
-                    }
-                    else
-                    {
-                        render_x += 1;
-                    }
-                }
-                msp_render_character_map[render_x][render_y] = msp_character_map[x][y];
-            }
-        }
-    }
-}
-
-/* Character map helpers */
-
 static void draw_character(display_info_t *display_info, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y], uint32_t x, uint32_t y, uint16_t c)
 {
     if ((x > (display_info->char_width - 1)) || (y > (display_info->char_height - 1))) {
@@ -246,7 +169,7 @@ static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
 
 static void draw_character_map(display_info_t *display_info, void* restrict fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
     if (display_info->font_page_1 == NULL) {
-        // give up if we don't have a font loaded
+        DEBUG_PRINT("No font available, failed to draw.\n");
         return;
     }
     void *font_page_2 = display_info->font_page_2 == NULL ? display_info->font_page_1 : display_info->font_page_2;
@@ -294,8 +217,8 @@ static void draw_screen() {
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
 
-    if (fakehd_enabled) {
-        fakehd_map_sd_character_map_to_hd();
+    if (fakehd_is_enabled()) {
+        fakehd_map_sd_character_map_to_hd(msp_character_map, msp_render_character_map);
         draw_character_map(current_display_info, fb_addr, msp_render_character_map);
     } else {
         draw_character_map(current_display_info, fb_addr, msp_character_map);
@@ -324,6 +247,16 @@ static void render_screen() {
 
 static void msp_draw_complete() {
     render_screen();
+
+    if (rec_is_enabled()) {
+        rec_msp_draw_complete_hook();
+        if (rec_is_osd_recording() == true)
+        {
+            rec_write_frame(
+                fakehd_is_enabled() ? msp_render_character_map : msp_character_map,
+                MAX_DISPLAY_X * MAX_DISPLAY_Y);
+        }
+    }
 }
 
 static void msp_callback(msp_msg_t *msp_message)
@@ -333,24 +266,66 @@ static void msp_callback(msp_msg_t *msp_message)
 
 /* Font helper methods */
 
-static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t page) {
-    char name_buf[len];
-    if (is_hd) {
-        snprintf(name_buf, len, "%s_hd", font_path);
-    } else {
-        snprintf(name_buf, len, "%s", font_path);
+static uint8_t font_variant_from_string(char *variant_string) {
+    uint8_t font_variant = FONT_VARIANT_GENERIC;
+    if(strncmp(current_fc_variant, "ARDU", 4) == 0) {
+        font_variant = FONT_VARIANT_ARDUPILOT;
+    } else if (strncmp(current_fc_variant, "BTFL", 4) == 0) {
+        font_variant = FONT_VARIANT_BETAFLIGHT;
+    } else if (strncmp(current_fc_variant, "INAV", 4) == 0) {
+        font_variant = FONT_VARIANT_INAV;
+    } else if (strncmp(current_fc_variant, "ULTR", 4) == 0) {
+        font_variant = FONT_VARIANT_KISS_ULTRA;
     }
-    if (page > 0) {
-        snprintf(font_path_dest, len, "%s_%d.bin", name_buf, page + 1);
+    return font_variant;
+}
+
+static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t font_variant, uint8_t page)
+{
+    char name_buf[len];
+    char res_buf[len];
+
+    switch (font_variant)
+    {
+        case FONT_VARIANT_BETAFLIGHT:
+            snprintf(name_buf, len, "%s_bf", font_path);
+            break;
+        case FONT_VARIANT_INAV:
+            snprintf(name_buf, len, "%s_inav", font_path);
+            break;
+        case FONT_VARIANT_ARDUPILOT:
+            snprintf(name_buf, len, "%s_ardu", font_path);
+            break;
+        case FONT_VARIANT_KISS_ULTRA:
+            snprintf(name_buf, len, "%s_ultra", font_path);
+            break;
+        default:
+            snprintf(name_buf, len, "%s", font_path);
+    }
+
+    if (is_hd)
+    {
+        // surely there's a better way...
+        snprintf(res_buf, len, "%s", "_hd");
     } else {
-        snprintf(font_path_dest, len, "%s.bin", name_buf);
+        snprintf(res_buf, len, "%s", "");
+    }
+
+    if (page > 0)
+    {
+        snprintf(font_path_dest, len, "%s%s_%d.bin", name_buf, res_buf, page + 1);
+    }
+    else
+    {
+        snprintf(font_path_dest, len, "%s%s.bin", name_buf, res_buf);
     }
 }
 
-static int open_font(const char *filename, void** font, uint8_t page, uint8_t is_hd) {
+static int open_font(const char *filename, void **font, uint8_t page, uint8_t is_hd, uint8_t font_variant)
+{
     char file_path[255];
-    get_font_path_with_prefix(file_path, filename, 255, is_hd, page);
-    printf("Opening font: %s\n", file_path);
+    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant, page);
+    DEBUG_PRINT("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
     stat(file_path, &st);
@@ -359,13 +334,13 @@ static int open_font(const char *filename, void** font, uint8_t page, uint8_t is
     size_t desired_filesize = display_info.font_height *  display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
     if(filesize != desired_filesize) {
         if (filesize != 0) {
-            printf("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
+            DEBUG_PRINT("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
         }
         return -1;
     }
     int fd = open(file_path, O_RDONLY, 0);
     if (!fd) {
-        printf("Could not open file %s\n", file_path);
+        DEBUG_PRINT("Could not open file %s\n", file_path);
         return -1;
     }
     void* font_data = malloc(desired_filesize);
@@ -374,7 +349,7 @@ static int open_font(const char *filename, void** font, uint8_t page, uint8_t is
         memcpy(font_data, mmappedData, desired_filesize);
         *font = font_data;
     } else {
-        printf("Could not map font %s\n", file_path);
+        DEBUG_PRINT("Could not map font %s\n", file_path);
         free(font_data);
         *font = 0;
     }
@@ -383,51 +358,26 @@ static int open_font(const char *filename, void** font, uint8_t page, uint8_t is
     return 0;
 }
 
-static void load_font() {
-    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_1, 0, 0) < 0) {
-          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_1, 0, 0);
+static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, uint8_t font_variant) {
+    // Note: load_font will not replace an existing font.
+    if(*font_buffer == NULL) {
+        if (open_font(SDCARD_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
+            if (open_font(ENTWARE_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
+                open_font(FALLBACK_FONT_PATH, font_buffer, page, is_hd, font_variant);
+            }
         }
     }
-    if (open_font(SDCARD_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &sd_display_info.font_page_2, 1, 0) < 0) {
-          open_font(FALLBACK_FONT_PATH, &sd_display_info.font_page_2, 1, 0);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_1, 0, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_1, 0, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &hd_display_info.font_page_2, 1, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &hd_display_info.font_page_2, 1, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
-    {
-        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_1, 0, 1) < 0)
-        {
-            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_1, 0, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
-    {
-        if (open_font(ENTWARE_FONT_PATH, &full_display_info.font_page_2, 1, 1) < 0)
-        {
-            open_font(FALLBACK_FONT_PATH, &full_display_info.font_page_2, 1, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_1, 0, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_1, 0, 1);
-        }
-    }
-    if (open_font(SDCARD_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
-        if (open_font(ENTWARE_FONT_PATH, &overlay_display_info.font_page_2, 1, 1) < 0) {
-          open_font(FALLBACK_FONT_PATH, &overlay_display_info.font_page_2, 1, 1);
-        }
-    }
+}
+
+static void load_fonts(uint8_t font_variant) {
+    load_font(&sd_display_info.font_page_1, 0, 0, font_variant);
+    load_font(&sd_display_info.font_page_2, 1, 0, font_variant);
+    load_font(&hd_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&hd_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&full_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&full_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&overlay_display_info.font_page_1, 0, 1, font_variant);
+    load_font(&overlay_display_info.font_page_2, 1, 1, font_variant);
 }
 
 
@@ -435,19 +385,38 @@ static void close_fonts(display_info_t *display_info) {
     if (display_info->font_page_1 != NULL)
     {
         free(display_info->font_page_1);
+        display_info->font_page_1 = NULL;
     }
     if (display_info->font_page_2 != NULL)
     {
         free(display_info->font_page_2);
+        display_info->font_page_2 = NULL;
     }
+}
+
+static void close_all_fonts() {
+    close_fonts(&sd_display_info);
+    close_fonts(&hd_display_info);
+    close_fonts(&overlay_display_info);
+    close_fonts(&full_display_info);
 }
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
-    if(is_hd) {
-        current_display_info = &hd_display_info;
-    } else {
-        current_display_info = &sd_display_info;
+
+    switch (is_hd) {
+        case 3:
+            fakehd_disable();
+            current_display_info = &full_display_info;
+            break;
+        case 2:
+        case 1:
+            fakehd_disable();
+            current_display_info = &hd_display_info;
+            break;
+        default:
+            current_display_info = &sd_display_info;
+            break;
     }
 }
 
@@ -496,58 +465,58 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     // No idea what this "plane mode" actually does but it's different on V2
     uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
 
-    printf("acquire plane\n");
+    DEBUG_PRINT("acquire plane\n");
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
-        printf("failed to acquire plane");
+        DEBUG_PRINT("failed to acquire plane");
         exit(0);
     }
     res = duss_hal_display_register_frame_cycle_callback(display_state->disp_instance_handle, plane_id, &pop_func, 0);
     if (res != 0) {
-        printf("failed to register callback");
+        DEBUG_PRINT("failed to register callback");
         exit(0);
     }
 
     res = duss_hal_display_plane_blending_set(display_state->disp_instance_handle, plane_id, display_state->pb_0);
 
     if (res != 0) {
-        printf("failed to set blending");
+        DEBUG_PRINT("failed to set blending");
         exit(0);
     }
-    printf("alloc ion buf\n");
+    DEBUG_PRINT("alloc ion buf\n");
     res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_0,0x473100,0x400,0,0x17);
     if (res != 0) {
-        printf("failed to allocate VRAM");
+        DEBUG_PRINT("failed to allocate VRAM");
         exit(0);
     }
     res = duss_hal_mem_map(display_state->ion_buf_0, &display_state->fb0_virtual_addr);
     if (res != 0) {
-        printf("failed to map VRAM");
+        DEBUG_PRINT("failed to map VRAM");
         exit(0);
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_0, &display_state->fb0_physical_addr);
     if (res != 0) {
-        printf("failed to get FB0 phys addr");
+        DEBUG_PRINT("failed to get FB0 phys addr");
         exit(0);
     }
-    printf("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
+    DEBUG_PRINT("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
 
     res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_1,0x473100,0x400,0,0x17);
     if (res != 0) {
-        printf("failed to allocate FB1 VRAM");
+        DEBUG_PRINT("failed to allocate FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_map(display_state->ion_buf_1,&display_state->fb1_virtual_addr);
     if (res != 0) {
-        printf("failed to map FB1 VRAM");
+        DEBUG_PRINT("failed to map FB1 VRAM");
         exit(0);
     }
     res = duss_hal_mem_get_phys_addr(display_state->ion_buf_1, &display_state->fb1_physical_addr);
     if (res != 0) {
-        printf("failed to get FB1 phys addr");
+        DEBUG_PRINT("failed to get FB1 phys addr");
         exit(0);
     }
-    printf("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
+    DEBUG_PRINT("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
 
     for(int i = 0; i < 2; i++) {
         duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
@@ -604,7 +573,7 @@ static void check_is_au_overlay_enabled()
 
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
-    DEBUG_PRINT("got data %f mbit %d C %f V\n", packet->tx_bitrate / 1000.0f, packet->tx_temperature, packet->tx_voltage / 64.0f);
+    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant);
     char str[8];
     clear_overlay();
     if(au_overlay_enabled) {
@@ -612,6 +581,51 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+    }
+    if(len > 6) {
+        DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
+        // should have FC type
+        if(strncmp(current_fc_variant, packet->fc_variant, 4) != 0) {
+            memcpy(current_fc_variant, &packet->fc_variant, 4);
+            DEBUG_PRINT("Changed current FC variant to %.4s\n", current_fc_variant);
+            close_all_fonts();
+            load_fonts(font_variant_from_string(current_fc_variant));
+            // This is not a typo - fill in any missing fonts for the current variant with the generic one.
+            load_fonts(FONT_VARIANT_GENERIC);
+        }
+    }
+}
+
+/* Recording hooks */
+
+static void rec_msp_draw_complete_hook()
+{
+    if (rec_is_osd_recording() == false && rec_is_gls_recording() == true)
+    {
+        if (current_fc_variant[0] == '\0')
+        {
+            DEBUG_PRINT("msp_osd: gls started recording, but no fc variant yet!?\n");
+            return;
+        }
+
+        DEBUG_PRINT("msp_osd: gls started recording, start osd rec\n");
+
+        rec_config_t config = {
+            .char_width = current_display_info->char_width,
+            .char_height = current_display_info->char_height,
+            .font_width = current_display_info->font_width,
+            .font_height = current_display_info->font_height,
+            .x_offset = current_display_info->x_offset,
+            .y_offset = current_display_info->y_offset,
+            .font_variant = font_variant_from_string(current_fc_variant),
+        };
+
+        rec_start(&config);
+    }
+    else if (rec_is_osd_recording() == true && rec_is_gls_recording() == false)
+    {
+        DEBUG_PRINT("msp_osd: gls stopped recording, stop osd rec\n");
+        rec_stop();
     }
 }
 
@@ -631,13 +645,17 @@ void osd_enable() {
 
 void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle)
 {
-    check_is_fakehd_enabled();
+    memset(current_fc_variant, 0, sizeof(current_fc_variant));
+
+    load_fakehd_config();
+    rec_load_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
-    printf("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
+    DEBUG_PRINT("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
 
-    if (fakehd_enabled) {
+    if (fakehd_is_enabled())
+    {
         current_display_info = &full_display_info;
     } else {
         current_display_info = &sd_display_info;
@@ -660,8 +678,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
-    printf("started up, listening on port %d\n", MSP_PORT);
-
+    printf("*** MSP-OSD: MSP-OSD started up, listening on port %d\n", MSP_PORT);
 
     struct pollfd poll_fds[3];
     int recv_len = 0;
@@ -674,7 +691,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     memset(&display_start, 0, sizeof(display_start));
     memset(&button_start, 0, sizeof(button_start));
 
-    load_font();
+    load_fonts(FONT_VARIANT_GENERIC);
     open_dji_radio_shm(&radio_shm);
     start_display(is_v2_goggles, disp, ion_handle);
 

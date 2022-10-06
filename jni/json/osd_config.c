@@ -15,8 +15,36 @@ static void load_config() {
 int get_boolean_config_value(const char* key) {
     load_config();
     if (root_object != NULL) {
-        return json_object_get_boolean(root_object, key);
+        // parson returns -1 for undefined keys, which can happen when
+        // new keys are defined in the schema - ensure they come back as false
+        return json_object_get_boolean(root_object, key) > 0;
     } else {
+        return 0;
+    }
+}
+
+const char * get_string_config_value(const char *key)
+{
+    load_config();
+    if (root_object != NULL)
+    {
+        return json_object_get_string(root_object, key);
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+int get_integer_config_value(const char *key)
+{
+    load_config();
+    if (root_object != NULL)
+    {
+        return (int)json_object_get_number(root_object, key);
+    }
+    else
+    {
         return 0;
     }
 }

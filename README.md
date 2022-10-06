@@ -10,7 +10,7 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 ## Easy Installation
 
-* Install WTFOS from https://testing.fpv.wtf . WTFOS must be installed on both the goggles and each AU/Vista.
+* Install WTFOS from https://fpv.wtf. WTFOS must be installed on both the goggles and each AU/Vista.
 * Install the msp-osd package on each device using WTFOS.
 * Reboot.
 
@@ -21,12 +21,13 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 ### Betaflight
 
-On *Betaflight*, this is done using the following commands:
+On *Betaflight*, this is done using the following commands in the CLI tab:
 
 ```
 set osd_displayport_device = MSP
 set displayport_msp_serial = <ConfiguratorUART - 1>
 set vcd_video_system = PAL
+save
 ```
 
 Eg.: If the Betaflight Configurator says your DJI VTx is attached to UART2, the value for **<ConfiguratorUART - 1>** is **1** - so you would use ```set displayport_msp_serial = 1```.
@@ -44,63 +45,162 @@ serial 0 64 115200 57600 0 115200
 serial 1 0 115200 57600 0 115200
 serial 30 1 115200 57600 0 115200
 # set displayport_msp_serial = 30
-```
 
 #### Fake HD
 
 Betaflight's OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
 
-Until Betaflight adds support for a larger grid, as a workaround, we have have a mode called "fakehd". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings. This then allows use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
+Until Betaflight adds support for a larger grid, as a workaround, we have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings, and the bottom row is unsplit/offset to sit between the DJI OSD elements. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
 
 A diagram to help...
 
 | Before (in Configurator) | After (in Goggles) |
 | -------|-------|
-|![Fakehd Before](/docs/img/fakehd_before.png "Before")|![Fakehd After](/docs/img/fakehd_after.png "After")|
+|![FakeHD Before](/docs/img/fakehd_before.png "Before")|![FakeHD After](/docs/img/fakehd_after.png "After")|
 
 ##### To configure/enable:
 
-1. Put an HD version of a Betaflight font in the root of your Goggles SD card - see 'Custom Fonts' below. (The default HD font is an iNav one - you will get the wrong glyphs for the various icons if you use it).
-2. Plug in your Goggles + connect them to the WTFOS Configurator.
-3. Click into the `CLI` tab.
-4. Type/paste `package-config set msp-osd fakehd_enable true` and press Enter.
-5. Type/paste `package-config apply msp-osd` and press Enter.
+1. Plug in your Goggles + connect them to the WTFOS Configurator.
+2. Click on the `CLI` tab.
+3. Type/paste `package-config set msp-osd fakehd_enable true` and press Enter.
+4. Type/paste `package-config apply msp-osd` and press Enter.
+5. Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
 
-NB: If you get an error doing the above in the CLI ensure `wtfos-package-config` package is installed; it should get installed automatically with MSP-OSD but we have had a couple of reports of this not happening on upgrades. If it is not - install it and then try the above steps again.
+Configuration of the grid is also possible; see below.
 
 No air unit/vista config is required.
 
-##### Notes:
+##### Menu Switching - Getting rid of gaps when displaying Menu / Post Flight Stats + displaying centered:
 
-a) In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using fakehd, you can add the `Timer 2` (more specifically - it's the `Total Armed Time` timer, which is the default for Timer 2 - it needs the "Fly Min" icon in the OSD) to indicate when you are in or out of the menu/stats. Fakehd will find the associated icon (Fly Min glyph) and then use its presence/absence to enable/disable the gaps. If you don't use this element, fakehd will still work; but you will see the gaps in the menus + post flight stats.
+In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using FakeHD, rather than having gaps + looking broken, you should set up menu switching.
 
-b) Because of a, if you switch to a different quad or OSD config (specifically the Fly Min element is in different place), fakehd will center - you will need to reboot your Goggles to get it back.
+FakeHD can use the presence/absence of a character in the OSD as a switch to indicate when you are in reular OSD mode or in the menu/stats and switch to centering temporarily when needed.
 
-c) Also because of a, if you are editing OSD in the configurator with the goggles on to preview and you move the Fly Min element around, it will cause the gaps to be disabled and everything to center. The new location of the Fly Min element will be found next time you reboot the goggles and it'll work as normal.
+By default, the `Throttle Position` icon is used (character 4) - but you can set any character you want. It needs to be something that doesn't flash or changge in the regular OSD, and ideally (but not essential) something that is never in the menu/post flight stats. The icons next to various elements are obvious choices here. You can set this using the `fakehd_menu_switch` configuration parameter.
 
-### iNav
+Betaflight has a list here: https://github.com/betaflight/betaflight/blob/master/docs/osd.md
 
-On *iNav*, this is done by selecting "HDZero VTx" as the Peripheral. Also select "HD" in the OSD tab. If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force iNav to switch into HD mode a second time.
+
+If you want to use FakeHD with some other Flight Controller, you will need to find an appropriate icon. (Let us know - we can include the information here).
+
+Finally, if you don't have anything in your OSD that works for menu switching, you can hide the menu switching character and the subsequent 5 characters, allowing you to add the `Throttle Position` element but not have to see it on screen. This is enabled by setting `fakehd_hide_menu_switch` to true.
+
+Notes:
+
+ - Because of this switching feature, if you change to a different quad or OSD config (specifically the switch element is in a different place), FakeHD will center - you will need to reboot your Goggles to get it to recognise the switch element in a different location.
+
+ - Also because of this switching, if you are editing OSD in the configurator with the goggles on to preview and you move the switching element around, it will cause the gaps to be disabled and everything to center. The new location of the switching element will be found next time you reboot the goggles and it'll work as normal.
+
+##### I don't want gaps at all...
+
+Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently (ie: you fly with it as well) - basically it places your 30 x 16 SD grid into the middle of an HD grid, there's never any gaps - see diagram below + compare to diagrams above.
+
+| After/Centered (in Goggles) `fakehd_lock_center` |
+|-------|
+|<img src="/docs/img/fakehd_centered.png" alt="After / Centered"  height=200 /> |
+
+##### Customising the default FakeHD grid.
+
+By default, FakeHD positions your SD grid into the HD grid as per the before/after diagram above.
+
+If this doesn't work for you for whatever reason, some customisation is available. It's necessarily a little complicated.
+
+Each row can be set to one of:
+
+| Code | Description |
+|---|----|
+| L | Left aligned, the SD row occupies cell 1-30, no gaps |
+| C | Center aligned, the SD row occupies cell 16-45, no gaps |
+| R | Right aligned, , the SD row occupies cell 31-60, no gaps |
+| W | Split A - Row is split in 3, the FakeHD default, filling cells 1-10, 26-35, 51-60 |
+| T | Split B - Row is split in 2, touching the sides - filling cells 1-15 + 46-60 |
+| F | Split C - Row is split in 2 and away from the sides - filling cells 11-25 + 36-50 |
+| D | DJI Special - Row is centered but pushed a little left; used to posiution the bottom row between the existing DJI OSD elements |
+
+<img src="/docs/img/fakehd_rows.png" alt="Columns"  height=200 />
+
+And then the columns as a whole can be set to one of:
+
+| Code | Description |
+|---|----|
+| T | Top aligned, OSD occupies rows 1-16  |
+| M | Center aligned, OSD occupies cells 4-19, no gaps |
+| B | Bottom aligned, , the OSD occupies rows 7-22 |
+| S | Split - FakeHD default - split in 3, OSD occupies rows 1 - 5, 9 - 13, 17-22 |
+
+Using the default row config; here's what they all look like:
+
+| T | M | B | S |
+| - | - | - | - |
+|<img src="/docs/img/fakehd_columns_t.png" alt="T" />|<img src="/docs/img/fakehd_columns_m.png" alt="M" />| <img src="/docs/img/fakehd_columns_b.png" alt="B" />| <img src="/docs/img/fakehd_after.png" alt="S" />|
+
+###### To configure rows
+
+Rows config accepts a 16 character long string; each character configuring it's corresponding row. The default FakeHD config would be set like this:
+
+`package-config set msp-osd fakehd_rows WWWWWWCCWWWWWWWD`
+
+The characters are case sensitive, but the configurator will reject invalid characters.
+
+###### To configure columns
+
+Columns accepts a single character configuring how the whole grid is aligned. The default would be set like this:
+
+`package-config set msp-osd fakehd_columns S`
+
+The characters are case sensitive, but the configurator will reject invalid characters.
+
+### INAV
+
+Select "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab if you'd like to use the HD Canvas.
+
+If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
+
+Due to a known issue, the INAV artificial horizon and other elements can become corrupted in packet loss situations. To work around this, assign a blank OSD screen to a switch, or assign a switch to the OSD feature. Toggling to a blank screen or turning the OSD on and then off will fix display corruption.
 
 ### Ardupilot
 
-On *Ardupilot*, this is done by setting:
+Please install an Ardupilot Custom or Nightly build from after 8/29/2022 for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
+
+Settings:
 
 ```
 SERIALx_PROTOCOL = 42
 OSD_TYPE = 5
 ```
+If you wish to use a Betaflight font instead of an Ardupilot font, you can also set ``MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
-and optionally
+More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
 
-`MSP_OPTIONS = 4` to allow the use of a Betaflight font.
+### KISS Ultra
+
+Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 ## Choose a Font
 
 * Download the latest fonts package from https://github.com/bri3d/mcm2img/releases/download/latest/mcm2img-fonts.tar.gz .
-* Rename the files for your desired font to `font` - so you should have four files: `font.bin, font_2.bin, font_hd.bin, font_hd_2.bin` .
+* Rename the files for your desired font to `font_<fc variant>` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
 * Place these four files on the root of your Goggles SD card.
 * Reboot.
+
+### FC Specific Font File Names
+
+| Flight controller | SD | HD |
+| ----------------- | -- | -- |
+| Betaflight       | `font_bf.bin`, `font_bf_2.bin` | `font_bf_hd.bin`, `font_bf_hd_2.bin` |
+| INAV       | `font_inav.bin`, `font_inav_2.bin` | `font_inav_hd.bin`, `font_inav_hd_2.bin`|
+| Ardupilot       | `font_ardu.bin`, `font_ardu_2.bin` | `font_ardu_hd.bin`, `font_ardu_hd_2.bin`|
+| KISS Ultra       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
+| Generic/Fallback       | `font.bin`, `font_2.bin` | `font_hd.bin`, `font_hd_2.bin`|
+
+VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
+
+### Suggested Third Party Fonts
+
+Nicer/more modern looking ones:
+
+ - KNIFA / Material - https://github.com/Knifa/material-osd / https://github.com/Knifa/material-osd/releases
+ - Shannon Baker - https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95
 
 ### Generate your own Font (advanced)
 
@@ -109,7 +209,7 @@ and optionally
 * Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller.
 
 * For Betaflight: https://github.com/betaflight/betaflight-configurator/tree/master/resources/osd/2
-* For iNav: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
+* For INAV: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
 * For Ardupilot: https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_OSD/fonts
 
 * Run `python3 mcm2img.py mcmfile.mcm font RGBA 255 255 255`
@@ -132,11 +232,17 @@ To apply options, type `package-config apply msp-osd`.
 
 ### Current available options (Goggles):
 
-```
-fakehd_enable : enables FakeHD, true/false
-show_au_data : enables AU data overlay on the right, true/false
-show_waiting : enables or disables MSP WAITING message, true/false.
-```
+| Option | Description | Type |
+| ------ | ----------- | ---- |
+|`fakehd_enable`| enables FakeHD; the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled of the Flight Controller supports proper HD / RealHD | true/false|
+|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postfligght and triggger centering. Defaults to 4 (Betaflight Throttle). | integer/number |
+|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false |
+| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D |
+| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S |
+|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false |
+|`show_au_data`| enables AU data overlay on the right | true/false|
+|`show_waiting`| enables or disables MSP WAITING message | true/false.|
+
 
 So for example, to disable the WAITING message:
 
@@ -152,7 +258,7 @@ None
 
 ## FAQ / Suggestions
 
-### How do I create a new font (for iNav, Ardupilot, etc.)?
+### How do I create a new font (for INAV, Ardupilot, etc.)?
 
 Use [mcm2img](https://github.com/bri3d/mcm2img).
 
@@ -168,6 +274,18 @@ We have a workaround that will work for some use cases; see fakehd under Betafli
 
 Otherwise, you can swap to a different font to make the characters smaller, but the grid spacing is the same.
 
+### How can I get my INAV/ArduPilot/Kiss Ultra OSD closer to the edge of the screen / Why is FakeHD closer to the edges?
+
+ - The current MSP HD grid size (ie: hd in INAV/ArduPilot/Kiss Ultra) is 50 characters wide. We'll call this RealHD.
+ - The goggles need 60 characters to go edge to edge - so the 50 in the hd grid doesn't quite fill it
+ - So the RealHD grid is displayed centered in the goggles - gaps on both edges.
+ - FakeHD had no compatibility constraints like this so we were able to use the full width of the screens.
+ - Consequently, FakeHD can get nearer the edges.
+ - Currently no solution to get RealHD closer to the edges.
+
+### What is RealHD
+
+Sometimes we refer to the proper MSP OSD HD grid supported by ArduPilot / Kiss Ultra / INAV as RealHD, to distinguish from FakeHD.
 # Compiling (development and debugging)
 
 To build for DJI, install the [Android NDK](https://developer.android.com/ndk/downloads) and add the NDK toolchain to your PATH, then use `ndk-build` to build the targets.
@@ -180,7 +298,7 @@ make -f Makefile.unix
 
 Provided targets and tools are:
 
-* `msp_displayport_mux` - takes MSP DisplayPort messages, bundles each frame (all DisplayPort messages between Draw commands) into a single UDP Datagram, and then blasts it over UDP. Also creates a PTY which passes through all _other_ MSP messages, for `dji_hdvt_uav` to connect to.
+* `msp_displayport_mux` - takes MSP DisplayPort messages, bundles each frame (all DisplayPort messages between Draw commands) into a single UDP Datagram, and then blasts it over UDP. Also creates a PTY that passes through all _other_ MSP messages, for `dji_hdvt_uav` to connect to.
 * `libdisplayport_osd_shim.so` - Patches the `dji_glasses` process to listen for these MSP DisplayPort messages over UDP, and blits them to a DJI framebuffer screen using the DJI framebuffer HAL `libduml_hal` access library, and a converted Betaflight font stored in `font.bin`.
 * `osd_sfml` - The same thing as `osd_dji`, but for a desktop PC using SFML and `bold.png`.
 
@@ -188,7 +306,7 @@ Additional debugging can be enabled using `-DDEBUG` as a CFLAG.
 
 ## Custom Build Installation (Goggles)
 
-Slightly different process for V1 vs V2 Goggles, they renamed some bits between the two.
+There's a slightly different process for V1 vs V2 Goggles, they renamed some bits between the two.
 
 ### FPV Goggles V1
 
