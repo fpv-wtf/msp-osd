@@ -36,7 +36,10 @@ Test if the value is correct by typing `save` and after the reboot `get displayp
 For Betaflight - ensure you set the Video Format to PAL or Auto in the OSD tab - otherwise you don't get access to the whole OSD area. Note that currently BF Configurator hides these options once you switch to MSP for OSD; the last command above should have done this for you.
 
 #### Softserial
-If you have connected the Vista/Airunit to a softserial port (not recommended  but sometimes necessary) run the `serial` command to list serial ports
+
+We don't recommend connecting via soft serial; results have been poor - it gives slow/laggy/inconsistent behaviour. But some users have reported it being usable, so if for whatever reason this is your only option, read on.
+
+If you have connected the Vista/Airunit to a softserial port run the `serial` command to list serial ports
 Use the value after _serial_ with set `displayport_msp_serial` but do **not** subtract 1 from the value. E.g.:
 ```
 # serial
@@ -45,6 +48,7 @@ serial 0 64 115200 57600 0 115200
 serial 1 0 115200 57600 0 115200
 serial 30 1 115200 57600 0 115200
 # set displayport_msp_serial = 30
+```
 
 #### Fake HD
 
