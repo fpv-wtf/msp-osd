@@ -12,8 +12,11 @@
 #define TOP_ROW 5
 #define BOTTOM_ROW 8
 
+#define TOAST_DISABLE_KEY "hide_diagnostics"
+
 #include <stdbool.h>
 
+int toast_enabled = 1;
 typedef struct ToastItem
 {
     char data[DATASIZE];
@@ -26,6 +29,13 @@ ToastItem *topStackPointer = NULL;
 
 struct timespec now, lasttoastremoval;
 
+void toast_load_config()
+{
+    if (get_boolean_config_value(TOAST_DISABLE_KEY))
+    {
+        toast_enabled = 0;
+    }
+}
 
 int toast_pop()
 {
@@ -45,6 +55,9 @@ int toast_pop()
 
 int toast(char *data, ...)
 {
+    if (!toast_enabled) {
+        return 0;
+    }
     ToastItem *TempPointer = malloc(sizeof(ToastItem));
     if (TempPointer == NULL)
         return 0;
@@ -74,6 +87,9 @@ int toast(char *data, ...)
 
 void do_toast(void (*display_print_string)(uint8_t init_x, uint8_t y, const char *string, uint8_t len))
 {
+    if (!toast_enabled) {
+        return;
+    }
 
     int numberoffNodes = 0;
 

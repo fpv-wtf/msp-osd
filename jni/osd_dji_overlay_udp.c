@@ -652,6 +652,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 {
     memset(current_fc_variant, 0, sizeof(current_fc_variant));
 
+    toast_load_config();
     load_fakehd_config();
     rec_load_config();
     check_is_au_overlay_enabled();
