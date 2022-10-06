@@ -246,6 +246,7 @@ To apply options, type `package-config apply msp-osd`.
 |`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false |
 |`show_au_data`| enables AU data overlay on the right | true/false|
 |`show_waiting`| enables or disables MSP WAITING message | true/false.|
+|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false.|
 
 
 So for example, to disable the WAITING message:
