@@ -1,0 +1,151 @@
+{
+    "title": "MSP OSD",
+    "description": "Configure the OSD",
+    "type": "object",
+    "required": [],
+    "properties": {
+        "show_waiting": {
+            "type": "boolean",
+            "title": "Show Waiting Message",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "show_au_data": {
+            "type": "boolean",
+            "title": "Show VTx Temperature and Voltage",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "rec_enabled": {
+            "type": "boolean",
+            "title": "Enable OSD recording",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "hide_diagnostics": {
+            "type": "boolean",
+            "title": "Hide diagnostic information",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "fakehd_enable": {
+            "type": "boolean",
+            "title": "Enable FakeHD Mode",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        }
+    },
+    "dependencies": {
+        "fakehd_enable": {
+            "oneOf": [
+                {
+                    "properties": {
+                        "fakehd_enable": {
+                            "enum": [
+                                false
+                            ]
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "fakehd_enable": {
+                            "enum": [
+                                true
+                            ]
+                        },
+                        "fakehd_hide_throttle_element": {
+                            "type": "boolean",
+                            "title": "FakeHD hide throttle element",
+                            "description": "",
+                            "enum": [
+                                true,
+                                false
+                            ]
+                        },
+                        "fakehd_lock_center": {
+                            "type": "boolean",
+                            "title": "Lock FakeHD to centered mode",
+                            "description": "",
+                            "enum": [
+                                true,
+                                false
+                            ]
+                        },
+                        "fakehd_menu_switch": {
+                            "type": "number",
+                            "title": "FakeHD menu switch character",
+                            "description": "",
+                            "minimum": 1,
+                            "maximum": 512
+                        },
+                        "fakehd_hide_menu_switch": {
+                            "type": "boolean",
+                            "title": "FakeHD hide the menu switch",
+                            "description": "",
+                            "enum": [
+                                true,
+                                false
+                            ]
+                        },
+                        "fakehd_columns": {
+                            "type": "string",
+                            "title": "FakeHD column config",
+                            "description": "",
+                            "oneOf": [
+                                {
+                                    "const": "T",
+                                    "title": "Top"
+                                },
+                                {
+                                    "const": "M",
+                                    "title": "Middle"
+                                },
+                                {
+                                    "const": "B",
+                                    "title": "Bottom"
+                                },
+                                {
+                                    "const": "S",
+                                    "title": "Split"
+                                }
+                            ]
+                        },
+                        "fakehd_rows": {
+                            "type": "string",
+                            "title": "FakeHD row config",
+                            "description": "16 characters; each one of LCRWTFD",
+                            "maxLength": 16,
+                            "minLength": 16,
+                            "pattern": "^[LCRWTFD]{16}$"
+                        },
+                        "fakehd_layout_debug": {
+                            "type": "boolean",
+                            "title": "FakeHD layout debug",
+                            "description": "Undocumented feature to fill the grid with numbers for layout debugging; remember to disable",
+                            "enum": [
+                                true,
+                                false
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
