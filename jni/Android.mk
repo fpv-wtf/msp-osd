@@ -30,7 +30,6 @@ LOCAL_SRC_FILES := \
 	util/fs_util.c \
 	toast/toast.c \
 	lz4/lz4.c
-
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -44,7 +43,7 @@ LOCAL_SRC_FILES:= \
 	msp/msp_displayport.c \
 	net/network.c \
 	net/serial.c \
-	util/fs_util.c \ 
+	util/fs_util.c \
 	lz4/lz4.c
 LOCAL_MODULE := msp_displayport_mux
 include $(BUILD_EXECUTABLE)

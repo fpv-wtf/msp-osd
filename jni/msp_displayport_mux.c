@@ -249,6 +249,9 @@ int main(int argc, char *argv[]) {
     memset(msp_character_map_buffer, 0, sizeof(msp_character_map_buffer));
     memset(msp_character_map_draw, 0, sizeof(msp_character_map_draw));
 
+    int compression_dict_size = 0;
+    void *compression_dict = open_dict(COMPRESSED_DATA_VERSION, &compression_dict_size);
+
     int opt;
     uint8_t fast_serial = 0;
     uint8_t msp_command_number = 0;
@@ -329,7 +332,7 @@ int main(int argc, char *argv[]) {
         display_driver->set_options = &msp_set_options;
 
         lz4_ref_ctx = LZ4_createStream();
-        LZ4_loadDict(lz4_ref_ctx, dict, dictSize);
+        LZ4_loadDict(lz4_ref_ctx, compression_dict, compression_dict_size);
     }
 
     uint8_t serial_data[256];

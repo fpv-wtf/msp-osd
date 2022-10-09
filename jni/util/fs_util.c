@@ -3,6 +3,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
+#define DICTIONARY_PATH "/opt/mspdictionaries"
 
 int32_t get_int_from_fs(char* path) {
     int32_t val;
@@ -18,4 +22,24 @@ int32_t get_int_from_fs(char* path) {
     }
     close(fd);
     return val;
+}
+
+void *open_dict(int dict_version, int *size) {
+    char file_path[255];
+    snprintf(file_path, 255, "%s/dictionary_%d.bin", DICTIONARY_PATH, dict_version);
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    stat(file_path, &st);
+    size_t filesize = st.st_size;
+    int fd = open(file_path, O_RDONLY, 0);
+    if (!fd) {
+        return -1;
+    }
+    void* dict = malloc(filesize);
+    void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
+    *size = filesize;
+    memcpy(dict, mmappedData, filesize);
+    close(fd);
+    munmap(mmappedData, filesize);
+    return dict;
 }

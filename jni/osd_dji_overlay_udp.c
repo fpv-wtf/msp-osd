@@ -52,7 +52,6 @@
 
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
-#define DICTIONARY_PATH "/opt/mspdictionaries"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
 #define FONT_VARIANT_GENERIC 0
@@ -625,28 +624,6 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
             break;
     }
     LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
-}
-
-static void *open_dict(int dict_version, int *size) {
-    char file_path[255];
-    snprintf(file_path, 255, "%s/dictionary_%d.bin", DICTIONARY_PATH, dict_version);
-    DEBUG_PRINT("Opening OSD Compression Dictionary: %s\n", file_path);
-    struct stat st;
-    memset(&st, 0, sizeof(st));
-    stat(file_path, &st);
-    size_t filesize = st.st_size;
-    int fd = open(file_path, O_RDONLY, 0);
-    if (!fd) {
-        DEBUG_PRINT("Could not open file %s\n", file_path);
-        return -1;
-    }
-    void* dict = malloc(filesize);
-    void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
-    *size = filesize;
-    memcpy(dict, mmappedData, filesize);
-    close(fd);
-    munmap(mmappedData, filesize);
-    return dict;
 }
 
 /* Recording hooks */
