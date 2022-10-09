@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #define NSEC_PER_SEC 1000000000
+#define MSEC_PER_SEC 1000
 
 static inline void timespec_subtract(struct timespec *res, const struct timespec *a, const struct timespec *b)
 {

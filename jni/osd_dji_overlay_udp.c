@@ -21,6 +21,7 @@
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
 #include "fakehd/fakehd.h"
+#include "lz4/lz4.h"
 #include "toast/toast.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
@@ -31,6 +32,8 @@
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
+#define COMPRESSED_DATA_PORT 7656
+#define DICTIONARY_VERSION 1
 
 #define WIDTH 1440
 #define HEIGHT 810
@@ -49,6 +52,7 @@
 
 #define FALLBACK_FONT_PATH "/blackbox/font"
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
+#define DICTIONARY_PATH "/opt/mspdictionaries"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
 #define FONT_VARIANT_GENERIC 0
@@ -601,6 +605,50 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     }
 }
 
+static void process_compressed_data(void *buf, int len, void *dict, int dict_size) {
+    compressed_data_header_t *header = (compressed_data_header_t*)buf;
+    if (header->version != DICTIONARY_VERSION) {
+        return;
+    }
+    switch (header->hd_options) {
+        case 3:
+            fakehd_disable();
+            current_display_info = &full_display_info;
+            break;
+        case 2:
+        case 1:
+            fakehd_disable();
+            current_display_info = &hd_display_info;
+            break;
+        default:
+            current_display_info = &sd_display_info;
+            break;
+    }
+    LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
+}
+
+static void *open_dict(int dict_version, int *size) {
+    char file_path[255];
+    snprintf(file_path, 255, "%s/dictionary_%d.bin", DICTIONARY_PATH, dict_version);
+    DEBUG_PRINT("Opening OSD Compression Dictionary: %s\n", file_path);
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    stat(file_path, &st);
+    size_t filesize = st.st_size;
+    int fd = open(file_path, O_RDONLY, 0);
+    if (!fd) {
+        DEBUG_PRINT("Could not open file %s\n", file_path);
+        return -1;
+    }
+    void* dict = malloc(filesize);
+    void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
+    *size = filesize;
+    memcpy(dict, mmappedData, filesize);
+    close(fd);
+    munmap(mmappedData, filesize);
+    return dict;
+}
+
 /* Recording hooks */
 
 static void rec_msp_draw_complete_hook()
@@ -684,9 +732,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
+    int compressed_socket_fd = bind_socket(COMPRESSED_DATA_PORT);
     printf("*** MSP-OSD: MSP-OSD started up, listening on port %d\n", MSP_PORT);
 
-    struct pollfd poll_fds[3];
+    struct pollfd poll_fds[4];
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[4096];
@@ -701,6 +750,9 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     open_dji_radio_shm(&radio_shm);
     start_display(is_v2_goggles, disp, ion_handle);
 
+    int compression_dict_size = 0;
+    void *compression_dict = open_dict(DICTIONARY_VERSION, &compression_dict_size);
+
     uint64_t event_number;
     while (!quit)
     {
@@ -710,10 +762,12 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[1].events = POLLIN;
         poll_fds[2].fd = data_socket_fd;
         poll_fds[2].events = POLLIN;
+        poll_fds[3].fd = compressed_socket_fd;
+        poll_fds[3].events = POLLIN;
 
         // wait 500ms for data; then do an update anyway
         // needed for toast and au data without FC
-        poll(poll_fds, 3, 500);
+        poll(poll_fds, 4, 500);
 
         if(poll_fds[0].revents) {
             // Got MSP UDP packet
@@ -746,6 +800,17 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 }
             }
         }
+
+        if(poll_fds[3].revents) {
+            // Got compressed data
+            if (0 < (recv_len = recvfrom(compressed_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            {
+                DEBUG_PRINT("got COMPRESSED data packet len %d\n", recv_len);
+                if(display_mode == DISPLAY_RUNNING) {
+                    process_compressed_data(buffer, recv_len, compression_dict, compression_dict_size);
+                }
+            }
+        }
         // lets toast run + update any notices
         do_toast(display_print_string);
 
@@ -754,8 +819,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     free(display_driver);
     free(msp_state);
+    free(compression_dict);
     close(msp_socket_fd);
     close(data_socket_fd);
+    close(compressed_socket_fd);
     close(event_fd);
     return;
 }
