@@ -2,7 +2,7 @@
     "title": "MSP OSD",
     "description": "Configure the OSD",
     "type": "object",
-    "units": [ "msp-osd" ],
+    "units": [ "msp-osd-goggles" ],
     "required": [],
     "properties": {
         "show_waiting": {

@@ -3,7 +3,7 @@
     "description": "Configure the OSD",
     "type": "object",
     "units": [
-        "msp-osd"
+        "msp-osd-airside"
     ],
     "required": [],
     "properties": {
