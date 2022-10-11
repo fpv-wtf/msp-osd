@@ -53,6 +53,10 @@
 			"name": "Enable OSD recording",
 			"widget": "checkbox"
 		},
+		"fakehd_fields": {
+			"name": "Enable OSD field higlight",
+			"widget": "checkbox"
+		},
         "hide_diagnostics": {
             "name": "Hide diagnostic information",
             "widget": "checkbox"
