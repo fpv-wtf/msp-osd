@@ -27,8 +27,9 @@
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
-#include "util/fs_util.h"
 #include "rec/rec.h"
+#include "util/fs_util.h"
+#include "util/time_util.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -701,7 +702,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     msp_state_t *msp_state = calloc(1, sizeof(msp_state_t));
     msp_state->cb = &msp_callback;
 
-    event_fd = eventfd(0, NULL);
+    event_fd = eventfd(0, 0);
     assert(event_fd > 0);
 
     dji_shm_state_t radio_shm;
@@ -715,13 +716,13 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     struct pollfd poll_fds[4];
     int recv_len = 0;
     uint8_t byte = 0;
-    uint8_t buffer[4096];
+    uint8_t buffer[8192];
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
-    struct timespec button_start, display_start, now;
-    memset(&display_start, 0, sizeof(display_start));
-    memset(&button_start, 0, sizeof(button_start));
+    struct timespec last_render, now;
+    memset(&last_render, 0, sizeof(last_render));
+    memset(&now, 0, sizeof(now));
 
     load_fonts(FONT_VARIANT_GENERIC);
     open_dji_radio_shm(&radio_shm);
@@ -742,9 +743,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[3].fd = compressed_socket_fd;
         poll_fds[3].events = POLLIN;
 
-        // wait 500ms for data; then do an update anyway
-        // needed for toast and au data without FC
-        poll(poll_fds, 4, 500);
+        // spin every 250ms if we didn't get a packet, then check and see if we need to do the toast/overlay logic
+        poll(poll_fds, 4, 250);
+
+        clock_gettime(CLOCK_MONOTONIC, &now);
 
         if(poll_fds[0].revents) {
             // Got MSP UDP packet
@@ -771,8 +773,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             // Got eventfd message from another thread to enable/disable OSD
             if (0 < (recv_len = read(event_fd, &event_number, sizeof(uint64_t)))) {
                 if(event_number > 1) {
+                    DEBUG_PRINT("Display running transition\n");
                     display_mode = DISPLAY_RUNNING;
                 } else {
+                    DEBUG_PRINT("Display disabled transition\n");
                     display_mode = DISPLAY_DISABLED;
                 }
             }
@@ -788,10 +792,14 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
                 }
             }
         }
-        // lets toast run + update any notices
-        do_toast(display_print_string);
 
-        render_screen();
+        if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / 2)) {
+            // More than 500ms have elapsed, let's go ahead and manually render
+            clock_gettime(CLOCK_MONOTONIC, &last_render);
+            // lets toast run + update any notices
+            do_toast(display_print_string);
+            render_screen();
+        }
     }
 
     free(display_driver);

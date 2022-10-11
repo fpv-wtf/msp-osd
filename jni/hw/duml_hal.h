@@ -25,8 +25,6 @@ typedef struct duss_osal_mutex_handle_t duss_osal_mutex_handle_t, *Pduss_osal_mu
 
 typedef struct duss_hal_obj_dev_t duss_hal_obj_dev_t, *Pduss_hal_obj_dev_t;
 
-typedef uint8_t duss_hal_state_t;
-
 typedef struct duss_hal_obj * duss_hal_obj_handle_t;
 
 struct duss_hal_obj_dev_t {
@@ -156,13 +154,9 @@ struct __attribute__((__packed__)) duss_frame_buffer {
 
 typedef struct duss_frame_buffer duss_frame_buffer_t;
 
-typedef uint8_t duss_hal_class_t;
-
 typedef struct duss_hal_device_desc_t duss_hal_device_desc_t, *Pduss_hal_device_desc_t;
 
 typedef struct duss_hal_obj duss_hal_obj, *Pduss_hal_obj;
-
-typedef struct duss_hal_obj * duss_hal_obj_handle_t;
 
 typedef struct duss_disp_instance_handle_t duss_disp_instance_handle_t, *Pduss_disp_instance_handle_t;
 
