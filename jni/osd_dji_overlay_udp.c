@@ -101,6 +101,7 @@ static uint16_t msp_render_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
 static uint8_t which_fb = 0;
+struct timespec last_render;
 
 static char current_fc_variant[5];
 
@@ -248,6 +249,7 @@ static void render_screen() {
     dji_display_push_frame(dji_display, which_fb);
     which_fb = !which_fb;
     DEBUG_PRINT("drew a frame\n");
+    clock_gettime(CLOCK_MONOTONIC, &last_render);
 }
 
 static void msp_draw_complete() {
@@ -720,7 +722,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
-    struct timespec last_render, now;
+    struct timespec now;
     memset(&last_render, 0, sizeof(last_render));
     memset(&now, 0, sizeof(now));
 
@@ -795,7 +797,6 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
         if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / 2)) {
             // More than 500ms have elapsed, let's go ahead and manually render
-            clock_gettime(CLOCK_MONOTONIC, &last_render);
             // lets toast run + update any notices
             do_toast(display_print_string);
             render_screen();
