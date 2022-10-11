@@ -13,6 +13,7 @@
 #define FAKEHD_LAYOUT_DEBUG_KEY "fakehd_layout_debug"
 #define FAKEHD_COLUMNS_KEY "fakehd_columns"
 #define FAKEHD_ROWS_KEY "fakehd_rows"
+#define FAKEHD_FIELDS_KEY "fakehd_fields"
 
 #define INPUT_ROWS 16
 #define INPUT_COLS 30
@@ -26,6 +27,7 @@ static int fakehd_trigger_x = 99;
 static int fakehd_trigger_y = 99;
 static char fakehd_columns = 'S';
 static char fakehd_rows[INPUT_COLS] = "WWWWWWCCWWWWWWWD";
+static int fakehd_fields = 0;
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, fmt, ##args)
@@ -100,6 +102,12 @@ void load_fakehd_config()
     {
         DEBUG_PRINT("fakehd found col conf\n");
         fakehd_columns = cols[0];
+    }
+    const char * fields = get_string_config_value(FAKEHD_FIELDS_KEY);
+    if (fields)
+    {
+        DEBUG_PRINT("fakehd field config on\n");
+        fakehd_fields = 1;
     }
     DEBUG_PRINT("fakehd finished config init\n");
 }
@@ -203,6 +211,10 @@ void fakehd_map_sd_character_map_to_hd(uint16_t sd_character_map[60][22], uint16
             if (fakehd_layout_debug && sd_character_map[x][y] == 0) {
                 sd_character_map[x][y] = 48 + (x % 10);
             }
+
+            if (sd_character_map[x][y] == 0 && fakehd_fields == 1) {
+                sd_character_map[x][y] = 0x09;
+            }            
 
             // skip if it's not a character
             if (sd_character_map[x][y] != 0)
