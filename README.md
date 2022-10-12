@@ -21,6 +21,10 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 ### Betaflight
 
+We have a configurator preset available - "FPV.WTF MSP-OSD", just be sure to pick the UART your Vista/Air unit is connected to.
+
+#### Or to configure manually
+
 On *Betaflight*, this is done using the following commands in the CLI tab:
 
 ```
