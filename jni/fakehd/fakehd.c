@@ -209,11 +209,7 @@ void fakehd_map_sd_character_map_to_hd(uint16_t sd_character_map[60][22], uint16
             {
                 // if current element is fly min or throttle icon
                 // record the current position as the 'trigger' position
-                if (fakehd_trigger_x == 99 &&
-                    (sd_character_map[x][y] == 0x9c // fly minutes icon (armed time)
-                     ||
-                     sd_character_map[x][y] == fakehd_menu_switch_char
-                     ))
+                if (fakehd_trigger_x == 99 && sd_character_map[x][y] == fakehd_menu_switch_char)
                 {
                     DEBUG_PRINT("found fakehd triggger \n");
                     fakehd_trigger_x = x;
@@ -226,7 +222,6 @@ void fakehd_map_sd_character_map_to_hd(uint16_t sd_character_map[60][22], uint16
                 if (
                     fakehd_lock_center ||
                     (fakehd_trigger_x != 99 &&
-                     sd_character_map[fakehd_trigger_x][fakehd_trigger_y] != 0x9c &&
                      sd_character_map[fakehd_trigger_x][fakehd_trigger_y] != fakehd_menu_switch_char))
                 {
                     render_x = x + 15;
