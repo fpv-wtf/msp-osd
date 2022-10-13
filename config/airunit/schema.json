@@ -7,6 +7,17 @@
       "cache_serial": {
         "name": "Cache Responses",
         "widget": "checkbox"
+      },
+      "compress_osd": {
+        "name": "Compress OSD",
+        "widget": "checkbox"
+      },
+      "osd_update_rate_hz": {
+        "name": "OSD update rate",
+        "widget": "range",
+        "min": 2,
+        "max": 20,
+        "step":1
       }
     },
     "units": [

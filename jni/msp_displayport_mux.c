@@ -7,10 +7,12 @@
 
 #include "hw/dji_radio_shm.h"
 #include "json/osd_config.h"
+#include "lz4/lz4.h"
 #include "net/data_protocol.h"
 #include "net/network.h"
 #include "net/serial.h"
 #include "msp/msp.h"
+#include "msp/msp_displayport.h"
 #include "util/time_util.h"
 #include "util/fs_util.h"
 
@@ -19,12 +21,19 @@
 
 #define FAST_SERIAL_KEY "fast_serial"
 #define CACHE_SERIAL_KEY "cache_serial"
+#define COMPRESS_KEY "compress_osd"
+#define UPDATE_RATE_KEY "osd_update_rate_hz"
 
 // The MSP_PORT is used to send MSP passthrough messages.
 // The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
+#define COMPRESSED_DATA_PORT 7656
+
+#define COMPRESSED_DATA_VERSION 1
+#define MAX_DISPLAY_X 60
+#define MAX_DISPLAY_Y 22
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
@@ -43,15 +52,24 @@ static uint8_t frame_buffer[8192]; // buffer a whole frame of MSP commands until
 static uint32_t fb_cursor = 0;
 
 static uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
-
 static char current_fc_identifier[4];
+
+/* For compressed full-frame transmission */
+static uint16_t msp_character_map_buffer[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static uint16_t msp_character_map_draw[MAX_DISPLAY_X][MAX_DISPLAY_Y];
+static uint8_t msp_hd_option = 0;
+static displayport_vtable_t *display_driver = NULL;
+LZ4_stream_t *lz4_ref_ctx = NULL;
+uint8_t update_rate_hz = 2;
 
 int pty_fd;
 int serial_fd;
 int socket_fd;
+int compressed_fd;
 
 static volatile sig_atomic_t quit = 0;
 static uint8_t serial_passthrough = 1;
+static uint8_t compress = 0;
 
 static void sig_handler(int _)
 {
@@ -107,20 +125,25 @@ static void rx_msp_callback(msp_msg_t *msp_message)
     // Process a received MSP message from FC and decide whether to send it to the PTY (DJI) or UDP port (MSP-OSD on Goggles)
     DEBUG_PRINT("FC->AU MSP msg %d with data len %d \n", msp_message->cmd, msp_message->size);
     if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
-        // This was an MSP DisplayPort message, so buffer it until we get a whole frame.
-        if(fb_cursor > sizeof(frame_buffer)) {
-            printf("Exhausted frame buffer! Resetting...\n");
-            fb_cursor = 0;
-            return;
-        }
-        uint16_t size = msp_data_from_msg(message_buffer, msp_message);
-        memcpy(&frame_buffer[fb_cursor], message_buffer, size);
-        fb_cursor += size;
-        if(msp_message->payload[0] == 4) {
-            // Once we have a whole frame of data, send it to the goggles.
-            write(socket_fd, frame_buffer, fb_cursor);
-            DEBUG_PRINT("DRAW! wrote %d bytes\n", fb_cursor);
-            fb_cursor = 0;
+        if (compress) {
+            // This was an MSP DisplayPort message and we're in compressed mode, so pass it off to the DisplayPort handlers.
+            displayport_process_message(display_driver, msp_message);
+        } else {
+            // This was an MSP DisplayPort message and we're in legacy mode, so buffer it until we get a whole frame.
+            if(fb_cursor > sizeof(frame_buffer)) {
+                printf("Exhausted frame buffer! Resetting...\n");
+                fb_cursor = 0;
+                return;
+            }
+            uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+            memcpy(&frame_buffer[fb_cursor], message_buffer, size);
+            fb_cursor += size;
+            if(msp_message->payload[0] == 4) {
+                // Once we have a whole frame of data, send it to the goggles.
+                write(socket_fd, frame_buffer, fb_cursor);
+                DEBUG_PRINT("DRAW! wrote %d bytes\n", fb_cursor);
+                fb_cursor = 0;
+            }
         }
     } else {
         uint16_t size = msp_data_from_msg(message_buffer, msp_message);
@@ -188,8 +211,46 @@ static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
     write(data_socket_fd, &data, sizeof(data));
 }
 
+/* MSP DisplayPort handlers for compressed mode */
+
+static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
+    msp_character_map_buffer[x][y] = c;
+}
+
+static void msp_clear_screen() {
+    memset(msp_character_map_buffer, 0, sizeof(msp_character_map_buffer));
+}
+
+static void msp_draw_complete() {
+    memcpy(msp_character_map_draw, msp_character_map_buffer, sizeof(msp_character_map_buffer));
+}
+
+static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
+   msp_clear_screen();
+   msp_hd_option = is_hd;
+}
+
+static void send_compressed_screen(int compressed_fd) {
+
+    LZ4_stream_t current_stream_state;
+    uint8_t dest_buf[sizeof(compressed_data_header_t) + LZ4_COMPRESSBOUND(sizeof(msp_character_map_draw))];
+    void *dest = &dest_buf;
+    memcpy(&current_stream_state, lz4_ref_ctx, sizeof(LZ4_stream_t));
+    int size = LZ4_compress_fast_extState_fastReset(&current_stream_state, msp_character_map_draw, (dest + sizeof(compressed_data_header_t)), sizeof(msp_character_map_draw), LZ4_compressBound(sizeof(msp_character_map_draw)), 1);
+    compressed_data_header_t *dest_header = (compressed_data_header_t *)dest;
+    dest_header->hd_options = msp_hd_option;
+    dest_header->version = COMPRESSED_DATA_VERSION;
+    write(compressed_fd, dest, size + sizeof(compressed_data_header_t));
+    DEBUG_PRINT("COMPRESSED: Sent %d bytes!\n", size);
+}
+
 int main(int argc, char *argv[]) {
     memset(current_fc_identifier, 0, sizeof(current_fc_identifier));
+    memset(msp_character_map_buffer, 0, sizeof(msp_character_map_buffer));
+    memset(msp_character_map_draw, 0, sizeof(msp_character_map_draw));
+
+    int compression_dict_size = 0;
+    void *compression_dict = open_dict(COMPRESSED_DATA_VERSION, &compression_dict_size);
 
     int opt;
     uint8_t fast_serial = 0;
@@ -219,6 +280,10 @@ int main(int argc, char *argv[]) {
 
     if(get_boolean_config_value(CACHE_SERIAL_KEY)) {
         serial_passthrough = 0;
+    }
+
+    if(get_boolean_config_value(COMPRESS_KEY)) {
+        compress = 1;
     }
 
     if(fast_serial == 1) {
@@ -255,19 +320,35 @@ int main(int argc, char *argv[]) {
         printf("Relinked %s to %s\n", argv[optind + 2], pty_name_ptr); 
     }
     socket_fd = connect_to_server(ip_address, MSP_PORT);
+    compressed_fd = connect_to_server(ip_address, COMPRESSED_DATA_PORT);
     int data_fd = connect_to_server(ip_address, DATA_PORT);
+
+    if (compress) {
+        update_rate_hz = get_integer_config_value(UPDATE_RATE_KEY);
+        display_driver = calloc(1, sizeof(displayport_vtable_t));
+        display_driver->draw_character = &msp_draw_character;
+        display_driver->clear_screen = &msp_clear_screen;
+        display_driver->draw_complete = &msp_draw_complete;
+        display_driver->set_options = &msp_set_options;
+
+        lz4_ref_ctx = LZ4_createStream();
+        LZ4_loadDict(lz4_ref_ctx, compression_dict, compression_dict_size);
+    }
+
     uint8_t serial_data[256];
     ssize_t serial_data_size;
-    struct timespec now, last;
+    struct timespec now, last_data, last_frame;
     clock_gettime(CLOCK_MONOTONIC, &now);
-    clock_gettime(CLOCK_MONOTONIC, &last);
+    clock_gettime(CLOCK_MONOTONIC, &last_data);
+    clock_gettime(CLOCK_MONOTONIC, &last_frame);
+
     while (!quit) {
         poll_fds[0].fd = serial_fd;
         poll_fds[1].fd = pty_fd;
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
 
-        poll(poll_fds, 2, 250);
+        poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 2));
         
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
@@ -295,13 +376,17 @@ int main(int argc, char *argv[]) {
             }
         }
         clock_gettime(CLOCK_MONOTONIC, &now);
-        if(timespec_subtract_ns(&now, &last) > (NSEC_PER_SEC / 2)) {
+        if(timespec_subtract_ns(&now, &last_data) > (NSEC_PER_SEC / 2)) {
             // More than 500ms have elapsed, let's go ahead and send a data frame
-            clock_gettime(CLOCK_MONOTONIC, &last);
+            clock_gettime(CLOCK_MONOTONIC, &last_data);
             send_data_packet(data_fd, &dji_radio);
             if(current_fc_identifier[0] == 0) {
                 send_variant_request(serial_fd);
             }
+        }
+        if(compress && (timespec_subtract_ns(&now, &last_frame) > (NSEC_PER_SEC / update_rate_hz))) {
+            send_compressed_screen(compressed_fd);
+            clock_gettime(CLOCK_MONOTONIC, &last_frame);
         }
     }
     close_dji_radio_shm(&dji_radio);
@@ -309,6 +394,13 @@ int main(int argc, char *argv[]) {
     close(pty_fd);
     close(socket_fd);
     close(data_fd);
+    close(compressed_fd);
+    if (display_driver != NULL) {
+        free(display_driver);
+    }
+    if (lz4_ref_ctx != NULL) {
+        free(lz4_ref_ctx);
+    }
     free(rx_msp_state);
     free(tx_msp_state);
 }

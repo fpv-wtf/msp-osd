@@ -21,6 +21,7 @@
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
 #include "fakehd/fakehd.h"
+#include "lz4/lz4.h"
 #include "toast/toast.h"
 #include "net/network.h"
 #include "net/data_protocol.h"
@@ -32,6 +33,8 @@
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
+#define COMPRESSED_DATA_PORT 7656
+#define DICTIONARY_VERSION 1
 
 #define WIDTH 1440
 #define HEIGHT 810
@@ -57,6 +60,9 @@
 #define FONT_VARIANT_INAV 2
 #define FONT_VARIANT_ARDUPILOT 3
 #define FONT_VARIANT_KISS_ULTRA 4
+
+#define FORCE_RENDER_HZ 2
+#define TOAST_HZ 2
 
 #define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
@@ -604,6 +610,30 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     }
 }
 
+static void process_compressed_data(void *buf, int len, void *dict, int dict_size) {
+    compressed_data_header_t *header = (compressed_data_header_t*)buf;
+    if (header->version != DICTIONARY_VERSION) {
+        return;
+    }
+    switch (header->hd_options) {
+        case 3:
+            fakehd_disable();
+            current_display_info = &full_display_info;
+            break;
+        case 2:
+        case 1:
+            fakehd_disable();
+            current_display_info = &hd_display_info;
+            break;
+        default:
+            current_display_info = &sd_display_info;
+            break;
+    }
+    int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
+    DEBUG_PRINT("Decompressed %d bytes!\n", decompressed_size);
+    render_screen();
+}
+
 /* Recording hooks */
 
 static void rec_msp_draw_complete_hook()
@@ -687,22 +717,27 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
+    int compressed_socket_fd = bind_socket(COMPRESSED_DATA_PORT);
     printf("*** MSP-OSD: MSP-OSD started up, listening on port %d\n", MSP_PORT);
 
-    struct pollfd poll_fds[3];
+    struct pollfd poll_fds[4];
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[8192];
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
-    struct timespec now;
+    struct timespec now, last_toast;
+    memset(&last_toast, 0, sizeof(last_toast));
     memset(&last_render, 0, sizeof(last_render));
     memset(&now, 0, sizeof(now));
 
     load_fonts(FONT_VARIANT_GENERIC);
     open_dji_radio_shm(&radio_shm);
     start_display(is_v2_goggles, disp, ion_handle);
+
+    int compression_dict_size = 0;
+    void *compression_dict = open_dict(DICTIONARY_VERSION, &compression_dict_size);
 
     uint64_t event_number;
     while (!quit)
@@ -713,9 +748,11 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[1].events = POLLIN;
         poll_fds[2].fd = data_socket_fd;
         poll_fds[2].events = POLLIN;
+        poll_fds[3].fd = compressed_socket_fd;
+        poll_fds[3].events = POLLIN;
 
         // spin every 250ms if we didn't get a packet, then check and see if we need to do the toast/overlay logic
-        poll(poll_fds, 3, 250);
+        poll(poll_fds, 4, 250);
 
         clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -753,18 +790,35 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             }
         }
 
-        if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / 2)) {
-            // More than 500ms have elapsed, let's go ahead and manually render
+        if(poll_fds[3].revents) {
+            // Got compressed data
+            if (0 < (recv_len = recvfrom(compressed_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
+            {
+                DEBUG_PRINT("got COMPRESSED data packet len %d\n", recv_len);
+                if(display_mode == DISPLAY_RUNNING) {
+                    process_compressed_data(buffer, recv_len, compression_dict, compression_dict_size);
+                }
+            }
+        }
+
+        if(timespec_subtract_ns(&now, &last_toast) > (NSEC_PER_SEC / TOAST_HZ)) {
             // lets toast run + update any notices
             do_toast(display_print_string);
+            clock_gettime(CLOCK_MONOTONIC, &last_toast);
+        }
+
+        if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / FORCE_RENDER_HZ)) {
+            // More than 500ms have elapsed without a render, let's go ahead and manually render
             render_screen();
         }
     }
 
     free(display_driver);
     free(msp_state);
+    free(compression_dict);
     close(msp_socket_fd);
     close(data_socket_fd);
+    close(compressed_socket_fd);
     close(event_fd);
     return;
 }

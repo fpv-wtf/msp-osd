@@ -6,3 +6,8 @@ typedef struct packet_data_s {
     uint16_t tx_voltage;
     char fc_variant[4];
 } __attribute__((packed)) packet_data_t;
+
+typedef struct compressed_data_header_s {
+    uint16_t version;
+    uint16_t hd_options;
+} __attribute__((packed)) compressed_data_header_t;

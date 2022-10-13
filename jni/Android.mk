@@ -28,7 +28,8 @@ LOCAL_SRC_FILES := \
 	rec/rec_shim.c \
 	rec/rec.c \
 	util/fs_util.c \
-	toast/toast.c
+	toast/toast.c \
+	lz4/lz4.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -39,9 +40,11 @@ LOCAL_SRC_FILES:= \
 	json/parson.c \
 	msp_displayport_mux.c \
 	msp/msp.c \
+	msp/msp_displayport.c \
 	net/network.c \
 	net/serial.c \
-	util/fs_util.c
+	util/fs_util.c \
+	lz4/lz4.c
 LOCAL_MODULE := msp_displayport_mux
 include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)

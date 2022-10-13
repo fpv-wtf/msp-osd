@@ -1,4 +1,6 @@
 {
     "fast_serial": false,
-    "cache_serial": false
+    "cache_serial": false,
+    "osd_update_rate_hz": 10,
+    "compress_osd": false
 }

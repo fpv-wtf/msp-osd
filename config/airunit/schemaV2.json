@@ -24,6 +24,22 @@
                 true,
                 false
             ]
-        }
+        },
+        "compress_osd": {
+            "title": "Compress OSD",
+            "type": "boolean",
+            "description": "Send full frames of compressed data instead of sending MSP to the goggles.",
+            "enum": [
+                true,
+                false
+            ]
+          },
+          "osd_update_rate_hz": {
+            "name": "OSD update rate (for Compressed OSD)",
+            "type": "number",
+            "description": "OSD update rate, used only for compressed OSD.",
+            "minimum": 1,
+            "maximum": 20
+          }
     }
 }

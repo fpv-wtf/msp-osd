@@ -24,10 +24,14 @@ all: jni/*
 install: all
 	install -d ipk/goggle/build/data/opt/fonts/
 	install fonts/*.bin ipk/goggle/build/data/opt/fonts/
+	install -d ipk/goggle/build/data/opt/mspdictionaries/
+	install dictionaries/*.bin ipk/goggle/build/data/opt/mspdictionaries/
 	install -d ipk/goggle/build/data/opt/etc/preload.d/
 	install libs/armeabi-v7a/libdisplayport_osd_shim.so ipk/goggle/build/data/opt/etc/preload.d/
 	install -d ipk/airunit/build/data/opt/bin/
 	install libs/armeabi-v7a/msp_displayport_mux ipk/airunit/build/data/opt/bin/
+	install -d ipk/airunit/build/data/opt/mspdictionaries/
+	install dictionaries/*.bin ipk/airunit/build/data/opt/mspdictionaries/
 	install -d ipk/airunit/build/data/opt/etc/package-config/msp-osd/
 	install config/airunit/* ipk/airunit/build/data/opt/etc/package-config/msp-osd/
 	install -d ipk/goggle/build/data/opt/etc/package-config/msp-osd/
