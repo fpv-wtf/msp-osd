@@ -1,0 +1,29 @@
+{
+    "title": "MSP OSD",
+    "description": "Configure the OSD",
+    "type": "object",
+    "units": [
+        "msp-osd-airside"
+    ],
+    "required": [],
+    "properties": {
+        "fast_serial": {
+            "type": "boolean",
+            "title": "Fast Serial",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "cache_serial": {
+            "type": "boolean",
+            "title": "Cache Responses",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        }
+    }
+}
