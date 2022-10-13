@@ -233,7 +233,8 @@ static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
 static void send_compressed_screen(int compressed_fd) {
 
     LZ4_stream_t current_stream_state;
-    void *dest = malloc(sizeof(compressed_data_header_t) + LZ4_compressBound(sizeof(msp_character_map_draw)));
+    uint8_t dest_buf[sizeof(compressed_data_header_t) + LZ4_COMPRESSBOUND(sizeof(msp_character_map_draw))];
+    void *dest = &dest_buf;
     memcpy(&current_stream_state, lz4_ref_ctx, sizeof(LZ4_stream_t));
     int size = LZ4_compress_fast_extState_fastReset(&current_stream_state, msp_character_map_draw, (dest + sizeof(compressed_data_header_t)), sizeof(msp_character_map_draw), LZ4_compressBound(sizeof(msp_character_map_draw)), 1);
     compressed_data_header_t *dest_header = (compressed_data_header_t *)dest;
@@ -241,7 +242,6 @@ static void send_compressed_screen(int compressed_fd) {
     dest_header->version = COMPRESSED_DATA_VERSION;
     write(compressed_fd, dest, size + sizeof(compressed_data_header_t));
     DEBUG_PRINT("COMPRESSED: Sent %d bytes!\n", size);
-    free(dest); 
 }
 
 int main(int argc, char *argv[]) {
@@ -348,7 +348,7 @@ int main(int argc, char *argv[]) {
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
 
-        poll(poll_fds, 2, (MSEC_PER_SEC / update_rate_hz / 2));
+        poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 2));
         
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
