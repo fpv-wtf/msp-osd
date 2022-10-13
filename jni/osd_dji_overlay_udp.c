@@ -61,6 +61,9 @@
 #define FONT_VARIANT_ARDUPILOT 3
 #define FONT_VARIANT_KISS_ULTRA 4
 
+#define FORCE_RENDER_HZ 2
+#define TOAST_HZ 2
+
 #define GOGGLES_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage5"
 
 #define EV_CODE_BACK 0xc9
@@ -626,7 +629,9 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
             current_display_info = &sd_display_info;
             break;
     }
-    LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
+    int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
+    DEBUG_PRINT("Decompressed %d bytes!\n", decompressed_size);
+    render_screen();
 }
 
 /* Recording hooks */
@@ -722,7 +727,8 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len=sizeof(src_addr);
     struct input_event ev;
-    struct timespec now;
+    struct timespec now, last_toast;
+    memset(&last_toast, 0, sizeof(last_toast));
     memset(&last_render, 0, sizeof(last_render));
     memset(&now, 0, sizeof(now));
 
@@ -795,10 +801,14 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             }
         }
 
-        if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / 2)) {
-            // More than 500ms have elapsed, let's go ahead and manually render
+        if(timespec_subtract_ns(&now, &last_toast) > (NSEC_PER_SEC / TOAST_HZ)) {
             // lets toast run + update any notices
             do_toast(display_print_string);
+            clock_gettime(CLOCK_MONOTONIC, &last_toast);
+        }
+
+        if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / FORCE_RENDER_HZ)) {
+            // More than 500ms have elapsed without a render, let's go ahead and manually render
             render_screen();
         }
     }

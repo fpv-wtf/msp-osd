@@ -231,16 +231,16 @@ static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
 }
 
 static void send_compressed_screen(int compressed_fd) {
-    LZ4_stream_t *current_stream_state = malloc(sizeof(LZ4_stream_t));
+
+    LZ4_stream_t current_stream_state;
     void *dest = malloc(sizeof(compressed_data_header_t) + LZ4_compressBound(sizeof(msp_character_map_draw)));
-    memcpy(current_stream_state, lz4_ref_ctx, sizeof(LZ4_stream_t));
-    int size = LZ4_compress_fast_extState_fastReset(current_stream_state, msp_character_map_draw, (dest + sizeof(compressed_data_header_t)), sizeof(msp_character_map_draw), sizeof(dest), 1);
+    memcpy(&current_stream_state, lz4_ref_ctx, sizeof(LZ4_stream_t));
+    int size = LZ4_compress_fast_extState_fastReset(&current_stream_state, msp_character_map_draw, (dest + sizeof(compressed_data_header_t)), sizeof(msp_character_map_draw), LZ4_compressBound(sizeof(msp_character_map_draw)), 1);
     compressed_data_header_t *dest_header = (compressed_data_header_t *)dest;
     dest_header->hd_options = msp_hd_option;
     dest_header->version = COMPRESSED_DATA_VERSION;
     write(compressed_fd, dest, size + sizeof(compressed_data_header_t));
     DEBUG_PRINT("COMPRESSED: Sent %d bytes!\n", size);
-    free(current_stream_state);
     free(dest); 
 }
 
@@ -385,8 +385,8 @@ int main(int argc, char *argv[]) {
             }
         }
         if(compress && (timespec_subtract_ns(&now, &last_frame) > (NSEC_PER_SEC / update_rate_hz))) {
-            clock_gettime(CLOCK_MONOTONIC, &last_frame);
             send_compressed_screen(compressed_fd);
+            clock_gettime(CLOCK_MONOTONIC, &last_frame);
         }
     }
     close_dji_radio_shm(&dji_radio);
