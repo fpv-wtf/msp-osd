@@ -210,6 +210,29 @@ Nicer/more modern looking ones:
  - KNIFA / Material - https://github.com/Knifa/material-osd / https://github.com/Knifa/material-osd/releases
  - Shannon Baker - https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95
 
+### Compressed Transmission
+
+As of 0.7.0, a new option, "compress_osd", has been added to the air side process.
+
+If this is set to "true", then the entire "frame buffer" will be sent using LZ4 compression at the rate defined in osd_update_rate_hz, instead of sending raw MSP messages over the air.
+
+When enabled, this should fix INAV delta update related issues as well as provide better link stability.
+
+To enable:
+
+Use the CLI button in the configurator on your VTx side after updating to 0.7.0.
+
+```
+package-config set msp-osd compress_osd true
+package-config apply msp-osd
+```
+
+If the apply hangs, just reboot your VTx.
+
+Note that INAV HD mode sync issues may still be present, use the usual workarounds (enter menu or switch screens) to fix these.
+
+Compressed mode may also be valuable for other FCs, as it should make the overall link much more reliable and stable.
+
 ### Generate your own Font (advanced)
 
 * Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
