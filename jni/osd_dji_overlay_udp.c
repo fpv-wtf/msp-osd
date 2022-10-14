@@ -109,7 +109,7 @@ struct timespec last_render;
 static char current_fc_variant[5];
 
 static display_info_t sd_display_info = {
-    .char_width = 31,
+    .char_width = 30,
     .char_height = 15,
     .font_width = 36,
     .font_height = 54,
