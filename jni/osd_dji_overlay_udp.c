@@ -631,7 +631,7 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
     }
     int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
     DEBUG_PRINT("Decompressed %d bytes!\n", decompressed_size);
-    render_screen();
+    msp_draw_complete();
 }
 
 /* Recording hooks */
