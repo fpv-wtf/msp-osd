@@ -626,7 +626,12 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
             current_display_info = &hd_display_info;
             break;
         default:
-            current_display_info = &sd_display_info;
+            if (fakehd_is_enabled()) {
+                memset(msp_render_character_map, 0, sizeof(msp_render_character_map));
+                current_display_info = &full_display_info;
+            } else {
+                current_display_info = &sd_display_info;
+            }
             break;
     }
     int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
