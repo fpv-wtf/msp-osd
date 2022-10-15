@@ -54,7 +54,7 @@ serial 30 1 115200 57600 0 115200
 # set displayport_msp_serial = 30
 ```
 
-#### Fake HD
+#### FakeHD
 
 Betaflight's OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
 
@@ -212,9 +212,9 @@ Nicer/more modern looking ones:
 
 ### Compressed Transmission
 
-As of 0.7.0, a new option, "compress_osd", has been added to the air side process.
+As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
 
-If this is set to "true", then the entire "frame buffer" will be sent using LZ4 compression at the rate defined in osd_update_rate_hz, instead of sending raw MSP messages over the air.
+If this is set to "true", then the entire "frame buffer" will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
 
 When enabled, this should fix INAV delta update related issues as well as provide better link stability.
 
@@ -263,17 +263,17 @@ To apply options, type `package-config apply msp-osd`.
 
 ### Current available options (Goggles):
 
-| Option | Description | Type |
-| ------ | ----------- | ---- |
-|`fakehd_enable`| enables FakeHD; the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled of the Flight Controller supports proper HD / RealHD | true/false|
-|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postfligght and triggger centering. Defaults to 4 (Betaflight Throttle). | integer/number |
-|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false |
-| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D |
-| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S |
-|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false |
-|`show_au_data`| enables AU data overlay on the right | true/false|
-|`show_waiting`| enables or disables MSP WAITING message | true/false.|
-|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false.|
+| Option | Description | Type | Default|
+| ------ | ----------- | ---- |--------|
+|`fakehd_enable`| enables [FakeHD](#FakeHD); the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled if the Flight Controller supports proper HD / RealHD | true/false| false |
+|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postfligght and triggger centering. | integer/number | 4 (Betaflight Throttle) |
+|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false | false |
+| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D | WWWWWWCCWWWWWWWD |
+| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S | S |
+|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false | false |
+|`show_au_data`| enables AU data overlay on the right | true/false| false |
+|`show_waiting`| enables or disables MSP WAITING message | true/false.| true |
+|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false.| false |
 
 
 So for example, to disable the WAITING message:
@@ -286,7 +286,10 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 
 ### Current available options (Air Unit/Vista):
 
-None
+| Option | Description | Type | Default|
+| ------ | ----------- | ---- |--------|
+|`fakehd_enable`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
+| `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 
 ## FAQ / Suggestions
 
