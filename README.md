@@ -288,7 +288,7 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 
 | Option | Description | Type | Default|
 | ------ | ----------- | ---- |--------|
-|`fakehd_enable`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
+|`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 
 ## FAQ / Suggestions
