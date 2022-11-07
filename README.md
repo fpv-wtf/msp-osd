@@ -160,7 +160,7 @@ The characters are case sensitive, but the configurator will reject invalid char
 
 ### INAV
 
-Select "HDZero VTx" as the Peripheral. Next, select "HD" in the OSD tab if you'd like to use the HD Canvas.
+Select "HDZero VTx" or "MSP Display Port" (on newer INAV versions) as the Peripheral. Next, select "HD" in the OSD tab if you'd like to use the HD Canvas.
 
 If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
 
@@ -186,7 +186,7 @@ Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 ## Choose a Font
 
-* Download the latest fonts package from https://github.com/bri3d/mcm2img/releases/download/latest/mcm2img-fonts.tar.gz .
+* Download a font package. See below for known community fonts!
 * Rename the files for your desired font to `font_<fc variant>` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
 * Place these four files on the root of your Goggles SD card.
 * Reboot.
@@ -205,16 +205,15 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
 
 ### Suggested Third Party Fonts
 
-Nicer/more modern looking ones:
-
  - KNIFA / Material - https://github.com/Knifa/material-osd / https://github.com/Knifa/material-osd/releases
  - Shannon Baker - https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95
+ - VICEWIZE Italic - https://github.com/vicewize/vicewizeosdfontset
 
 ### Compressed Transmission
 
 As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
 
-If this is set to "true", then the entire "frame buffer" will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
+If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
 
 When enabled, this should fix INAV delta update related issues as well as provide better link stability.
 
@@ -233,7 +232,7 @@ Note that INAV HD mode sync issues may still be present, use the usual workaroun
 
 Compressed mode may also be valuable for other FCs, as it should make the overall link much more reliable and stable.
 
-### Generate your own Font (advanced)
+### Generate your own Font from an analog font (advanced)
 
 * Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
 
@@ -290,16 +289,16 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 | ------ | ----------- | ---- |--------|
 |`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
+| `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
+| `fast_serial` | Change serial baud rate to 240400 baud, which can improve OSD performance in some situations | true/false | false |
 
 ## FAQ / Suggestions
 
 ### How do I create a new font (for INAV, Ardupilot, etc.)?
 
-Use [mcm2img](https://github.com/bri3d/mcm2img).
+Use `mcm2img` , specifically Knifa's branch to allow you to draw using a PNG template.
 
-```
-python3 mcm2img.py mcmfile.mcm font.bin RGBA
-```
+https://github.com/Knifa/mcm2img/tree/templates
 
 ### Why is everything so big / can I make the text smaller (betaflight)?
 
