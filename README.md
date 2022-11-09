@@ -205,9 +205,10 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
 
 ### Suggested Third Party Fonts
 
- - KNIFA / Material - https://github.com/Knifa/material-osd / https://github.com/Knifa/material-osd/releases
- - Shannon Baker - https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95
- - VICEWIZE Italic - https://github.com/vicewize/vicewizeosdfontset
+ - [KNIFA's Material](https://github.com/Knifa/material-osd/releases)
+ - [Shannon Baker](https://drive.google.com/drive/folders/1buxrXqhU46AxE3fwaFDsMb97IiGLVa95)
+ - [Sneaky FPV's Sphere for Betaflight](https://drive.google.com/file/d/1f7CBK9DV-8EYc_Xt7IezKdUaECgADdUw/view)
+ - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
 
 ### Compressed Transmission
 
