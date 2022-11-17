@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#define MSP_CMD_API_VERSION 1
 #define MSP_CMD_FC_VARIANT 2
 #define MSP_CMD_FC_VERSION 3
 #define MSP_CMD_NAME 10
@@ -13,6 +14,7 @@
 #define MSP_CMD_BATTERY_STATE 130
 #define MSP_CMD_STATUS_EX 150
 #define MSP_CMD_DISPLAYPORT 182
+#define MSP_CMD_SET_OSD_CANVAS 188
 
 typedef enum {
     MSP_ERR_NONE,

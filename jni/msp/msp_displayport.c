@@ -5,7 +5,7 @@ static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *p
     if(!display_driver || !display_driver->draw_character) return;
     uint8_t row = payload[0];
     uint8_t col = payload[1];
-    uint8_t attrs = payload[2]; // iNav uses this to specify which font page to draw from
+    uint8_t attrs = payload[2]; // INAV and Betaflight use this to specify a higher page number. 
     uint8_t str_len;
     for(str_len = 1; str_len < 255; str_len++) {
         if(payload[2 + str_len] == '\0') {
@@ -14,9 +14,9 @@ static void process_draw_string(displayport_vtable_t *display_driver, uint8_t *p
     }
     for(uint8_t idx = 0; idx < (str_len - 1); idx++) {
         uint16_t character = payload[3 + idx];
-        if(attrs & 0x1) {
-            // shift over a page if one was specified
-            character |= 0x100;
+        if(attrs & 0x3) {
+            // shift over by the page number if they were specified
+            character |= ((attrs & 0x3) * 0x100);
         }
         display_driver->draw_character(col, row, character);
         col++;

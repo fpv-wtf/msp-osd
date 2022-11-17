@@ -1,5 +1,18 @@
 #include <stdint.h>
 
+#define MSP_DISPLAYPORT_KEEPALIVE 0
+#define MSP_DISPLAYPORT_CLOSE 1
+#define MSP_DISPLAYPORT_CLEAR 2
+#define MSP_DISPLAYPORT_DRAW_STRING 3
+#define MSP_DISPLAYPORT_DRAW_SCREEN 4
+#define MSP_DISPLAYPORT_SET_OPTIONS 5
+#define MSP_DISPLAYPORT_DRAW_SYSTEM 6
+
+#define MSP_HD_OPTION_60_22 3
+#define MSP_HD_OPTION_30_16 2
+#define MSP_HD_OPTION_50_18 1
+
+
 typedef void (*draw_character_func)(uint32_t x, uint32_t y, uint16_t c);
 typedef void (*set_options_func)(uint8_t font, uint8_t is_hd);
 typedef void (*clear_screen_func)();

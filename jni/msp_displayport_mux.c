@@ -35,6 +35,9 @@
 #define MAX_DISPLAY_X 60
 #define MAX_DISPLAY_Y 22
 
+// The Betaflight MSP minor version in which MSP DisplayPort sizing is supported.
+#define MSP_DISPLAY_SIZE_VERSION 45
+
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
 #else
@@ -107,7 +110,7 @@ static int16_t msp_msg_from_cache(uint8_t msg_buffer[], uint8_t cmd_id) {
         || cmd_id == MSP_CMD_BATTERY_STATE) {
             struct timespec now;
             clock_gettime(CLOCK_MONOTONIC, &now);
-            if(now.tv_sec > cache_message->time.tv_sec) {
+            if(timespec_subtract_ns(&now, &cache_message->time) > NSEC_PER_SEC) {
                 // message is too old, invalidate cache and force a resend
                 DEBUG_PRINT("MSP cache EXPIRED %d\n", cmd_id);
                 free(cache_message);
@@ -120,53 +123,84 @@ static int16_t msp_msg_from_cache(uint8_t msg_buffer[], uint8_t cmd_id) {
     }
 }
 
+static void send_display_size(int serial_fd) {
+    uint8_t buffer[8];
+    uint8_t payload[2] = {MAX_DISPLAY_X, MAX_DISPLAY_Y};
+    construct_msp_command(buffer, MSP_CMD_SET_OSD_CANVAS, payload, 2, MSP_OUTBOUND);
+    write(serial_fd, &buffer, sizeof(buffer));
+}
+
+static void send_variant_request(int serial_fd) {
+    uint8_t buffer[6];
+    construct_msp_command(buffer, MSP_CMD_FC_VARIANT, NULL, 0, MSP_OUTBOUND);
+    write(serial_fd, &buffer, sizeof(buffer));
+}
+
+static void send_version_request(int serial_fd) {
+    uint8_t buffer[6];
+    construct_msp_command(buffer, MSP_CMD_API_VERSION, NULL, 0, MSP_OUTBOUND);
+    write(serial_fd, &buffer, sizeof(buffer));
+}
+
 static void rx_msp_callback(msp_msg_t *msp_message)
 {
     // Process a received MSP message from FC and decide whether to send it to the PTY (DJI) or UDP port (MSP-OSD on Goggles)
     DEBUG_PRINT("FC->AU MSP msg %d with data len %d \n", msp_message->cmd, msp_message->size);
-    if(msp_message->cmd == MSP_CMD_DISPLAYPORT) {
-        if (compress) {
-            // This was an MSP DisplayPort message and we're in compressed mode, so pass it off to the DisplayPort handlers.
-            displayport_process_message(display_driver, msp_message);
-        } else {
-            // This was an MSP DisplayPort message and we're in legacy mode, so buffer it until we get a whole frame.
-            if(fb_cursor > sizeof(frame_buffer)) {
-                printf("Exhausted frame buffer! Resetting...\n");
-                fb_cursor = 0;
-                return;
-            }
-            uint16_t size = msp_data_from_msg(message_buffer, msp_message);
-            memcpy(&frame_buffer[fb_cursor], message_buffer, size);
-            fb_cursor += size;
-            if(msp_message->payload[0] == 4) {
-                // Once we have a whole frame of data, send it to the goggles.
-                write(socket_fd, frame_buffer, fb_cursor);
-                DEBUG_PRINT("DRAW! wrote %d bytes\n", fb_cursor);
-                fb_cursor = 0;
-            }
-        }
-    } else {
-        uint16_t size = msp_data_from_msg(message_buffer, msp_message);
-        // This is an FC Variant response, so we want to use it to set our FC variant.
-        if(msp_message->cmd == MSP_CMD_FC_VARIANT) {
-            DEBUG_PRINT("Got FC Variant response!\n");
-            memcpy(current_fc_identifier, msp_message->payload, 4);
-        }
-        // This isn't an MSP DisplayPort message, so send it to either DJI directly or to the cache.
-        if(serial_passthrough) {
-            write(pty_fd, message_buffer, size);
-        } else {
-            // Serial passthrough is off, so cache the response we got.
-            if(cache_msp_message(msp_message)) {
-                // 1 -> cache miss, so this message expired or hasn't been seen.
-                // this means DJI is waiting for it, so send it over
-                DEBUG_PRINT("DJI was waiting, got msg %d\n", msp_message->cmd);
-                for (int i = 0; i < size; i++) {
-                    DEBUG_PRINT("%02X ", message_buffer[i]);
+    switch(msp_message->cmd) {
+        case MSP_CMD_DISPLAYPORT: {
+            if (compress) {
+                // This was an MSP DisplayPort message and we're in compressed mode, so pass it off to the DisplayPort handlers.
+                displayport_process_message(display_driver, msp_message);
+            } else {
+                // This was an MSP DisplayPort message and we're in legacy mode, so buffer it until we get a whole frame.
+                if(fb_cursor > sizeof(frame_buffer)) {
+                    printf("Exhausted frame buffer! Resetting...\n");
+                    fb_cursor = 0;
+                    return;
                 }
-                DEBUG_PRINT("\n");
+                uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+                memcpy(&frame_buffer[fb_cursor], message_buffer, size);
+                fb_cursor += size;
+                if(msp_message->payload[0] == MSP_DISPLAYPORT_DRAW_SCREEN) {
+                    // Once we have a whole frame of data, send it to the goggles.
+                    write(socket_fd, frame_buffer, fb_cursor);
+                    DEBUG_PRINT("DRAW! wrote %d bytes\n", fb_cursor);
+                    fb_cursor = 0;
+                }
+            }
+            break;
+        }
+        case MSP_CMD_FC_VARIANT: {
+            // This is an FC Variant response, so we want to use it to set our FC variant.
+            DEBUG_PRINT("Got FC Variant response!\n");
+            if(strncmp(current_fc_identifier, msp_message->payload, 4) != 0) {
+                // FC variant changed or was updated. Update the current FC identifier and send an MSP version request.
+                memcpy(current_fc_identifier, msp_message->payload, 4);
+                send_version_request(serial_fd);
+            }
+            break;
+        }
+        case MSP_CMD_API_VERSION: {
+            // Got an MSP API version response. Compare the version if we have Betaflight in order to see if we should send the new display size message.
+            if(strncmp(current_fc_identifier, "BTFL", 4) == 0) {
+                uint8_t msp_minor_version = msp_message->payload[2];
+                DEBUG_PRINT("Got Betaflight minor MSP version %d\n", msp_minor_version);
+                if(msp_minor_version >= MSP_DISPLAY_SIZE_VERSION) {
+                    // Betaflight with HD support. Send our display size and set 60x22.
+                    send_display_size(serial_fd);
+                    msp_hd_option = MSP_HD_OPTION_60_22;
+                }
+            }
+            break;
+        }
+        default: {
+            uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+            if(serial_passthrough || cache_msp_message(msp_message)) {
+                // Either serial passthrough was off, or the cache was enabled but missed (a response was not available). 
+                // Either way, this means we need to send the message through to DJI.
                 write(pty_fd, message_buffer, size);
             }
+            break;
         }
     }
 }
@@ -192,12 +226,6 @@ static void tx_msp_callback(msp_msg_t *msp_message)
         uint16_t size = msp_data_from_msg(message_buffer, msp_message);
         write(serial_fd, message_buffer, size);
     }
-}
-
-static void send_variant_request(int serial_fd) {
-    uint8_t buffer[6];
-    construct_msp_command(buffer, MSP_CMD_FC_VARIANT, NULL, 0, MSP_OUTBOUND);
-    write(serial_fd, &buffer, 6);
 }
 
 static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
@@ -231,7 +259,6 @@ static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
 }
 
 static void send_compressed_screen(int compressed_fd) {
-
     LZ4_stream_t current_stream_state;
     uint8_t dest_buf[sizeof(compressed_data_header_t) + LZ4_COMPRESSBOUND(sizeof(msp_character_map_draw))];
     void *dest = &dest_buf;

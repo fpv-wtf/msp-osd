@@ -616,12 +616,12 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
         return;
     }
     switch (header->hd_options) {
-        case 3:
+        case MSP_HD_OPTION_60_22:
             fakehd_disable();
             current_display_info = &full_display_info;
             break;
-        case 2:
-        case 1:
+        case MSP_HD_OPTION_30_16:
+        case MSP_HD_OPTION_50_18:
             fakehd_disable();
             current_display_info = &hd_display_info;
             break;
