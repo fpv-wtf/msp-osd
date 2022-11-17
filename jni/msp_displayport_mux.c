@@ -32,8 +32,11 @@
 #define COMPRESSED_DATA_PORT 7656
 
 #define COMPRESSED_DATA_VERSION 1
-#define MAX_DISPLAY_X 60
-#define MAX_DISPLAY_Y 22
+
+enum {
+    MAX_DISPLAY_X = 60,
+    MAX_DISPLAY_Y = 22
+};
 
 // The Betaflight MSP minor version in which MSP DisplayPort sizing is supported.
 #define MSP_DISPLAY_SIZE_VERSION 45
@@ -60,7 +63,7 @@ static char current_fc_identifier[4];
 /* For compressed full-frame transmission */
 static uint16_t msp_character_map_buffer[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t msp_character_map_draw[MAX_DISPLAY_X][MAX_DISPLAY_Y];
-static uint8_t msp_hd_option = 0;
+static msp_hd_options_e msp_hd_option = 0;
 static displayport_vtable_t *display_driver = NULL;
 LZ4_stream_t *lz4_ref_ctx = NULL;
 uint8_t update_rate_hz = 2;
@@ -253,7 +256,7 @@ static void msp_draw_complete() {
     memcpy(msp_character_map_draw, msp_character_map_buffer, sizeof(msp_character_map_buffer));
 }
 
-static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
+static void msp_set_options(uint8_t font_num, msp_hd_options_e is_hd) {
    msp_clear_screen();
    msp_hd_option = is_hd;
 }
@@ -265,7 +268,7 @@ static void send_compressed_screen(int compressed_fd) {
     memcpy(&current_stream_state, lz4_ref_ctx, sizeof(LZ4_stream_t));
     int size = LZ4_compress_fast_extState_fastReset(&current_stream_state, msp_character_map_draw, (dest + sizeof(compressed_data_header_t)), sizeof(msp_character_map_draw), LZ4_compressBound(sizeof(msp_character_map_draw)), 1);
     compressed_data_header_t *dest_header = (compressed_data_header_t *)dest;
-    dest_header->hd_options = msp_hd_option;
+    dest_header->hd_options =(uint16_t)msp_hd_option;
     dest_header->version = COMPRESSED_DATA_VERSION;
     write(compressed_fd, dest, size + sizeof(compressed_data_header_t));
     DEBUG_PRINT("COMPRESSED: Sent %d bytes!\n", size);

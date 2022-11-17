@@ -36,7 +36,7 @@ static void process_draw_complete(displayport_vtable_t *display_driver) {
 static void process_set_options(displayport_vtable_t *display_driver, uint8_t *payload) {
     if(!display_driver || !display_driver->set_options) return;
     uint8_t font = payload[0];
-    uint8_t is_hd = payload[1];
+    msp_hd_options_e is_hd = payload[1];
     display_driver->set_options(font, is_hd);
 }
 
