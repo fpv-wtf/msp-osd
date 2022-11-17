@@ -55,24 +55,24 @@ int displayport_process_message(displayport_vtable_t *display_driver, msp_msg_t 
     if (msg->cmd != MSP_CMD_DISPLAYPORT) {
         return 1;
     }
-    uint8_t sub_cmd = msg->payload[0];
+    msp_displayport_cmd_e sub_cmd = msg->payload[0];
     switch(sub_cmd) {
-        case 0: // 0 -> Open/Keep-Alive DisplayPort
+        case MSP_DISPLAYPORT_KEEPALIVE: // 0 -> Open/Keep-Alive DisplayPort
             process_open(display_driver);
             break;
-        case 1: // 1 -> Close DisplayPort
+        case MSP_DISPLAYPORT_CLOSE: // 1 -> Close DisplayPort
             process_close(display_driver);
             break;
-        case 2: // 2 -> Clear Screen
+        case MSP_DISPLAYPORT_CLEAR: // 2 -> Clear Screen
             process_clear_screen(display_driver);
             break;
-        case 3: // 3 -> Draw String
+        case MSP_DISPLAYPORT_DRAW_STRING: // 3 -> Draw String
             process_draw_string(display_driver, &msg->payload[1]);
             break;
-        case 4: // 4 -> Draw Screen
+        case MSP_DISPLAYPORT_DRAW_SCREEN: // 4 -> Draw Screen
             process_draw_complete(display_driver);
             break;
-        case 5: // 5 -> Set Options (HDZero/iNav)
+        case MSP_DISPLAYPORT_SET_OPTIONS: // 5 -> Set Options (HDZero/iNav)
             process_set_options(display_driver, &msg->payload[1]);
             break;
         default:
