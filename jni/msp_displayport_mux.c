@@ -145,6 +145,11 @@ static void send_version_request(int serial_fd) {
     write(serial_fd, &buffer, sizeof(buffer));
 }
 
+static void copy_to_msp_frame_buffer(void *buffer, uint16_t size) {
+    memcpy(&frame_buffer[fb_cursor], buffer, size);
+    fb_cursor += size;
+}
+
 static void rx_msp_callback(msp_msg_t *msp_message)
 {
     // Process a received MSP message from FC and decide whether to send it to the PTY (DJI) or UDP port (MSP-OSD on Goggles)
@@ -162,8 +167,7 @@ static void rx_msp_callback(msp_msg_t *msp_message)
                     return;
                 }
                 uint16_t size = msp_data_from_msg(message_buffer, msp_message);
-                memcpy(&frame_buffer[fb_cursor], message_buffer, size);
-                fb_cursor += size;
+                copy_to_msp_frame_buffer(message_buffer, size);
                 if(msp_message->payload[0] == MSP_DISPLAYPORT_DRAW_SCREEN) {
                     // Once we have a whole frame of data, send it to the goggles.
                     write(socket_fd, frame_buffer, fb_cursor);
@@ -189,9 +193,17 @@ static void rx_msp_callback(msp_msg_t *msp_message)
                 uint8_t msp_minor_version = msp_message->payload[2];
                 DEBUG_PRINT("Got Betaflight minor MSP version %d\n", msp_minor_version);
                 if(msp_minor_version >= MSP_DISPLAY_SIZE_VERSION) {
+                    if(!compress) {
+                        uint8_t displayport_set_size[3] = {MSP_DISPLAYPORT_SET_OPTIONS, 0, MSP_HD_OPTION_60_22};
+                        construct_msp_command(message_buffer, MSP_CMD_DISPLAYPORT, displayport_set_size, 3, MSP_INBOUND);
+                        copy_to_msp_frame_buffer(message_buffer, 9);
+                        DEBUG_PRINT("Sent display size to goggles\n");
+
+                    }
                     // Betaflight with HD support. Send our display size and set 60x22.
                     send_display_size(serial_fd);
                     msp_hd_option = MSP_HD_OPTION_60_22;
+                    DEBUG_PRINT("Sent display size to FC\n");
                 }
             }
             break;
@@ -257,6 +269,7 @@ static void msp_draw_complete() {
 }
 
 static void msp_set_options(uint8_t font_num, msp_hd_options_e is_hd) {
+   DEBUG_PRINT("Got options!\n");
    msp_clear_screen();
    msp_hd_option = is_hd;
 }
