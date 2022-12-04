@@ -55,11 +55,13 @@
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
-#define FONT_VARIANT_GENERIC 0
-#define FONT_VARIANT_BETAFLIGHT 1
-#define FONT_VARIANT_INAV 2
-#define FONT_VARIANT_ARDUPILOT 3
-#define FONT_VARIANT_KISS_ULTRA 4
+typedef enum {
+    FONT_VARIANT_GENERIC,
+    FONT_VARIANT_BETAFLIGHT,
+    FONT_VARIANT_INAV,
+    FONT_VARIANT_ARDUPILOT,
+    FONT_VARIANT_KISS_ULTRA
+} font_variant_e;
 
 #define FORCE_RENDER_HZ 2
 #define TOAST_HZ 2
@@ -95,7 +97,7 @@ typedef struct display_info_s {
 } display_info_t;
 
 static void rec_msp_draw_complete_hook();
-static uint8_t font_variant_from_string(char *variant_string);
+static font_variant_e font_variant_from_string(char *variant_string);
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
@@ -276,8 +278,8 @@ static void msp_callback(msp_msg_t *msp_message)
 
 /* Font helper methods */
 
-static uint8_t font_variant_from_string(char *variant_string) {
-    uint8_t font_variant = FONT_VARIANT_GENERIC;
+static font_variant_e font_variant_from_string(char *variant_string) {
+    font_variant_e font_variant = FONT_VARIANT_GENERIC;
     if(strncmp(current_fc_variant, "ARDU", 4) == 0) {
         font_variant = FONT_VARIANT_ARDUPILOT;
     } else if (strncmp(current_fc_variant, "BTFL", 4) == 0) {
@@ -290,7 +292,7 @@ static uint8_t font_variant_from_string(char *variant_string) {
     return font_variant;
 }
 
-static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, uint8_t font_variant, uint8_t page)
+static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, font_variant_e font_variant, uint8_t page)
 {
     char name_buf[len];
     char res_buf[len];
@@ -331,7 +333,7 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
     }
 }
 
-static int open_font(const char *filename, void **font, uint8_t page, uint8_t is_hd, uint8_t font_variant)
+static int open_font(const char *filename, void **font, uint8_t page, uint8_t is_hd, font_variant_e font_variant)
 {
     char file_path[255];
     get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant, page);
@@ -368,7 +370,7 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
     return 0;
 }
 
-static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, uint8_t font_variant) {
+static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, font_variant_e font_variant) {
     // Note: load_font will not replace an existing font.
     if(*font_buffer == NULL) {
         if (open_font(SDCARD_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
@@ -379,7 +381,7 @@ static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, uint8_t f
     }
 }
 
-static void load_fonts(uint8_t font_variant) {
+static void load_fonts(font_variant_e font_variant) {
     char file_path[255];
     get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant, 0);
     toast(file_path);
@@ -414,16 +416,16 @@ static void close_all_fonts() {
     close_fonts(&full_display_info);
 }
 
-static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
+static void msp_set_options(uint8_t font_num, msp_hd_options_e is_hd) {
     msp_clear_screen();
 
     switch (is_hd) {
-        case 3:
+        case MSP_HD_OPTION_60_22:
             fakehd_disable();
             current_display_info = &full_display_info;
             break;
-        case 2:
-        case 1:
+        case MSP_HD_OPTION_50_18:
+        case MSP_HD_OPTION_30_16:
             fakehd_disable();
             current_display_info = &hd_display_info;
             break;
@@ -615,13 +617,13 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
     if (header->version != DICTIONARY_VERSION) {
         return;
     }
-    switch (header->hd_options) {
-        case 3:
+    switch ((msp_hd_options_e)header->hd_options) {
+        case MSP_HD_OPTION_60_22:
             fakehd_disable();
             current_display_info = &full_display_info;
             break;
-        case 2:
-        case 1:
+        case MSP_HD_OPTION_30_16:
+        case MSP_HD_OPTION_50_18:
             fakehd_disable();
             current_display_info = &hd_display_info;
             break;

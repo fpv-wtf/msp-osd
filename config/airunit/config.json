@@ -2,5 +2,6 @@
     "fast_serial": false,
     "cache_serial": false,
     "osd_update_rate_hz": 10,
-    "compress_osd": false
+    "compress_osd": false,
+    "disable_betaflight_hd": false
 }
