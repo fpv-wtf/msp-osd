@@ -23,6 +23,7 @@
 #define CACHE_SERIAL_KEY "cache_serial"
 #define COMPRESS_KEY "compress_osd"
 #define UPDATE_RATE_KEY "osd_update_rate_hz"
+#define NO_BTFL_HD_KEY "disable_betaflight_hd"
 
 // The MSP_PORT is used to send MSP passthrough messages.
 // The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
@@ -76,6 +77,7 @@ int compressed_fd;
 static volatile sig_atomic_t quit = 0;
 static uint8_t serial_passthrough = 1;
 static uint8_t compress = 0;
+static uint8_t no_btfl_hd = 0;
 
 static void sig_handler(int _)
 {
@@ -193,17 +195,20 @@ static void rx_msp_callback(msp_msg_t *msp_message)
                 uint8_t msp_minor_version = msp_message->payload[2];
                 DEBUG_PRINT("Got Betaflight minor MSP version %d\n", msp_minor_version);
                 if(msp_minor_version >= MSP_DISPLAY_SIZE_VERSION) {
-                    if(!compress) {
-                        uint8_t displayport_set_size[3] = {MSP_DISPLAYPORT_SET_OPTIONS, 0, MSP_HD_OPTION_60_22};
-                        construct_msp_command(message_buffer, MSP_CMD_DISPLAYPORT, displayport_set_size, 3, MSP_INBOUND);
-                        copy_to_msp_frame_buffer(message_buffer, 9);
-                        DEBUG_PRINT("Sent display size to goggles\n");
+                    if(!no_btfl_hd) {
+                        if(!compress) {
+                            // If compression is disabled, we need to manually inject a canvas-change command into the command stream.
+                            uint8_t displayport_set_size[3] = {MSP_DISPLAYPORT_SET_OPTIONS, 0, MSP_HD_OPTION_60_22};
+                            construct_msp_command(message_buffer, MSP_CMD_DISPLAYPORT, displayport_set_size, 3, MSP_INBOUND);
+                            copy_to_msp_frame_buffer(message_buffer, 9);
+                            DEBUG_PRINT("Sent display size to goggles\n");
 
+                        }
+                        // Betaflight with HD support. Send our display size and set 60x22.
+                        send_display_size(serial_fd);
+                        msp_hd_option = MSP_HD_OPTION_60_22;
+                        DEBUG_PRINT("Sent display size to FC\n");
                     }
-                    // Betaflight with HD support. Send our display size and set 60x22.
-                    send_display_size(serial_fd);
-                    msp_hd_option = MSP_HD_OPTION_60_22;
-                    DEBUG_PRINT("Sent display size to FC\n");
                 }
             }
             break;
@@ -211,7 +216,7 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         default: {
             uint16_t size = msp_data_from_msg(message_buffer, msp_message);
             if(serial_passthrough || cache_msp_message(msp_message)) {
-                // Either serial passthrough was off, or the cache was enabled but missed (a response was not available). 
+                // Either serial passthrough was on, or the cache was enabled but missed (a response was not available). 
                 // Either way, this means we need to send the message through to DJI.
                 write(pty_fd, message_buffer, size);
             }
@@ -257,6 +262,7 @@ static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
 /* MSP DisplayPort handlers for compressed mode */
 
 static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
+    DEBUG_PRINT("drawing char %d at x %d y %d\n", c, x, y);
     msp_character_map_buffer[x][y] = c;
 }
 
@@ -327,6 +333,10 @@ int main(int argc, char *argv[]) {
 
     if(get_boolean_config_value(COMPRESS_KEY)) {
         compress = 1;
+    }
+
+    if(get_boolean_config_value(NO_BTFL_HD_KEY)) {
+        no_btfl_hd = 1;
     }
 
     if(fast_serial == 1) {
