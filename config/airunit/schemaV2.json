@@ -40,6 +40,15 @@
             "description": "OSD update rate, used only for compressed OSD.",
             "minimum": 1,
             "maximum": 20
+          },
+          "disable_betaflight_hd": {
+            "name": "Disable Betaflight HD Mode",
+            "type": "boolean",
+            "description": "Disable HD Mode in Betaflight 4.4.",
+            "enum": [
+                true,
+                false
+            ]
           }
     }
 }
