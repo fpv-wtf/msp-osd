@@ -77,7 +77,7 @@ typedef enum {
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
 #else
-#define DEBUG_PRINT(fmt, args...)   fprintf(stderr, fmt, ## args)
+#define DEBUG_PRINT(fmt, args...)
 #endif
 
 #define SWAP32(data)   \
@@ -393,7 +393,7 @@ static int open_font(const char *filename, void *fonts[], uint8_t is_hd, font_va
     if(ret) {
         printf("Failed to decode PNG!\n");
         free(font_data);
-        return -1;
+        goto err;
     }
 
     for(int page = 0; page < num_pages; page++) {
