@@ -9,7 +9,7 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS += -fPIC -std=c99 -O3
 LOCAL_LDFLAGS += -fPIC
-LOCAL_LDLIBS := -llog
+LOCAL_LDLIBS := -llog -lz
 LOCAL_ARM_NEON := true
 LOCAL_MODULE := displayport_osd_shim
 LOCAL_SHARED_LIBRARIES := duml_hal
@@ -29,7 +29,8 @@ LOCAL_SRC_FILES := \
 	rec/rec.c \
 	util/fs_util.c \
 	toast/toast.c \
-	lz4/lz4.c
+	lz4/lz4.c \
+	libspng/spng.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)

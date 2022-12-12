@@ -21,6 +21,7 @@
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
 #include "fakehd/fakehd.h"
+#include "libspng/spng.h"
 #include "lz4/lz4.h"
 #include "toast/toast.h"
 #include "net/network.h"
@@ -45,6 +46,7 @@
 #define GOGGLES_V2_VOFFSET 215
 
 #define NUM_CHARS 256
+#define NUM_FONT_PAGES 4
 
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "OSD WAITING..."
@@ -75,7 +77,7 @@ typedef enum {
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
 #else
-#define DEBUG_PRINT(fmt, args...)
+#define DEBUG_PRINT(fmt, args...)   fprintf(stderr, fmt, ## args)
 #endif
 
 #define SWAP32(data)   \
@@ -92,8 +94,7 @@ typedef struct display_info_s {
     uint8_t font_height;
     uint16_t x_offset;
     uint16_t y_offset;
-    void *font_page_1;
-    void *font_page_2;
+    void *fonts[NUM_FONT_PAGES];
 } display_info_t;
 
 static void rec_msp_draw_complete_hook();
@@ -117,8 +118,7 @@ static display_info_t sd_display_info = {
     .font_height = 54,
     .x_offset = 180,
     .y_offset = 0,
-    .font_page_1 = NULL,
-    .font_page_2 = NULL,
+    .fonts = {NULL, NULL, NULL, NULL},
 };
 
 static display_info_t full_display_info = {
@@ -128,8 +128,7 @@ static display_info_t full_display_info = {
     .font_height = 36,
     .x_offset = 0,
     .y_offset = 0,
-    .font_page_1 = NULL,
-    .font_page_2 = NULL,
+    .fonts = {NULL, NULL, NULL, NULL},
 };
 
 static display_info_t hd_display_info = {
@@ -139,8 +138,7 @@ static display_info_t hd_display_info = {
     .font_height = 36,
     .x_offset = 120,
     .y_offset = 80,
-    .font_page_1 = NULL,
-    .font_page_2 = NULL,
+    .fonts = {NULL, NULL, NULL, NULL},
 };
 
 static display_info_t overlay_display_info = {
@@ -150,8 +148,7 @@ static display_info_t overlay_display_info = {
     .font_height = 36,
     .x_offset = 960,
     .y_offset = 450,
-    .font_page_1 = NULL,
-    .font_page_2 = NULL,
+    .fonts = {NULL, NULL, NULL, NULL},
 };
 
 static enum display_mode_s {
@@ -179,20 +176,20 @@ static void msp_draw_character(uint32_t x, uint32_t y, uint16_t c) {
 /* Main rendering function: take a character_map and a display_info and draw it into a framebuffer */
 
 static void draw_character_map(display_info_t *display_info, void* restrict fb_addr, uint16_t character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y]) {
-    if (display_info->font_page_1 == NULL) {
+    if (display_info->fonts[0] == NULL) {
         DEBUG_PRINT("No font available, failed to draw.\n");
         return;
     }
-    void *font_page_2 = display_info->font_page_2 == NULL ? display_info->font_page_1 : display_info->font_page_2;
     void* restrict font;
     for(int y = 0; y < display_info->char_height; y++) {
         for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
             if (c != 0) {
-                font = display_info->font_page_1;
-                if (c > 255) {
-                    c = c & 0xFF;
-                    font = font_page_2;
+                int page = (c & 0x300) >> 8;
+                c = c & 0xFF;
+                font = display_info->fonts[page];
+                if(font == NULL) {
+                    font = display_info->fonts[0];
                 }
                 uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
                 uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
@@ -292,7 +289,7 @@ static font_variant_e font_variant_from_string(char *variant_string) {
     return font_variant;
 }
 
-static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, font_variant_e font_variant, uint8_t page)
+static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, font_variant_e font_variant)
 {
     char name_buf[len];
     char res_buf[len];
@@ -323,59 +320,113 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
         snprintf(res_buf, len, "%s", "");
     }
 
-    if (page > 0)
-    {
-        snprintf(font_path_dest, len, "%s%s_%d.bin", name_buf, res_buf, page + 1);
-    }
-    else
-    {
-        snprintf(font_path_dest, len, "%s%s.bin", name_buf, res_buf);
-    }
+    snprintf(font_path_dest, len, "%s%s.png", name_buf, res_buf);
 }
 
-static int open_font(const char *filename, void **font, uint8_t page, uint8_t is_hd, font_variant_e font_variant)
+static int open_font(const char *filename, void *fonts[], uint8_t is_hd, font_variant_e font_variant)
 {
     char file_path[255];
-    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant, page);
+
+    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant);
     DEBUG_PRINT("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
     stat(file_path, &st);
     size_t filesize = st.st_size;
-    display_info_t display_info = is_hd ? hd_display_info : sd_display_info;
-    size_t desired_filesize = display_info.font_height *  display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
-    if(filesize != desired_filesize) {
-        if (filesize != 0) {
-            DEBUG_PRINT("Font was wrong size: %s %d != %d\n", file_path, filesize, desired_filesize);
-        }
+    if(!(filesize > 0)) {
+        DEBUG_PRINT("Font file did not exist: %s\n", file_path);
         return -1;
     }
-    int fd = open(file_path, O_RDONLY, 0);
+    display_info_t display_info = is_hd ? hd_display_info : sd_display_info;
+    FILE *fd = fopen(file_path, "rb");
     if (!fd) {
         DEBUG_PRINT("Could not open file %s\n", file_path);
         return -1;
     }
-    void* font_data = malloc(desired_filesize);
-    void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (mmappedData != MAP_FAILED) {
-        memcpy(font_data, mmappedData, desired_filesize);
-        *font = font_data;
-    } else {
-        DEBUG_PRINT("Could not map font %s\n", file_path);
-        free(font_data);
-        *font = 0;
+    
+    spng_ctx *ctx = spng_ctx_new(0);
+    DEBUG_PRINT("Allocated PNG context\n");
+    // Set some kind of reasonable PNG limit so we don't get blown up
+    size_t limit = 1024 * 1024 * 64;
+    spng_set_chunk_limits(ctx, limit, limit);
+    DEBUG_PRINT("Set PNG chunk limits\n");
+    spng_set_png_file(ctx, fd);
+    DEBUG_PRINT("Set PNG file\n");
+
+    struct spng_ihdr ihdr;
+    int ret = spng_get_ihdr(ctx, &ihdr);
+    DEBUG_PRINT("Got PNG header\n");
+
+    if(ret)
+    {
+        printf("spng_get_ihdr() error: %s\n", spng_strerror(ret));
+        goto err;
     }
-    close(fd);
-    munmap(mmappedData, desired_filesize);
+
+    if(ihdr.height != display_info.font_height * NUM_CHARS) {
+        printf("font invalid height, got %d wanted %d\n", ihdr.height, display_info.font_height * NUM_CHARS);
+        goto err;
+    }
+
+    if(ihdr.width % display_info.font_width != 0) {
+        printf("font invalid width, not a multiple of %d\n", display_info.font_width);
+        goto err;
+    }
+
+    DEBUG_PRINT("Image pixel size %d x %d\n", ihdr.width, ihdr.height);
+
+    int num_pages = ihdr.width / display_info.font_width;
+
+    DEBUG_PRINT("Font has %d pages\n", num_pages);
+
+    size_t image_size = 0;
+    int fmt = SPNG_FMT_RGBA8;
+    ret = spng_decoded_image_size(ctx, fmt, &image_size);
+    if(ret) {
+        goto err;
+    }
+
+    DEBUG_PRINT("Allocating image size %d\n", image_size);
+
+    void* font_data = malloc(image_size);
+    ret = spng_decode_image(ctx, font_data, image_size, SPNG_FMT_RGBA8, 0);
+    if(ret) {
+        printf("Failed to decode PNG!\n");
+        free(font_data);
+        return -1;
+    }
+
+    for(int page = 0; page < num_pages; page++) {
+        DEBUG_PRINT("Loading font page %d of %d, placing %x\n", page, num_pages, fonts);
+        fonts[page] = malloc(display_info.font_width * display_info.font_height * NUM_CHARS * BYTES_PER_PIXEL);
+        DEBUG_PRINT("Allocated %d bytes for font page buf at%x\n", display_info.font_width * display_info.font_height * NUM_CHARS * BYTES_PER_PIXEL, fonts[page]);
+        for(int char_num = 0; char_num < NUM_CHARS; char_num++) {
+            for(int y = 0; y < display_info.font_height; y++) {
+                // Copy each character line at a time into the correct font buffer
+                int char_width_bytes = display_info.font_width * BYTES_PER_PIXEL;
+                int char_size_bytes_dest = (display_info.font_width * display_info.font_height * BYTES_PER_PIXEL);
+                int char_size_bytes_src =  (ihdr.width * display_info.font_height * BYTES_PER_PIXEL);
+                memcpy((uint8_t *)fonts[page] + (char_num * char_size_bytes_dest) + (y * char_width_bytes), (uint8_t *)font_data + (char_num * char_size_bytes_src) + (ihdr.width * y * BYTES_PER_PIXEL) + (page * char_width_bytes), char_width_bytes);
+            }
+        }
+    }
+
+    free(font_data);
+    spng_ctx_free(ctx);
+    fclose(fd);
     return 0;
+    err:
+        spng_ctx_free(ctx);
+        fclose(fd);
+        return -1;
 }
 
-static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, font_variant_e font_variant) {
+static void load_font(void **font_buffer[], uint8_t is_hd, font_variant_e font_variant) {
     // Note: load_font will not replace an existing font.
     if(*font_buffer == NULL) {
-        if (open_font(SDCARD_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
-            if (open_font(ENTWARE_FONT_PATH, font_buffer, page, is_hd, font_variant) < 0) {
-                open_font(FALLBACK_FONT_PATH, font_buffer, page, is_hd, font_variant);
+        if (open_font(SDCARD_FONT_PATH, font_buffer, is_hd, font_variant) < 0) {
+            if (open_font(ENTWARE_FONT_PATH, font_buffer, is_hd, font_variant) < 0) {
+                open_font(FALLBACK_FONT_PATH, font_buffer, is_hd, font_variant);
             }
         }
     }
@@ -383,29 +434,21 @@ static void load_font(void **font_buffer, uint8_t page, uint8_t is_hd, font_vari
 
 static void load_fonts(font_variant_e font_variant) {
     char file_path[255];
-    get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant, 0);
+    get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant);
     toast(file_path);
-    load_font(&sd_display_info.font_page_1, 0, 0, font_variant);
-    load_font(&sd_display_info.font_page_2, 1, 0, font_variant);
-    load_font(&hd_display_info.font_page_1, 0, 1, font_variant);
-    load_font(&hd_display_info.font_page_2, 1, 1, font_variant);
-    load_font(&full_display_info.font_page_1, 0, 1, font_variant);
-    load_font(&full_display_info.font_page_2, 1, 1, font_variant);
-    load_font(&overlay_display_info.font_page_1, 0, 1, font_variant);
-    load_font(&overlay_display_info.font_page_2, 1, 1, font_variant);
+    load_font(&sd_display_info.fonts, 0, font_variant);
+    load_font(&hd_display_info.fonts, 1, font_variant);
+    load_font(&full_display_info.fonts, 1, font_variant);
+    load_font(&overlay_display_info.fonts, 1, font_variant);
 }
 
 
 static void close_fonts(display_info_t *display_info) {
-    if (display_info->font_page_1 != NULL)
-    {
-        free(display_info->font_page_1);
-        display_info->font_page_1 = NULL;
-    }
-    if (display_info->font_page_2 != NULL)
-    {
-        free(display_info->font_page_2);
-        display_info->font_page_2 = NULL;
+    for(int i = 0; i < NUM_FONT_PAGES; i++) {
+        if(display_info->fonts[i] != NULL) {
+            free(display_info->fonts[i]);
+            display_info->fonts[i] = NULL;
+        }
     }
 }
 
