@@ -397,7 +397,7 @@ static int open_font(const char *filename, void *fonts[], uint8_t is_hd, font_va
     if(ret) {
         printf("Failed to decode PNG!\n");
         free(font_data);
-        return -1;
+        goto err;
     }
 
     for(int page = 0; page < num_pages; page++) {
