@@ -180,8 +180,8 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     display_state->pb_0->voffset = GOGGLES_V1_VOFFSET;
     display_state->pb_0->hoffset = 0;
 
-    // On Goggles V1, the UI and video are in Z-Order 1. On Goggles V2, they're in Z-Order 4.
-    // Unfortunately, this means we cannot draw below the DJI UI on Goggles V1. But, on Goggles V2 we get what we want.
+    // On Goggles V1, the UI and video are in Z-Order 1.
+    // On Goggles V2, they're in Z-Order 4, but we inline patch them to Z-Order 1 (see displayport_osd_shim.c)
 
     display_state->pb_0->order = 2;
 

@@ -21,7 +21,7 @@
 #include "hw/dji_services.h"
 #include "json/osd_config.h"
 #include "fakehd/fakehd.h"
-#include "libspng/spng.h"
+#include "font/font.h"
 #include "lz4/lz4.h"
 #include "toast/toast.h"
 #include "net/network.h"
@@ -30,6 +30,7 @@
 #include "msp/msp_displayport.h"
 
 #include "util/debug.h"
+#include "util/display_info.h"
 #include "util/fs_util.h"
 #include "util/time_util.h"
 #include "rec/rec.h"
@@ -48,27 +49,10 @@
 #define GOGGLES_V1_VOFFSET 575
 #define GOGGLES_V2_VOFFSET 215
 
-#define NUM_CHARS 256
-#define NUM_FONT_PAGES 4
-
 #define INPUT_FILENAME "/dev/input/event0"
 #define SPLASH_STRING "OSD WAITING..."
 #define SHUTDOWN_STRING "SHUTTING DOWN..."
 #define SPLASH_KEY "show_waiting"
-
-#define FALLBACK_FONT_PATH "/blackbox/font"
-#define ENTWARE_FONT_PATH "/opt/fonts/font"
-#define SDCARD_FONT_PATH "/storage/sdcard0/font"
-
-typedef enum
-{
-    FONT_VARIANT_GENERIC,
-    FONT_VARIANT_BETAFLIGHT,
-    FONT_VARIANT_INAV,
-    FONT_VARIANT_ARDUPILOT,
-    FONT_VARIANT_KISS_ULTRA,
-    FONT_VARIANT_QUICKSILVER
-} font_variant_e;
 
 #define FORCE_RENDER_HZ 2
 #define TOAST_HZ 2
@@ -86,18 +70,7 @@ typedef enum
 #define MAX_DISPLAY_X 60
 #define MAX_DISPLAY_Y 22
 
-typedef struct display_info_s {
-    uint8_t char_width;
-    uint8_t char_height;
-    uint8_t font_width;
-    uint8_t font_height;
-    uint16_t x_offset;
-    uint16_t y_offset;
-    void *fonts[NUM_FONT_PAGES];
-} display_info_t;
-
 static void rec_msp_draw_complete_hook();
-static font_variant_e font_variant_from_string(char *variant_string);
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
@@ -221,9 +194,9 @@ static void clear_framebuffer() {
 }
 
 static void draw_screen() {
-    void *fb_addr = dji_display_get_fb_address(dji_display);
-    // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
-    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+    clear_framebuffer();
+
+    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
 
     if (fakehd_is_enabled()) {
         fakehd_map_sd_character_map_to_hd(msp_character_map, msp_render_character_map);
@@ -272,195 +245,21 @@ static void msp_callback(msp_msg_t *msp_message)
     displayport_process_message(display_driver, msp_message);
 }
 
-/* Font helper methods */
-
-static font_variant_e font_variant_from_string(char *variant_string) {
-    font_variant_e font_variant = FONT_VARIANT_GENERIC;
-    if(strncmp(current_fc_variant, "ARDU", 4) == 0) {
-        font_variant = FONT_VARIANT_ARDUPILOT;
-    } else if (strncmp(current_fc_variant, "BTFL", 4) == 0) {
-        font_variant = FONT_VARIANT_BETAFLIGHT;
-    } else if (strncmp(current_fc_variant, "INAV", 4) == 0) {
-        font_variant = FONT_VARIANT_INAV;
-    } else if (strncmp(current_fc_variant, "ULTR", 4) == 0) {
-        font_variant = FONT_VARIANT_KISS_ULTRA;
-    } else if (strncmp(current_fc_variant, "QUIC", 4) == 0) {
-        font_variant = FONT_VARIANT_QUICKSILVER;
-    }
-    return font_variant;
-}
-
-static void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, font_variant_e font_variant)
-{
-    char name_buf[len];
-    char res_buf[len];
-
-    switch (font_variant)
-    {
-        case FONT_VARIANT_BETAFLIGHT:
-            snprintf(name_buf, len, "%s_bf", font_path);
-            break;
-        case FONT_VARIANT_INAV:
-            snprintf(name_buf, len, "%s_inav", font_path);
-            break;
-        case FONT_VARIANT_ARDUPILOT:
-            snprintf(name_buf, len, "%s_ardu", font_path);
-            break;
-        case FONT_VARIANT_KISS_ULTRA:
-            snprintf(name_buf, len, "%s_ultra", font_path);
-            break;
-        case FONT_VARIANT_QUICKSILVER:
-            snprintf(name_buf, len, "%s_quic", font_path);
-            break;
-        default:
-            snprintf(name_buf, len, "%s", font_path);
-    }
-
-    if (is_hd)
-    {
-        // surely there's a better way...
-        snprintf(res_buf, len, "%s", "_hd");
-    } else {
-        snprintf(res_buf, len, "%s", "");
-    }
-
-    snprintf(font_path_dest, len, "%s%s.png", name_buf, res_buf);
-}
-
-static int open_font(const char *filename, void *fonts[], uint8_t is_hd, font_variant_e font_variant)
-{
-    char file_path[255];
-
-    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant);
-    DEBUG_PRINT("Opening font: %s\n", file_path);
-    struct stat st;
-    memset(&st, 0, sizeof(st));
-    stat(file_path, &st);
-    size_t filesize = st.st_size;
-    if(!(filesize > 0)) {
-        DEBUG_PRINT("Font file did not exist: %s\n", file_path);
-        return -1;
-    }
-    display_info_t display_info = is_hd ? hd_display_info : sd_display_info;
-    FILE *fd = fopen(file_path, "rb");
-    if (!fd) {
-        DEBUG_PRINT("Could not open file %s\n", file_path);
-        return -1;
-    }
-
-    spng_ctx *ctx = spng_ctx_new(0);
-    DEBUG_PRINT("Allocated PNG context\n");
-    // Set some kind of reasonable PNG limit so we don't get blown up
-    size_t limit = 1024 * 1024 * 64;
-    spng_set_chunk_limits(ctx, limit, limit);
-    DEBUG_PRINT("Set PNG chunk limits\n");
-    spng_set_png_file(ctx, fd);
-    DEBUG_PRINT("Set PNG file\n");
-
-    struct spng_ihdr ihdr;
-    int ret = spng_get_ihdr(ctx, &ihdr);
-    DEBUG_PRINT("Got PNG header\n");
-
-    if(ret)
-    {
-        printf("spng_get_ihdr() error: %s\n", spng_strerror(ret));
-        goto err;
-    }
-
-    if(ihdr.height != display_info.font_height * NUM_CHARS) {
-        printf("font invalid height, got %d wanted %d\n", ihdr.height, display_info.font_height * NUM_CHARS);
-        goto err;
-    }
-
-    if(ihdr.width % display_info.font_width != 0) {
-        printf("font invalid width, not a multiple of %d\n", display_info.font_width);
-        goto err;
-    }
-
-    DEBUG_PRINT("Image pixel size %d x %d\n", ihdr.width, ihdr.height);
-
-    int num_pages = ihdr.width / display_info.font_width;
-
-    DEBUG_PRINT("Font has %d pages\n", num_pages);
-
-    size_t image_size = 0;
-    int fmt = SPNG_FMT_RGBA8;
-    ret = spng_decoded_image_size(ctx, fmt, &image_size);
-    if(ret) {
-        goto err;
-    }
-
-    DEBUG_PRINT("Allocating image size %d\n", image_size);
-
-    void* font_data = malloc(image_size);
-    ret = spng_decode_image(ctx, font_data, image_size, SPNG_FMT_RGBA8, 0);
-    if(ret) {
-        printf("Failed to decode PNG!\n");
-        free(font_data);
-        goto err;
-    }
-
-    for(int page = 0; page < num_pages; page++) {
-        DEBUG_PRINT("Loading font page %d of %d, placing %x\n", page, num_pages, fonts);
-        fonts[page] = malloc(display_info.font_width * display_info.font_height * NUM_CHARS * BYTES_PER_PIXEL);
-        DEBUG_PRINT("Allocated %d bytes for font page buf at%x\n", display_info.font_width * display_info.font_height * NUM_CHARS * BYTES_PER_PIXEL, fonts[page]);
-        for(int char_num = 0; char_num < NUM_CHARS; char_num++) {
-            for(int y = 0; y < display_info.font_height; y++) {
-                // Copy each character line at a time into the correct font buffer
-                int char_width_bytes = display_info.font_width * BYTES_PER_PIXEL;
-                int char_size_bytes_dest = (display_info.font_width * display_info.font_height * BYTES_PER_PIXEL);
-                int char_size_bytes_src =  (ihdr.width * display_info.font_height * BYTES_PER_PIXEL);
-                memcpy((uint8_t *)fonts[page] + (char_num * char_size_bytes_dest) + (y * char_width_bytes), (uint8_t *)font_data + (char_num * char_size_bytes_src) + (ihdr.width * y * BYTES_PER_PIXEL) + (page * char_width_bytes), char_width_bytes);
-            }
-        }
-    }
-
-    free(font_data);
-    spng_ctx_free(ctx);
-    fclose(fd);
-    return 0;
-    err:
-        spng_ctx_free(ctx);
-        fclose(fd);
-        return -1;
-}
-
-static void load_font(void **font_buffer[], uint8_t is_hd, font_variant_e font_variant) {
-    // Note: load_font will not replace an existing font.
-    if(*font_buffer == NULL) {
-        if (open_font(SDCARD_FONT_PATH, font_buffer, is_hd, font_variant) < 0) {
-            if (open_font(ENTWARE_FONT_PATH, font_buffer, is_hd, font_variant) < 0) {
-                open_font(FALLBACK_FONT_PATH, font_buffer, is_hd, font_variant);
-            }
-        }
-    }
-}
-
 static void load_fonts(font_variant_e font_variant) {
     char file_path[255];
     get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant);
     toast(file_path);
-    load_font(&sd_display_info.fonts, 0, font_variant);
-    load_font(&hd_display_info.fonts, 1, font_variant);
-    load_font(&full_display_info.fonts, 1, font_variant);
-    load_font(&overlay_display_info.fonts, 1, font_variant);
-}
-
-
-static void close_fonts(display_info_t *display_info) {
-    for(int i = 0; i < NUM_FONT_PAGES; i++) {
-        if(display_info->fonts[i] != NULL) {
-            free(display_info->fonts[i]);
-            display_info->fonts[i] = NULL;
-        }
-    }
+    load_font(&sd_display_info, font_variant);
+    load_font(&hd_display_info, font_variant);
+    load_font(&full_display_info, font_variant);
+    load_font(&overlay_display_info, font_variant);
 }
 
 static void close_all_fonts() {
-    close_fonts(&sd_display_info);
-    close_fonts(&hd_display_info);
-    close_fonts(&overlay_display_info);
-    close_fonts(&full_display_info);
+    close_font(&sd_display_info);
+    close_font(&hd_display_info);
+    close_font(&overlay_display_info);
+    close_font(&full_display_info);
 }
 
 static void msp_set_options(uint8_t font_num, msp_hd_options_e is_hd) {
