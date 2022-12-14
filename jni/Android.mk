@@ -16,6 +16,7 @@ LOCAL_SHARED_LIBRARIES := duml_hal
 LOCAL_SRC_FILES := \
 	displayport_osd_shim.c \
 	fakehd/fakehd.c \
+        font/font.c \
 	hw/dji_display.c \
 	hw/dji_radio_shm.c \
 	hw/dji_services.c \

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -33,7 +34,7 @@ void *open_dict(int dict_version, int *size) {
     size_t filesize = st.st_size;
     int fd = open(file_path, O_RDONLY, 0);
     if (!fd) {
-        return -1;
+        return NULL;
     }
     void* dict = malloc(filesize);
     void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
