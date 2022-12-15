@@ -544,6 +544,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     rec_load_config();
     rec_pb_load_config();
     check_is_au_overlay_enabled();
+    convert_bin_fonts(SDCARD_FONT_PATH);
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     DEBUG_PRINT("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
