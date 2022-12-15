@@ -1,15 +1,14 @@
+#include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "../libspng/spng.h"
 #include "font.h"
 
 #define BYTES_PER_PIXEL 4
-#define FALLBACK_FONT_PATH "/blackbox/font"
-#define ENTWARE_FONT_PATH "/opt/fonts/font"
-#define SDCARD_FONT_PATH "/storage/sdcard0/font"
-
 #define HD_FONT_WIDTH 24
 
 #ifdef DEBUG
@@ -36,7 +35,7 @@ font_variant_e font_variant_from_string(char *variant_string) {
     return font_variant;
 }
 
-void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint8_t len, uint8_t is_hd, font_variant_e font_variant)
+void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, font_variant_e font_variant)
 {
     char name_buf[len];
     char res_buf[len];
@@ -69,15 +68,14 @@ void get_font_path_with_prefix(char *font_path_dest, const char *font_path, uint
     } else {
         snprintf(res_buf, len, "%s", "");
     }
-
-    snprintf(font_path_dest, len, "%s%s.png", name_buf, res_buf);
+    snprintf(font_path_dest, len, "%s%s%s", name_buf, res_buf, extension);
 }
 
 static int open_font(const char *filename, display_info_t *display_info, font_variant_e font_variant)
 {
     char file_path[255];
     int is_hd = (display_info->char_width == HD_FONT_WIDTH) ? 1 : 0;
-    get_font_path_with_prefix(file_path, filename, 255, is_hd, font_variant);
+    get_font_path_with_extension(file_path, filename, ".png", 255, is_hd, font_variant);
     DEBUG_PRINT("Opening font: %s\n", file_path);
     struct stat st;
     memset(&st, 0, sizeof(st));
@@ -190,3 +188,102 @@ void close_font(display_info_t *display_info) {
         }
     }
 }
+
+void convert_bin_fonts(const char *file_location)
+{
+    display_info_t sd_display_info = {
+        .char_width = 30,
+        .char_height = 15,
+        .font_width = 36,
+        .font_height = 54,
+        .x_offset = 180,
+        .y_offset = 0,
+        .fonts = {NULL, NULL, NULL, NULL},
+    };
+
+    static display_info_t hd_display_info = {
+        .char_width = 50,
+        .char_height = 18,
+        .font_width = 24,
+        .font_height = 36,
+        .x_offset = 120,
+        .y_offset = 80,
+        .fonts = {NULL, NULL, NULL, NULL},
+    };
+
+    for(int is_hd = 0; is_hd < 2; is_hd++) {
+        for(int i = 0; i < FONT_VARIANT_COUNT; i++) {
+            int page_count = 1;
+            char file_path[255];
+            get_font_path_with_extension(file_path, file_location, ".bin", 255, is_hd, i);
+            char page_2_file_path[255];
+            get_font_path_with_extension(page_2_file_path, file_location, "_2.bin", 255, is_hd, i);
+            char *file_paths[2] = {file_path, page_2_file_path};
+            struct stat st;
+            memset(&st, 0, sizeof(st));
+            stat(file_path, &st);
+            size_t page_1_filesize = st.st_size;
+            stat(page_2_file_path, &st);
+            size_t page_2_filesize = st.st_size;
+            display_info_t display_info = is_hd ? hd_display_info : sd_display_info;
+            size_t desired_filesize = display_info.font_height *  display_info.font_width * NUM_CHARS * BYTES_PER_PIXEL;
+            DEBUG_PRINT("Found a font candidate to convert: %s %d\n", file_path, page_1_filesize);
+            if(page_1_filesize == desired_filesize) {
+                DEBUG_PRINT("Found a font to convert: %s %d\n", file_path, desired_filesize);
+            } else {
+                continue;
+            }
+            if(page_2_filesize == desired_filesize) {
+                page_count = 2;
+            }
+            void *image_buf = malloc(desired_filesize * page_count);
+            for(int page = 0; page < page_count; page++) {
+                int fd = open(file_paths[page], O_RDONLY, 0);
+                if (!fd) {
+                    DEBUG_PRINT("Could not open file %s\n", file_path);
+                    continue;
+                }
+                void* mmappedData = mmap(NULL, desired_filesize, PROT_READ, MAP_PRIVATE, fd, 0);
+                if (mmappedData != MAP_FAILED) {                    
+                    for(int char_num = 0; char_num < NUM_CHARS; char_num++) {
+                        for(int y = 0; y < display_info.font_height; y++) {
+                            // Copy each character line at a time into the correct font buffer
+                            int char_width_bytes = display_info.font_width * BYTES_PER_PIXEL;
+                            int char_size_bytes_src = (display_info.font_width * display_info.font_height * BYTES_PER_PIXEL);
+                            int char_size_bytes_dest =  (display_info.font_width * page_count * display_info.font_height * BYTES_PER_PIXEL);
+                            memcpy((uint8_t *)image_buf + (char_num * char_size_bytes_dest) + (display_info.font_width * page_count * y * BYTES_PER_PIXEL) + (page * char_width_bytes), (uint8_t *)mmappedData + (char_num * char_size_bytes_src) + (y * char_width_bytes), char_width_bytes);
+                        }
+                    }
+                } else {
+                    DEBUG_PRINT("Could not map font %s\n", file_path);
+                    free(image_buf);
+                    continue;
+                }
+                close(fd);
+                munmap(mmappedData, desired_filesize);
+            }
+            char out_file_path[255];
+            get_font_path_with_extension(out_file_path, file_location, ".png", 255, is_hd, i);
+            FILE* out_fd = fopen(out_file_path, "wb");
+            if(out_fd == NULL) {
+                DEBUG_PRINT("Could not open output %s\n", out_file_path);
+                continue;
+            }
+            spng_ctx *enc = spng_ctx_new(SPNG_CTX_ENCODER);
+            struct spng_ihdr ihdr =
+            {
+                .width = display_info.font_width * page_count,
+                .height = display_info.font_height * NUM_CHARS,
+                .bit_depth = 8,
+                .color_type = SPNG_COLOR_TYPE_TRUECOLOR_ALPHA
+            };
+            spng_set_ihdr(enc, &ihdr);
+            spng_set_png_file(enc, out_fd);
+            spng_encode_image(enc, image_buf, desired_filesize * page_count, SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE);
+            spng_ctx_free(enc);
+            free(image_buf);
+            fclose(out_fd);
+        }
+    }  
+}
+

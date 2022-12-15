@@ -247,7 +247,7 @@ static void msp_callback(msp_msg_t *msp_message)
 
 static void load_fonts(font_variant_e font_variant) {
     char file_path[255];
-    get_font_path_with_prefix(file_path, "FONT font", 255, 0, font_variant);
+    get_font_path_with_extension(file_path, "FONT font", ".png", 255, 0, font_variant);
     toast(file_path);
     load_font(&sd_display_info, font_variant);
     load_font(&hd_display_info, font_variant);
