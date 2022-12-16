@@ -82,9 +82,9 @@ No air unit/vista config is required.
 
 In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using FakeHD, rather than having gaps + looking broken, you should set up menu switching.
 
-FakeHD can use the presence/absence of a character in the OSD as a switch to indicate when you are in reular OSD mode or in the menu/stats and switch to centering temporarily when needed.
+FakeHD can use the presence/absence of a character in the OSD as a switch to indicate when you are in regular OSD mode or in the menu/stats and switch to centering temporarily when needed.
 
-By default, the `Throttle Position` icon is used (character 4) - but you can set any character you want. It needs to be something that doesn't flash or changge in the regular OSD, and ideally (but not essential) something that is never in the menu/post flight stats. The icons next to various elements are obvious choices here. You can set this using the `fakehd_menu_switch` configuration parameter.
+By default, the `Throttle Position` icon is used (character 4) - but you can set any character you want. It needs to be something that doesn't flash or change in the regular OSD, and ideally (but not essential) something that is never in the menu/post flight stats. The icons next to various elements are obvious choices here. You can set this using the `fakehd_menu_switch` configuration parameter.
 
 Betaflight has a list here: https://github.com/betaflight/betaflight/blob/master/docs/osd.md
 
