@@ -19,7 +19,26 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 * Ensure that the correct UART is set to use MSP
 * Enable MSP DisplayPort
 
-### Betaflight
+### Betaflight - Since 4.4
+
+Betaflight 4.4 has added native support for OSD in HD aspect ratio.
+
+Use the following commands in the CLI tab:
+
+```
+set osd_displayport_device = MSP
+set vcd_video_system = HD
+save
+```
+
+Then in the Ports tab, select the peripheral "VTX (MSP + DisplayPort)" for the UART your Vista/Air unit is connected to.
+
+
+![Ports Tab Setting](/docs/img/ports-vtx.png)
+
+Afterwards, you can configure the OSD elements as normal in the OSD tab.
+
+### Betaflight - 4.3 or Before
 
 We have a configurator preset available - "FPV.WTF MSP-OSD", just be sure to pick the UART your Vista/Air unit is connected to.
 
