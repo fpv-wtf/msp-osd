@@ -292,6 +292,7 @@ To apply options, type `package-config apply msp-osd`.
 |`show_au_data`| enables AU data overlay on the right | true/false| false |
 |`show_waiting`| enables or disables MSP WAITING message | true/false.| true |
 |`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false.| false |
+|`rec_enabled`| enables recording of OSD data | true/false.| false |
 
 
 So for example, to disable the WAITING message:
