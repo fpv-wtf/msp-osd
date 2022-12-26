@@ -710,13 +710,6 @@ static void rec_pb_play_loop()
     }
 
     rec_pb_stop();
-
-    free(current_display_info->font_page_1);
-    free(current_display_info->font_page_2);
-    free(current_display_info);
-
-    current_display_info = &sd_display_info;
-    display_mode = DISPLAY_DISABLED;
 }
 
 static void rec_pb_timeout_hook()
@@ -728,7 +721,9 @@ static void rec_pb_timeout_hook()
         if (rec_pb_start() == 0)
         {
             rec_config_t *rec_config = rec_pb_get_config();
+
             display_info_t *osd_display_info = malloc(sizeof(display_info_t));
+            memset(osd_display_info, 0, sizeof(display_info_t));
 
             osd_display_info->char_width = rec_config->char_width;
             osd_display_info->char_height = rec_config->char_height;
@@ -761,7 +756,15 @@ static void rec_pb_timeout_hook()
             current_display_info = osd_display_info;
 
             display_mode = DISPLAY_RUNNING;
+
             rec_pb_play_loop();
+
+            current_display_info = &sd_display_info;
+            display_mode = DISPLAY_DISABLED;
+
+            free(osd_display_info->font_page_1);
+            free(osd_display_info->font_page_2);
+            free(osd_display_info);
         }
         else
         {
