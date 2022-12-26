@@ -732,25 +732,27 @@ static void rec_pb_timeout_hook()
             osd_display_info->x_offset = rec_config->x_offset;
             osd_display_info->y_offset = rec_config->y_offset;
 
-            DEBUG_PRINT("msd_osd: playback config, char_width: %d\n", osd_display_info->char_width);
-            DEBUG_PRINT("msd_osd: playback config, char_height: %d\n", osd_display_info->char_height);
-            DEBUG_PRINT("msd_osd: playback config, font_width: %d\n", osd_display_info->font_width);
-            DEBUG_PRINT("msd_osd: playback config, font_height: %d\n", osd_display_info->font_height);
-            DEBUG_PRINT("msd_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
-            DEBUG_PRINT("msd_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
+            DEBUG_PRINT("msp_osd: playback config, char_width: %d\n", osd_display_info->char_width);
+            DEBUG_PRINT("msp_osd: playback config, char_height: %d\n", osd_display_info->char_height);
+            DEBUG_PRINT("msp_osd: playback config, font_width: %d\n", osd_display_info->font_width);
+            DEBUG_PRINT("msp_osd: playback config, font_height: %d\n", osd_display_info->font_height);
+            DEBUG_PRINT("msp_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
+            DEBUG_PRINT("msp_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
 
             DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
+
+            uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
 
             load_font(
                 &osd_display_info->font_page_1,
                 0,
-                sd_display_info.font_width != osd_display_info->font_width,
+                is_hd,
                 rec_config->font_variant);
 
             load_font(
-                &osd_display_info->font_page_1,
+                &osd_display_info->font_page_2,
                 1,
-                sd_display_info.font_width != osd_display_info->font_width,
+                is_hd,
                 rec_config->font_variant);
 
             current_display_info = osd_display_info;

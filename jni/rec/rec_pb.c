@@ -46,6 +46,7 @@ int rec_pb_start()
         return 1;
     }
 
+    // TODO: Mutex needed here? Can cause a cause if placback stops as we're trying to read info.
     DEBUG_PRINT("playback on: %s", rec_pb_vdec_local_player->fmt_ctx->filename);
 
     char osd_path[256];
