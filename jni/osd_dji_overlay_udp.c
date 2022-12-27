@@ -723,59 +723,54 @@ static void rec_pb_timeout_hook()
     if (is_playing == true) {
         DEBUG_PRINT("msp_osd: gls playing dvr, let's try too!\n");
 
-        if (rec_pb_start() == 0)
+        if (rec_pb_start() != 0)
         {
-            rec_config_t *rec_config = rec_pb_get_config();
-
-            display_info_t *osd_display_info = malloc(sizeof(display_info_t));
-            memset(osd_display_info, 0, sizeof(display_info_t));
-
-            osd_display_info->char_width = rec_config->char_width;
-            osd_display_info->char_height = rec_config->char_height;
-            osd_display_info->font_width = rec_config->font_width;
-            osd_display_info->font_height = rec_config->font_height;
-            osd_display_info->x_offset = rec_config->x_offset;
-            osd_display_info->y_offset = rec_config->y_offset;
-
-            DEBUG_PRINT("msp_osd: playback config, char_width: %d\n", osd_display_info->char_width);
-            DEBUG_PRINT("msp_osd: playback config, char_height: %d\n", osd_display_info->char_height);
-            DEBUG_PRINT("msp_osd: playback config, font_width: %d\n", osd_display_info->font_width);
-            DEBUG_PRINT("msp_osd: playback config, font_height: %d\n", osd_display_info->font_height);
-            DEBUG_PRINT("msp_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
-            DEBUG_PRINT("msp_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
-
-            DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
-
-            uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
-
-            load_font(
-                &osd_display_info->font_page_1,
-                0,
-                is_hd,
-                rec_config->font_variant);
-
-            load_font(
-                &osd_display_info->font_page_2,
-                1,
-                is_hd,
-                rec_config->font_variant);
-
-            current_display_info = osd_display_info;
-            display_mode = DISPLAY_RUNNING;
-
-            rec_pb_play_loop();
-
-            current_display_info = &sd_display_info;
-            display_mode = DISPLAY_DISABLED;
-
-            free(osd_display_info->font_page_1);
-            free(osd_display_info->font_page_2);
-            free(osd_display_info);
+            DEBUG_PRINT("msp_osd: failed to start playback!\n");
+            return;
         }
-        else
-        {
-            DEBUG_PRINT("msp_osd: failed to init rec_pb\n");
-        }
+
+        rec_config_t *rec_config = rec_pb_get_config();
+        display_info_t *osd_display_info = malloc(sizeof(display_info_t));
+        memset(osd_display_info, 0, sizeof(display_info_t));
+
+        osd_display_info->char_width = rec_config->char_width;
+        osd_display_info->char_height = rec_config->char_height;
+        osd_display_info->font_width = rec_config->font_width;
+        osd_display_info->font_height = rec_config->font_height;
+        osd_display_info->x_offset = rec_config->x_offset;
+        osd_display_info->y_offset = rec_config->y_offset;
+
+        DEBUG_PRINT("msp_osd: playback config, char_width: %d\n", osd_display_info->char_width);
+        DEBUG_PRINT("msp_osd: playback config, char_height: %d\n", osd_display_info->char_height);
+        DEBUG_PRINT("msp_osd: playback config, font_width: %d\n", osd_display_info->font_width);
+        DEBUG_PRINT("msp_osd: playback config, font_height: %d\n", osd_display_info->font_height);
+        DEBUG_PRINT("msp_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
+        DEBUG_PRINT("msp_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
+
+        DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
+        uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
+        load_font(
+            &osd_display_info->font_page_1,
+            0,
+            is_hd,
+            rec_config->font_variant);
+        load_font(
+            &osd_display_info->font_page_2,
+            1,
+            is_hd,
+            rec_config->font_variant);
+
+        current_display_info = osd_display_info;
+        display_mode = DISPLAY_RUNNING;
+
+        rec_pb_play_loop();
+
+        current_display_info = &sd_display_info;
+        display_mode = DISPLAY_DISABLED;
+
+        free(osd_display_info->font_page_1);
+        free(osd_display_info->font_page_2);
+        free(osd_display_info);
     }
 }
 
