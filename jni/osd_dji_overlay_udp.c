@@ -693,7 +693,7 @@ static void rec_pb_play_loop()
 
         if (diff_ns >= next_diff)
         {
-            rec_pb_get_next_frame(diff_ns, msp_character_map);
+            rec_pb_get_next_frame(diff_ns, (uint16_t *) msp_character_map);
             render_screen();
 
             clock_gettime(CLOCK_MONOTONIC, &now);
