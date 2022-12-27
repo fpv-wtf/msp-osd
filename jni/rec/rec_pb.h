@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+extern uint8_t rec_pb_start_attempted;
+
 int rec_pb_start();
 void rec_pb_stop();
 

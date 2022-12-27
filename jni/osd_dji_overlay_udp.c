@@ -714,8 +714,18 @@ static void rec_pb_play_loop()
 
 static void rec_pb_timeout_hook()
 {
-    if (rec_pb_gls_is_playing() == true)
-    {
+    uint8_t is_playing = rec_pb_gls_is_playing();
+
+    // Only try start once per playback.
+    if (is_playing == true && rec_pb_start_attempted == true) {
+        return;
+    } else if (is_playing == true) {
+        rec_pb_start_attempted = true;
+    } else {
+        rec_pb_start_attempted = false;
+    }
+
+    if (is_playing == true) {
         DEBUG_PRINT("msp_osd: gls playing dvr, let's try too!\n");
 
         if (rec_pb_start() == 0)
@@ -756,7 +766,6 @@ static void rec_pb_timeout_hook()
                 rec_config->font_variant);
 
             current_display_info = osd_display_info;
-
             display_mode = DISPLAY_RUNNING;
 
             rec_pb_play_loop();

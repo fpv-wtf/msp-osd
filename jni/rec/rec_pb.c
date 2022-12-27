@@ -21,6 +21,7 @@
 
 cp_vdec_t *rec_pb_cp_vdec = NULL;
 vdec_local_player_t *rec_pb_vdec_local_player = NULL;
+uint8_t rec_pb_start_attempted = false;
 
 static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
