@@ -27,13 +27,11 @@ static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
 
 static int64_t frame_counter = 0;
-static int64_t last_frame_counter = 0;
+static int64_t last_rtos_frame_counter = 0;
 
-static rec_frame_header_t current_frame_header = {0};
-static uint16_t current_frame_map[MAX_T] = {0};
-
-static rec_frame_header_t next_frame_header = {0};
-static uint16_t next_frame_map[MAX_T] = {0};
+static uint32_t *frame_idxs;
+static uint32_t frame_idx_len = 0;
+static uint32_t current_frame_idx = 0;
 
 int rec_pb_start()
 {
@@ -84,12 +82,28 @@ int rec_pb_start()
     DEBUG_PRINT("header ok!");
     memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
 
-    fread(&current_frame_header, sizeof(rec_frame_header_t), 1, osd_fd);
-    fread(&current_frame_map, sizeof(uint16_t), MAX_T, osd_fd);
+    DEBUG_PRINT("loading frame indexes");
 
-    fread(&next_frame_header, sizeof(rec_frame_header_t), 1, osd_fd);
-    fread(&next_frame_map, sizeof(uint16_t), MAX_T, osd_fd);
+    fseek(osd_fd, 0, SEEK_END);
+    uint32_t file_size = ftell(osd_fd);
+    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+    DEBUG_PRINT("file size: %d", file_size);
+    frame_idx_len = file_size / (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T));
+    DEBUG_PRINT("frame_idx_len: %d", frame_idx_len);
+    frame_idxs = malloc(sizeof(uint32_t) * frame_idx_len);
 
+    for (uint32_t i = 0; i < frame_idx_len; i++)
+    {
+        rec_frame_header_t frame_header;
+        fread(&frame_header, sizeof(rec_frame_header_t), 1, osd_fd);
+        frame_idxs[i] = frame_header.frame_idx;
+        DEBUG_PRINT("frame_idx: %d = %d", i, frame_idxs[i]);
+        fseek(osd_fd, sizeof(uint16_t) * MAX_T, SEEK_CUR);
+    }
+
+    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+
+    current_frame_idx = 0;
     frame_counter = rec_pb_cp_vdec->frames_sent;
 
     return 0;
@@ -106,6 +120,9 @@ void rec_pb_stop()
     rec_pb_cp_vdec = NULL;
     rec_pb_vdec_local_player = NULL;
 
+    free(frame_idxs);
+    frame_idxs = NULL;
+
     DEBUG_PRINT("playback stopped");
 }
 
@@ -119,53 +136,49 @@ rec_config_t *rec_pb_get_config()
     return &osd_config;
 }
 
-int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out) {
-    // frame_counter += frame_delta / 1000 / 1000 / 1000;
+int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out)
+{
 
-    // //DEBUG_PRINT("%lld", rec_pb_cp_vdec->play_tm_ms);
+    uint64_t rtos_frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
 
-    // frame_counter = rec_pb_cp_vdec->play_tm_ms / (1000 / 60);
-
-    last_frame_counter = frame_counter;
-    frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
-
-    if (frame_counter == last_frame_counter)
+    // play_to_ms only updates when the RTOS is fed frames (which are buffered in, in chunks)
+    // so we gotta interpolate a little when it's "frozen".
+    if (last_rtos_frame_counter == rtos_frame_counter)
     {
-        frame_counter += 2;
+        uint8_t frames_since = frame_delta / 16666666;
+        frame_counter += frames_since;
+    }
+    else
+    {
+        frame_counter = rtos_frame_counter;
+        last_rtos_frame_counter = rtos_frame_counter;
     }
 
-    // if (llabs((int64_t)frame_counter - rec_pb_cp_vdec->frames_sent) >= 90)
-    // {
-    //     DEBUG_PRINT("sync: frame_counter: %f, frames_sent: %d", frame_counter, rec_pb_cp_vdec->frames_sent);
-    //     frame_counter = rec_pb_cp_vdec->frames_sent;
-    // }
-
-    if (frame_counter >= next_frame_header.frame_idx) {
-        current_frame_header = next_frame_header;
-        memcpy(current_frame_map, next_frame_map, sizeof(uint16_t) * MAX_T);
-        memcpy(map_out, &current_frame_map, sizeof(uint16_t) * MAX_T);
-
-        while (true) {
-            // DEBUG_PRINT("searching for next frame");
-
-            if (fread(&next_frame_header, sizeof(rec_frame_header_t), 1, osd_fd) != 1) {
-                return 1;
-            }
-
-            if (next_frame_header.frame_idx >= current_frame_header.frame_idx + 2) {
-                // DEBUG_PRINT("found frame");
-                break;
-            }
-
-            if (fseek(osd_fd, sizeof(uint16_t) * MAX_T, SEEK_CUR) != 0) {
-                return 1;
-            }
+    uint32_t closest_frame_idx = 0;
+    for (uint32_t i = 0; i < frame_idx_len; i++)
+    {
+        if (frame_idxs[i] > frame_counter)
+        {
+            break;
         }
 
-        if (fread(&next_frame_map, sizeof(uint16_t), MAX_T, osd_fd) != MAX_T) {
-            return 1;
-        }
+        closest_frame_idx = i;
     }
+
+    if (closest_frame_idx == current_frame_idx && current_frame_idx != 0)
+    {
+        return 0;
+    }
+
+    fseek(
+        osd_fd,
+        sizeof(rec_file_header_t)
+            + (closest_frame_idx * (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))) +
+            + sizeof(rec_frame_header_t),
+        SEEK_SET);
+    fread(map_out, sizeof(uint16_t), MAX_T, osd_fd);
+
+    current_frame_idx = closest_frame_idx;
 
     return 0;
 }

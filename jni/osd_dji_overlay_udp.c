@@ -681,7 +681,7 @@ static void rec_pb_play_loop()
     struct timespec last;
     clock_gettime(CLOCK_MONOTONIC, &last);
 
-    int64_t target_diff = 16666666 * 2;
+    int64_t target_diff = NSEC_PER_SEC / 15;
     int64_t next_diff = target_diff;
 
     while (rec_pb_gls_is_playing())
@@ -689,22 +689,17 @@ static void rec_pb_play_loop()
         struct timespec now, diff;
         clock_gettime(CLOCK_MONOTONIC, &now);
         timespec_subtract(&diff, &now, &last);
-        int64_t diff_ns = diff.tv_nsec;
+        int64_t diff_ns = diff.tv_sec * 1000000000 + diff.tv_nsec;
 
         if (diff_ns >= next_diff)
         {
-
-            if (rec_pb_get_next_frame(diff_ns, msp_character_map) != 0) {
-                break;
-            }
-
+            rec_pb_get_next_frame(diff_ns, msp_character_map);
             render_screen();
 
             clock_gettime(CLOCK_MONOTONIC, &now);
             timespec_subtract(&diff, &now, &last);
             last = now;
 
-            int64_t diff_ns = diff.tv_sec * 1000000000 + diff.tv_nsec;
             next_diff = target_diff + (target_diff - diff_ns);
         }
     }
@@ -869,7 +864,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[3].events = POLLIN;
 
         // spin every 250ms if we didn't get a packet, then check and see if we need to do the toast/overlay logic
-        int poll_status = poll(poll_fds, 4, 250);
+        poll(poll_fds, 4, 250);
 
         clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -929,9 +924,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             render_screen();
         }
 
-        if (poll_status == 0) {
-            rec_pb_timeout_hook();
-        }
+        rec_pb_timeout_hook();
     }
 
     free(display_driver);
