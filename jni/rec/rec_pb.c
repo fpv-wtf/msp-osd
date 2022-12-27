@@ -138,12 +138,11 @@ rec_config_t *rec_pb_get_config()
 
 int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out)
 {
-
     uint64_t rtos_frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
 
     // play_to_ms only updates when the RTOS is fed frames (which are buffered in, in chunks)
     // so we gotta interpolate a little when it's "frozen".
-    if (last_rtos_frame_counter == rtos_frame_counter)
+    if (last_rtos_frame_counter == rtos_frame_counter && rec_pb_cp_vdec->vdec_state == VDEC_PLAYING)
     {
         uint8_t frames_since = frame_delta / 16666666;
         frame_counter += frames_since;
