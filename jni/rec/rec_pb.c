@@ -171,9 +171,8 @@ int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out)
 
     fseek(
         osd_fd,
-        sizeof(rec_file_header_t)
-            + (closest_frame_idx * (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))) +
-            + sizeof(rec_frame_header_t),
+        sizeof(rec_file_header_t) + (closest_frame_idx * (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))) +
+            +sizeof(rec_frame_header_t),
         SEEK_SET);
     fread(map_out, sizeof(uint16_t), MAX_T, osd_fd);
 
