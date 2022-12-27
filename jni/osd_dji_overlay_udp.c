@@ -760,12 +760,17 @@ static void rec_pb_timeout_hook()
             is_hd,
             rec_config->font_variant);
 
+        // TODO: Sketchy swap here?
+        // Might end playback after swapping channel, maybe? So back on live channel but with
+        // DISPLAY_DISABLED which would be bad. :(
         current_display_info = osd_display_info;
+        clear_overlay();
         display_mode = DISPLAY_RUNNING;
 
         rec_pb_play_loop();
 
         current_display_info = &sd_display_info;
+        memset(msp_character_map, 0, sizeof(msp_character_map));
         display_mode = DISPLAY_DISABLED;
 
         free(osd_display_info->font_page_1);
