@@ -206,7 +206,9 @@ bool rec_pb_gls_is_playing()
         return false;
     }
 
-    return rec_pb_vdec_local_player->b_running || rec_pb_vdec_local_player->b_v_eos;
+    return rec_pb_vdec_local_player->b_running
+        && !rec_pb_vdec_local_player->b_v_eos
+        && rec_pb_vdec_local_player->state != 5; // TODO: Where's the enum for this?
 }
 
 bool rec_pb_is_ready()
