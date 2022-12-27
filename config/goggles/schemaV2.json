@@ -32,6 +32,15 @@
                 false
             ]
         },
+        "rec_pb_enabled": {
+            "type": "boolean",
+            "title": "Enable OSD playback",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
         "hide_diagnostics": {
             "type": "boolean",
             "title": "Hide diagnostic information",

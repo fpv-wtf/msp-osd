@@ -6,6 +6,9 @@
 
 extern uint8_t rec_pb_start_attempted;
 
+void rec_pb_load_config();
+bool rec_pb_is_enabled();
+
 int rec_pb_start();
 void rec_pb_stop();
 

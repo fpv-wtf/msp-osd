@@ -3,11 +3,15 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
+#include "../json/osd_config.h"
+
 #include "rec.h"
 #include "rec_shim.h"
 #include "rec_util.h"
 
 #include "rec_pb.h"
+
+#define REC_PB_CONFIG_ENABLED_KEY "rec_pb_enabled"
 
 #define MAX_X 60
 #define MAX_Y 22
@@ -23,6 +27,8 @@ cp_vdec_t *rec_pb_cp_vdec = NULL;
 vdec_local_player_t *rec_pb_vdec_local_player = NULL;
 uint8_t rec_pb_start_attempted = false;
 
+static bool rec_pb_enabled = false;
+
 static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
 
@@ -32,6 +38,18 @@ static int64_t last_rtos_frame_counter = 0;
 static uint32_t *frame_idxs;
 static uint32_t frame_idx_len = 0;
 static uint32_t current_frame_idx = 0;
+
+void rec_pb_load_config()
+{
+    rec_pb_enabled = get_boolean_config_value(REC_PB_CONFIG_ENABLED_KEY);
+
+    DEBUG_PRINT("rec_pb_enabled: %d", rec_pb_enabled);
+}
+
+bool rec_pb_is_enabled()
+{
+    return rec_pb_enabled;
+}
 
 int rec_pb_start()
 {
