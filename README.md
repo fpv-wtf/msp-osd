@@ -288,10 +288,12 @@ To apply options, type `package-config apply msp-osd`.
 |`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false | false |
 | `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D | WWWWWWCCWWWWWWWD |
 | `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S | S |
-|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying.| true / false | false |
-|`show_au_data`| enables AU data overlay on the right | true/false| false |
-|`show_waiting`| enables or disables MSP WAITING message | true/false.| true |
-|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false.| false |
+|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying. | true/false | false |
+|`show_au_data`| enables AU data overlay on the right | true/false | false |
+|`show_waiting`| enables or disables MSP WAITING message | true/false | true |
+|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false | false |
+|`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | false |
+|`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | false |
 
 
 So for example, to disable the WAITING message:
