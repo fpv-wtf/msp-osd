@@ -21,15 +21,17 @@ LOCAL_SRC_FILES := \
 	hw/dji_services.c \
 	json/osd_config.c \
 	json/parson.c \
+	lz4/lz4.c \
 	msp/msp_displayport.c \
 	msp/msp.c \
 	net/network.c \
 	osd_dji_overlay_udp.c \
+	rec/rec_pb.c \
 	rec/rec_shim.c \
+	rec/rec_util.c \
 	rec/rec.c \
-	util/fs_util.c \
 	toast/toast.c \
-	lz4/lz4.c
+	util/fs_util.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)

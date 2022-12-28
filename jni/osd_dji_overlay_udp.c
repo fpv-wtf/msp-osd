@@ -27,9 +27,11 @@
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
-#include "rec/rec.h"
+
 #include "util/fs_util.h"
 #include "util/time_util.h"
+#include "rec/rec.h"
+#include "rec/rec_pb.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655
@@ -209,11 +211,11 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
                     }
                     target_offset += WIDTH * BYTES_PER_PIXEL - (display_info->font_width * BYTES_PER_PIXEL);
                 }
-                DEBUG_PRINT("%c", c > 31 ? c : 20);
+                // DEBUG_PRINT("%c", c > 31 ? c : 20);
             }
-            DEBUG_PRINT(" ");
+            // DEBUG_PRINT(" ");
         }
-        DEBUG_PRINT("\n");
+        // DEBUG_PRINT("\n");
     }
 }
 
@@ -674,6 +676,105 @@ static void rec_msp_draw_complete_hook()
     }
 }
 
+static void rec_pb_play_loop()
+{
+    struct timespec last;
+    clock_gettime(CLOCK_MONOTONIC, &last);
+
+    int64_t target_diff = NSEC_PER_SEC / 15; // 15 fps
+    int64_t next_diff = target_diff;
+
+    while (rec_pb_gls_is_playing())
+    {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        int64_t diff_ns = timespec_subtract_ns(&now, &last);
+
+        if (diff_ns >= next_diff)
+        {
+            rec_pb_do_next_frame((uint16_t *) msp_character_map);
+            render_screen();
+
+            next_diff = target_diff + (target_diff - diff_ns);
+            last = now;
+        }
+    }
+
+    rec_pb_stop();
+}
+
+static void rec_pb_timeout_hook()
+{
+    uint8_t is_playing = rec_pb_gls_is_playing();
+
+    // Only try start once per playback.
+    if (is_playing == true && rec_pb_start_attempted == true) {
+        return;
+    } else if (is_playing == true) {
+        rec_pb_start_attempted = true;
+    } else {
+        rec_pb_start_attempted = false;
+    }
+
+    if (is_playing == true) {
+        DEBUG_PRINT("msp_osd: gls playing dvr, let's try too!\n");
+
+        if (rec_pb_start() != 0)
+        {
+            DEBUG_PRINT("msp_osd: failed to start playback!\n");
+            return;
+        }
+
+        rec_config_t *rec_config = rec_pb_get_config();
+        display_info_t *osd_display_info = malloc(sizeof(display_info_t));
+        memset(osd_display_info, 0, sizeof(display_info_t));
+
+        osd_display_info->char_width = rec_config->char_width;
+        osd_display_info->char_height = rec_config->char_height;
+        osd_display_info->font_width = rec_config->font_width;
+        osd_display_info->font_height = rec_config->font_height;
+        osd_display_info->x_offset = rec_config->x_offset;
+        osd_display_info->y_offset = rec_config->y_offset;
+
+        DEBUG_PRINT("msp_osd: playback config, char_width: %d\n", osd_display_info->char_width);
+        DEBUG_PRINT("msp_osd: playback config, char_height: %d\n", osd_display_info->char_height);
+        DEBUG_PRINT("msp_osd: playback config, font_width: %d\n", osd_display_info->font_width);
+        DEBUG_PRINT("msp_osd: playback config, font_height: %d\n", osd_display_info->font_height);
+        DEBUG_PRINT("msp_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
+        DEBUG_PRINT("msp_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
+
+        DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
+        uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
+        load_font(
+            &osd_display_info->font_page_1,
+            0,
+            is_hd,
+            rec_config->font_variant);
+        load_font(
+            &osd_display_info->font_page_2,
+            1,
+            is_hd,
+            rec_config->font_variant);
+
+        // TODO: Sketchy swap here?
+        // Might end playback after swapping channel, maybe? So back on live channel but with
+        // DISPLAY_DISABLED which would be bad. :(
+        current_display_info = osd_display_info;
+        clear_overlay();
+        display_mode = DISPLAY_RUNNING;
+
+        rec_pb_play_loop();
+
+        current_display_info = &sd_display_info;
+        memset(msp_character_map, 0, sizeof(msp_character_map));
+        display_mode = DISPLAY_DISABLED;
+
+        free(osd_display_info->font_page_1);
+        free(osd_display_info->font_page_2);
+        free(osd_display_info);
+    }
+}
+
 /* Public OSD enable/disable methods */
 
 void osd_disable() {
@@ -695,6 +796,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     toast_load_config();
     load_fakehd_config();
     rec_load_config();
+    rec_pb_load_config();
     check_is_au_overlay_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
@@ -817,6 +919,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         if(timespec_subtract_ns(&now, &last_render) > (NSEC_PER_SEC / FORCE_RENDER_HZ)) {
             // More than 500ms have elapsed without a render, let's go ahead and manually render
             render_screen();
+        }
+
+        if (rec_pb_is_enabled()) {
+            rec_pb_timeout_hook();
         }
     }
 

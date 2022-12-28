@@ -6,27 +6,15 @@
 
 #include "rec.h"
 #include "rec_shim.h"
+#include "rec_util.h"
 
 #define REC_CONFIG_ENABLED_KEY "rec_enabled"
 
 #ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec_shim: " fmt "\n", ##args)
+#define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec: " fmt "\n", ##args)
 #else
 #define DEBUG_PRINT(fmt, args...)
 #endif
-
-typedef struct rec_file_header_t
-{
-    char magic[7];
-    uint16_t version;
-    rec_config_t config;
-} __attribute__((packed)) rec_file_header_t;
-
-typedef struct rec_frame_header_t
-{
-    uint32_t frame_idx;
-    uint32_t size;
-} __attribute__((packed)) rec_frame_header_t;
 
 static bool rec_is_ready();
 static uint32_t rec_get_frame_idx();
@@ -47,21 +35,11 @@ void rec_start(rec_config_t *config)
         fclose(rec_fd);
     }
 
-    char *file_basename = strrchr(rec_lv_transcode->file_name, '/') + 1;
-    char *file_ext = strrchr(file_basename, '.');
-    uint8_t file_dir_len = file_basename - rec_lv_transcode->file_name - 1;
-    uint8_t file_stem_len = file_ext - file_basename;
-
     char rec_file_name[256];
-    snprintf(
-        rec_file_name,
-        sizeof(rec_file_name),
-        "%.*s/%.*s.osd",
-        file_dir_len,
+    rec_util_osd_path_from_video_path(
         rec_lv_transcode->file_name,
-        file_stem_len,
-        file_basename);
-
+        rec_file_name,
+        sizeof(rec_file_name));
     DEBUG_PRINT("rec_file_name: %s", rec_file_name);
 
     rec_fd = fopen(rec_file_name, "wb");
@@ -139,8 +117,6 @@ static bool rec_is_ready()
 
 static uint32_t rec_get_frame_idx()
 {
-    if (rec_is_ready() == false)
-        return 0;
 
     return rec_lv_transcode->last_frame_idx;
 }

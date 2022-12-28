@@ -53,10 +53,14 @@
 			"name": "Enable OSD recording",
 			"widget": "checkbox"
 		},
-        "hide_diagnostics": {
-            "name": "Hide diagnostic information",
-            "widget": "checkbox"
-        }
+		"rec_pb_enabled": {
+			"name": "Enable OSD playback",
+			"widget": "checkbox"
+		},
+		"hide_diagnostics": {
+			"name": "Hide diagnostic information",
+			"widget": "checkbox"
+		}
 	},
 	"units": [
 		"msp-osd-goggles"
