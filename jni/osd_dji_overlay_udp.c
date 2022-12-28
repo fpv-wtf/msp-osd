@@ -681,25 +681,21 @@ static void rec_pb_play_loop()
     struct timespec last;
     clock_gettime(CLOCK_MONOTONIC, &last);
 
-    int64_t target_diff = NSEC_PER_SEC / 15;
+    int64_t target_diff = NSEC_PER_SEC / 15; // 15 fps
     int64_t next_diff = target_diff;
 
     while (rec_pb_gls_is_playing())
     {
-        struct timespec now, diff;
+        struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        timespec_subtract(&diff, &now, &last);
-        int64_t diff_ns = diff.tv_sec * 1000000000 + diff.tv_nsec;
+        int64_t diff_ns = timespec_subtract_ns(&now, &last);
 
         if (diff_ns >= next_diff)
         {
-            rec_pb_get_next_frame(diff_ns, (uint16_t *) msp_character_map);
+            rec_pb_do_next_frame(diff_ns, (uint16_t *) msp_character_map);
             render_screen();
 
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            timespec_subtract(&diff, &now, &last);
             last = now;
-
             next_diff = target_diff + (target_diff - diff_ns);
         }
     }

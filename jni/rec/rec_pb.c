@@ -17,6 +17,8 @@
 #define MAX_Y 22
 #define MAX_T (MAX_X * MAX_Y)
 
+#define FRAME_SIZE (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))
+
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec_pb: " fmt "\n", ##args)
 #else
@@ -106,7 +108,8 @@ int rec_pb_start()
     uint32_t file_size = ftell(osd_fd);
     fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
     DEBUG_PRINT("file size: %d", file_size);
-    frame_idx_len = file_size / (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T));
+
+    frame_idx_len = file_size / FRAME_SIZE;
     DEBUG_PRINT("frame_idx_len: %d", frame_idx_len);
     frame_idxs = malloc(sizeof(uint32_t) * frame_idx_len);
 
@@ -154,7 +157,7 @@ rec_config_t *rec_pb_get_config()
     return &osd_config;
 }
 
-int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out)
+int rec_pb_do_next_frame(int64_t frame_delta, uint16_t *map_out)
 {
     uint64_t rtos_frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
 
@@ -189,8 +192,7 @@ int rec_pb_get_next_frame(int64_t frame_delta, uint16_t *map_out)
 
     fseek(
         osd_fd,
-        sizeof(rec_file_header_t) + (closest_frame_idx * (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))) +
-            +sizeof(rec_frame_header_t),
+        sizeof(rec_file_header_t) + (closest_frame_idx * FRAME_SIZE) + sizeof(rec_frame_header_t),
         SEEK_SET);
     fread(map_out, sizeof(uint16_t), MAX_T, osd_fd);
 
@@ -206,9 +208,8 @@ bool rec_pb_gls_is_playing()
         return false;
     }
 
-    return rec_pb_vdec_local_player->b_running
-        && !rec_pb_vdec_local_player->b_v_eos
-        && rec_pb_vdec_local_player->state != 5; // TODO: Where's the enum for this?
+    // state == 5 is stopped (i.e., when gs_player_stop is called)
+    return rec_pb_vdec_local_player->b_running && !rec_pb_vdec_local_player->b_v_eos && rec_pb_vdec_local_player->state != 5;
 }
 
 bool rec_pb_is_ready()
