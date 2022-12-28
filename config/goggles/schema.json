@@ -58,8 +58,8 @@
 			"widget": "checkbox"
 		},
 		"hide_diagnostics": {
-				"name": "Hide diagnostic information",
-				"widget": "checkbox"
+			"name": "Hide diagnostic information",
+			"widget": "checkbox"
 		}
 	},
 	"units": [
