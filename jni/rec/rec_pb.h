@@ -12,7 +12,7 @@ bool rec_pb_is_enabled();
 int rec_pb_start();
 void rec_pb_stop();
 
-int rec_pb_do_next_frame(int64_t frame_delta, uint16_t *map_out);
+int rec_pb_do_next_frame(uint16_t *map_out);
 
 rec_config_t *rec_pb_get_config();
 

@@ -35,7 +35,6 @@ static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
 
 static int64_t frame_counter = 0;
-static int64_t last_rtos_frame_counter = 0;
 
 static uint32_t *frame_idxs;
 static uint32_t frame_idx_len = 0;
@@ -157,22 +156,10 @@ rec_config_t *rec_pb_get_config()
     return &osd_config;
 }
 
-int rec_pb_do_next_frame(int64_t frame_delta, uint16_t *map_out)
+int rec_pb_do_next_frame(uint16_t *map_out)
 {
-    uint64_t rtos_frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
-
-    // play_to_ms only updates when the RTOS is fed frames (which are buffered in, in chunks)
-    // so we gotta interpolate a little when it's "frozen".
-    if (last_rtos_frame_counter == rtos_frame_counter && rec_pb_cp_vdec->vdec_state == VDEC_PLAYING)
-    {
-        uint8_t frames_since = frame_delta / 16666666;
-        frame_counter += frames_since;
-    }
-    else
-    {
-        frame_counter = rtos_frame_counter;
-        last_rtos_frame_counter = rtos_frame_counter;
-    }
+    // -45 is absolutely a magic number based on testing, seems play_tm_ms lags by about that much.
+    uint64_t frame_counter = ((rec_pb_cp_vdec->play_tm_ms) * 60 / 1000) - 45;
 
     uint32_t closest_frame_idx = 0;
     for (uint32_t i = 0; i < frame_idx_len; i++)
