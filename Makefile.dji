@@ -23,7 +23,7 @@ all: jni/*
 
 install: all
 	install -d ipk/goggle/build/data/opt/fonts/
-	install fonts/*.bin ipk/goggle/build/data/opt/fonts/
+	install fonts/*.png ipk/goggle/build/data/opt/fonts/
 	install -d ipk/goggle/build/data/opt/mspdictionaries/
 	install dictionaries/*.bin ipk/goggle/build/data/opt/mspdictionaries/
 	install -d ipk/goggle/build/data/opt/etc/preload.d/
