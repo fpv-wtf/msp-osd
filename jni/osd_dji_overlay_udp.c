@@ -763,11 +763,20 @@ static void rec_pb_timeout_hook()
         clear_overlay();
         display_mode = DISPLAY_RUNNING;
 
+        uint8_t fakehd_was_enabled = fakehd_is_enabled();
+        if (fakehd_was_enabled == true) {
+            fakehd_disable();
+        }
+
         rec_pb_play_loop();
 
         current_display_info = &sd_display_info;
         memset(msp_character_map, 0, sizeof(msp_character_map));
         display_mode = DISPLAY_DISABLED;
+
+        if (fakehd_was_enabled == true) {
+            fakehd_enable();
+        }
 
         free(osd_display_info->font_page_1);
         free(osd_display_info->font_page_2);
