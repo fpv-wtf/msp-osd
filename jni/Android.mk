@@ -50,3 +50,10 @@ LOCAL_SRC_FILES:= \
 LOCAL_MODULE := msp_displayport_mux
 include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES:= \
+	dmi/dmi.c \
+	dmi/dji_media.c
+LOCAL_MODULE := dmi-playback
+include $(BUILD_EXECUTABLE)
+include $(CLEAR_VARS)
