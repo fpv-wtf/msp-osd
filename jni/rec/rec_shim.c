@@ -44,7 +44,7 @@ duss_osal_priority_t duss_osal_task_create(
         }
         else
         {
-            rec_pb_vdec_local_player = ctx->player;
+            rec_pb_vdec_local_player = *(vdec_local_player_t **)((void *)ctx + 0x8b4);
         }
 
         DEBUG_PRINT("got vdec_local_player_t from player_thread: %p", rec_pb_vdec_local_player);
