@@ -5,8 +5,8 @@
 #define DUSS_MEDIA_CONTROL_PATH "/dev/dmi_media_control"
 #define DUSS_MEDIA_DMI_PLAYBACK_PATH "/dev/dmi_video_playback"
 
-#define DUSS_CLAIM_BRIDGE_IO_PKT 0x800c4207
-#define DUSS_RELEASE_BRIDGE_IO_PKT 0x400c4208
+#define DUSS_CLAIM_BRIDGE_IO_PKT 0x800c4205
+#define DUSS_RELEASE_BRIDGE_IO_PKT 0x400c4206
 
 typedef enum media_cmd_id {
     DUSS_MEDIA_CMD_AVIN_SET_PARAM=122,

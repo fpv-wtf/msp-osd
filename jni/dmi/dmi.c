@@ -25,6 +25,11 @@ void shram_set_u32(void *mmap_addr, int mmap_offset, int offset, uint32_t value)
     *addr = value;
 }
 
+void shram_set_u8(void *mmap_addr, int mmap_offset, int offset, uint8_t value) {
+    uint8_t *addr = mmap_addr + mmap_offset + offset;
+    *addr = value;
+}
+
 int main(int argc, char *argv[])
 {
     int shram_fd = open("/dev/mem", O_RDWR);
@@ -33,18 +38,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int shram_base = PDT_SHRAM_BASE & 0xfffff000;
-    int shram_offset = PDT_SHRAM_BASE & 0xfff;
-    int shram_len = PDT_SHRAM_LEN + 0xfff & 0xfffff000;
+    uint64_t shram_base = PDT_SHRAM_BASE & 0xfffff000;
+    uint64_t shram_offset = PDT_SHRAM_BASE & 0xfff;
+    uint64_t shram_len = PDT_SHRAM_LEN + 0xfff & 0xfffff000;
     printf("shram base: 0x%x\n", shram_base);
     printf("shram offset: 0x%x\n", shram_offset);
     printf("shram len: 0x%x\n", shram_len);
 
-    void *shram_addr = mmap(NULL, shram_len, PROT_READ | PROT_WRITE, MAP_SHARED, shram_fd, shram_base);
+    void *shram_addr = mmap64(NULL, shram_len, PROT_READ | PROT_WRITE, MAP_SHARED, shram_fd, shram_base);
     if (shram_addr == MAP_FAILED) {
         printf("shram mmap failed: %s\n", strerror(errno));
         return 1;
     }
+    printf("shram map: %p\n", shram_addr);
 
     // ????
     shram_set_u64(shram_addr, shram_offset, 0x16, 0);
@@ -52,6 +58,18 @@ int main(int argc, char *argv[])
     // Framerate
     shram_set_u32(shram_addr, shram_offset, 0x20, 1);
     shram_set_u32(shram_addr, shram_offset, 0x24, 60);
+
+    // Unpause?
+    shram_set_u8(shram_addr, shram_offset, 0x39, 0);
+
+    int mcc = dji_open_media_control_channel();
+    int mpc = dji_open_media_playback_channel();
+
+    dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_STOP, 0);
+    dji_send_media_command(mcc, DUSS_MEDIA_CMD_GND_LV_STOP, 0);
+    dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_START, 1280 | 720 << 0x10);
+
+    printf("ok!\n");
 
     AVFormatContext *format_ctx = avformat_alloc_context();
     avformat_open_input(&format_ctx, "./bunny.mp4", NULL, NULL);
@@ -64,17 +82,10 @@ int main(int argc, char *argv[])
     AVBSFContext *bsf_ctx = NULL;
     av_bsf_alloc(bsf, &bsf_ctx);
 
-    int mcc = dji_open_media_control_channel();
-    int mpc = dji_open_media_playback_channel();
-
-    // dji_send_media_command(mcc, DUSS_MEDIA_CMD_GND_LV_STOP, 0);
-    dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_START, 1280 | 720 << 0x10);
-
-    bridge_io_pkt_t io_pkt;
-    memset(&io_pkt, 0, sizeof(io_pkt));
-
     AVPacket av_pkt;
     av_init_packet(&av_pkt);
+
+    bridge_io_pkt_t io_pkt;
 
     int ret = 0;
     while (av_read_frame(format_ctx, &av_pkt) >= 0) {
@@ -102,7 +113,7 @@ int main(int argc, char *argv[])
         munmap(frame, size);
         ioctl(mpc, DUSS_RELEASE_BRIDGE_IO_PKT, &io_pkt);
         av_packet_unref(&av_pkt);
-        // sleep(1);
+        sleep(1);
     }
 
     dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_STOP, 0);
