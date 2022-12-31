@@ -1,0 +1,14 @@
+prefix=./prefix
+exec_prefix=${prefix}
+libdir=./prefix/lib
+includedir=./prefix/include
+
+Name: libavdevice
+Description: FFmpeg device handling library
+Version: 59.7.100
+Requires: 
+Requires.private: libavformat >= 59.27.100, libavcodec >= 59.37.100, libavutil >= 57.28.100
+Conflicts:
+Libs: -L${libdir}  -lavdevice 
+Libs.private: -lm -latomic
+Cflags: -I${includedir}

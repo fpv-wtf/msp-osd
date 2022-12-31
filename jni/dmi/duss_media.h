@@ -5,6 +5,9 @@
 #define DUSS_MEDIA_CONTROL_PATH "/dev/dmi_media_control"
 #define DUSS_MEDIA_DMI_PLAYBACK_PATH "/dev/dmi_video_playback"
 
+#define DUSS_CLAIM_BRIDGE_IO_PKT 0x800c4207
+#define DUSS_RELEASE_BRIDGE_IO_PKT 0x400c4208
+
 typedef enum media_cmd_id {
     DUSS_MEDIA_CMD_AVIN_SET_PARAM=122,
     DUSS_MEDIA_CMD_AVIN_START=120,
@@ -46,3 +49,11 @@ struct duss_media_apcp_cmd {
 };
 
 typedef struct duss_media_apcp_cmd duss_media_apcp_cmd_t;
+
+struct bridge_io_pkt {
+    uint32_t paddr;
+    uint32_t size;
+    uint32_t notify;
+};
+
+typedef struct bridge_io_pkt bridge_io_pkt_t;

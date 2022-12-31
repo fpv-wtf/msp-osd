@@ -1,0 +1,14 @@
+prefix=./prefix
+exec_prefix=${prefix}
+libdir=./prefix/lib
+includedir=./prefix/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 59.37.100
+Requires: 
+Requires.private: libavutil >= 57.28.100
+Conflicts:
+Libs: -L${libdir}  -lavcodec 
+Libs.private: -pthread -lm -latomic
+Cflags: -I${includedir}
