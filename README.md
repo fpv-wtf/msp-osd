@@ -23,7 +23,9 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 Betaflight 4.4 has added native support for OSD in HD aspect ratio.
 
-Use the following commands in the CLI tab:
+There is a preset available: "OSD for Fpv.wtf, DJI O3, Avatar HD", once applied you can then skip ahead to configuring in the OSD tab.
+
+Or to configure manually, first enter the following commands in the CLI tab:
 
 ```
 set osd_displayport_device = MSP
@@ -31,8 +33,7 @@ set vcd_video_system = HD
 save
 ```
 
-Then in the Ports tab, select the peripheral "VTX (MSP + DisplayPort)" for the UART your Vista/Air unit is connected to.
-
+And then in the Ports tab, select the peripheral "VTX (MSP + DisplayPort)" for the UART your Vista/Air unit is connected to.
 
 ![Ports Tab Setting](/docs/img/ports-vtx.png)
 
