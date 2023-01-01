@@ -32,6 +32,8 @@ void shram_set_u8(void *mmap_addr, int mmap_offset, int offset, uint8_t value) {
 
 int main(int argc, char *argv[])
 {
+    av_log_set_level(AV_LOG_DEBUG);
+
     int shram_fd = open("/dev/mem", O_RDWR);
     if (shram_fd < 0) {
         printf("open shram failed: %s\n", strerror(errno));
@@ -55,28 +57,29 @@ int main(int argc, char *argv[])
     // ????
     shram_set_u64(shram_addr, shram_offset, 0x16, 0);
 
-    // Framerate
-    shram_set_u32(shram_addr, shram_offset, 0x20, 1);
-    shram_set_u32(shram_addr, shram_offset, 0x24, 60);
-
     // Unpause?
     shram_set_u8(shram_addr, shram_offset, 0x39, 0);
 
     int mcc = dji_open_media_control_channel();
     int mpc = dji_open_media_playback_channel();
 
-    dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_STOP, 0);
-    dji_send_media_command(mcc, DUSS_MEDIA_CMD_GND_LV_STOP, 0);
+    // dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_STOP, 0);
+    // dji_send_media_command(mcc, DUSS_MEDIA_CMD_GND_LV_STOP, 0);
     dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_START, 1280 | 720 << 0x10);
 
     printf("ok!\n");
 
     AVFormatContext *format_ctx = avformat_alloc_context();
-    avformat_open_input(&format_ctx, "./bunny.mp4", NULL, NULL);
+    avformat_open_input(&format_ctx, "/storage/sdcard0/DCIM/100MEDIA/DJIG0020.mp4", NULL, NULL);
     avformat_find_stream_info(format_ctx, NULL);
 
     AVCodec *codec = avcodec_find_decoder(format_ctx->streams[0]->codecpar->codec_id);
     AVCodecContext *codec_ctx = avcodec_alloc_context3(codec);
+
+    // shram_set_u32(shram_addr, shram_offset, 0x20, format_ctx->streams[0]->time_base.den);
+    // shram_set_u32(shram_addr, shram_offset, 0x24, format_ctx->streams[0]->time_base.num);
+    shram_set_u32(shram_addr, shram_offset, 0x20, 100);
+    shram_set_u32(shram_addr, shram_offset, 0x24, 10000);
 
     AVBitStreamFilter *bsf = av_bsf_get_by_name("h264_mp4toannexb");
     AVBSFContext *bsf_ctx = NULL;
@@ -86,8 +89,12 @@ int main(int argc, char *argv[])
     av_init_packet(&av_pkt);
 
     bridge_io_pkt_t io_pkt;
+    memset(&io_pkt, 0, sizeof(io_pkt));
 
     int ret = 0;
+    stream_in_header_t header;
+
+    int first_frame = 1;
     while (av_read_frame(format_ctx, &av_pkt) >= 0) {
         av_bsf_send_packet(bsf_ctx, &av_pkt);
         av_bsf_receive_packet(bsf_ctx, &av_pkt);
@@ -105,15 +112,33 @@ int main(int argc, char *argv[])
             size += 0x1000;
         }
 
-        void *frame = mmap(NULL, size, 3, 1, mpc, io_pkt.paddr & 0xfffff000);
-        printf("mmap returned %p\n", frame);
+        void *frame_page = mmap(NULL, size, 3, 1, mpc, io_pkt.paddr & 0xfffff000);
+        void *frame = frame_page + addr_remainder;
+        printf("mmap returned %p\n", frame_page);
 
-        // memcpy(frame + addr_remainder, av_pkt.data, 1);
+        header.eof = 0;
+        header.is_first_frm = first_frame;
+        header.is_parted = 0;
+        header.payload_lenth = av_pkt.size;
+        header.payload_offset = 0x20;
+        header.pts = av_pkt.pts;
+        header.eos = 1;
+        first_frame = 0;
 
-        munmap(frame, size);
+        printf("pts: %lld\n", av_pkt.pts);
+
+        memcpy(frame, &header, 0x20);
+        memcpy(frame + 0x20, av_pkt.data, av_pkt.size);
+
+        printf("copied frame!\n");
+
+        io_pkt.size = av_pkt.size + 0x20;
+        io_pkt.notify = 1;
+
+        munmap(frame_page, size);
         ioctl(mpc, DUSS_RELEASE_BRIDGE_IO_PKT, &io_pkt);
         av_packet_unref(&av_pkt);
-        sleep(1);
+        usleep(1000000 / 5);
     }
 
     dji_send_media_command(mcc, DUSS_MEDIA_CMD_PB_STOP, 0);

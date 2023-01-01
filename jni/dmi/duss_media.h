@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define DUSS_MEDIA_CONTROL_PATH "/dev/dmi_media_control"
@@ -8,6 +9,7 @@
 #define DUSS_CLAIM_BRIDGE_IO_PKT 0x800c4205
 #define DUSS_RELEASE_BRIDGE_IO_PKT 0x400c4206
 
+typedef unsigned char   undefined;
 typedef enum media_cmd_id {
     DUSS_MEDIA_CMD_AVIN_SET_PARAM=122,
     DUSS_MEDIA_CMD_AVIN_START=120,
@@ -57,3 +59,27 @@ struct bridge_io_pkt {
 };
 
 typedef struct bridge_io_pkt bridge_io_pkt_t;
+
+struct stream_in_header {
+    uint8_t hdr_type;
+    uint8_t is_parted;
+    uint8_t eof;
+    uint8_t eos;
+    undefined field4_0x4;
+    undefined field5_0x5;
+    undefined field6_0x6;
+    undefined field7_0x7;
+    uint64_t pts;
+    uint32_t payload_offset;
+    uint32_t payload_lenth;
+    bool is_first_frm;
+    undefined field12_0x19;
+    undefined field13_0x1a;
+    undefined field14_0x1b;
+    undefined field15_0x1c;
+    undefined field16_0x1d;
+    undefined field17_0x1e;
+    undefined field18_0x1f;
+};
+
+typedef struct stream_in_header stream_in_header_t;
