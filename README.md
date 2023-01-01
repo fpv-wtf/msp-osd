@@ -23,7 +23,11 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 Betaflight 4.4 has added native support for OSD in HD aspect ratio.
 
+#### Configure With Preset
+
 There is a preset available: "OSD for Fpv.wtf, DJI O3, Avatar HD", once applied you can then skip ahead to configuring in the OSD tab.
+
+#### Configure Manually
 
 Or to configure manually, first enter the following commands in the CLI tab:
 
