@@ -183,7 +183,7 @@ Select "HDZero VTx" or "MSP Display Port" (on newer INAV versions) as the Periph
 
 If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
 
-Due to a known issue, the INAV artificial horizon and other elements can become corrupted in packet loss situations. To work around this, assign a blank OSD screen to a switch, or assign a switch to the OSD feature. Toggling to a blank screen or turning the OSD on and then off will fix display corruption.
+It is recommended to enable [compressed transmission](#compressed-transmission) with INAV to avoid issues with the display corrupting - the artifical horizon is the most common element to show this.
 
 ### Ardupilot
 
