@@ -43,6 +43,12 @@ And then in the Ports tab, select the peripheral "VTX (MSP + DisplayPort)" for t
 
 Afterwards, you can configure the OSD elements as normal in the OSD tab.
 
+#### Troubleshooting wrong grid size in BF 4.4 Configurator
+
+It is recommended to enable [compressed transmission](#compressed-transmission) with BF 4.4; it will soon become the default. It removes/avoids ordering issues between FC/AU/Goggles bootup - the AU has to tell the FC the grid size it supports.
+
+If you don't want to / can't do this - try rebooting your goggles, then reboot your AU.
+
 ### Betaflight - 4.3 or Before
 
 We have a configurator preset available - "FPV.WTF MSP-OSD", just be sure to pick the UART your Vista/Air unit is connected to.
