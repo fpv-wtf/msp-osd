@@ -83,7 +83,8 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
 	dmi/dmi.c \
-	dmi/dji_media.c
+	dmi/dji_media.c \
+	dmi/shram.c
 LOCAL_MODULE := dmi-playback
 LOCAL_SHARED_LIBRARIES := libavcodec libavformat libavutil
 include $(BUILD_EXECUTABLE)
