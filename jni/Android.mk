@@ -91,13 +91,21 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
-	dmi/ffmpeg_test.c
-LOCAL_MODULE := ffmpeg_test
-LOCAL_SHARED_LIBRARIES := libavcodec libavformat libavutil
+	dmi/yoink.c \
+	dmi/dji_media.c \
+	dmi/shram.c
+LOCAL_MODULE := yoink
 LOCAL_CFLAGS += \
-	-fPIC \
 	-std=c99 \
-	-O3
+	-fPIC
 LOCAL_LDFLAGS += -fPIC
+include $(BUILD_SHARED_LIBRARY)
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES:= \
+	dmi/dmi_dump_pb.c \
+	dmi/dji_media.c \
+	dmi/shram.c
+LOCAL_MODULE := dmi-dump-pb
 include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)

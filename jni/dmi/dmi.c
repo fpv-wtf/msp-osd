@@ -40,25 +40,27 @@ int main(int argc, char *argv[])
 
     shram_set_u32(&shram, SHRAM_OFFSET_RATE_NUM, format_ctx->streams[0]->time_base.num);
     shram_set_u32(&shram, SHRAM_OFFSET_RATE_DEN, format_ctx->streams[0]->time_base.den);
-    shram_set_u64(&shram, 0x18, 0); // ???
+    shram_set_u64(&shram, 0x18, 0); // Audio PTS offset, maybe? Gets set to 0 in my goggles.
 
-    io_pkt_handle_t pkt_handle;
-    dji_claim_io_pkt(mpc, &pkt_handle);
 
     stream_in_header_t header;
+    io_pkt_handle_t pkt_handle;
     memset(&header, 0, sizeof(header));
+
+    dji_claim_io_pkt(mpc, &pkt_handle);
 
     size_t extradata_size = format_ctx->streams[0]->codecpar->extradata_size;
     printf("extradata size: %d\n", extradata_size);
     printf("extradata first byte: %x\n", *(uint8_t *)format_ctx->streams[0]->codecpar->extradata);
 
-    header.eof = 0;
+    header.eof = 1;
     header.eos = 0;
     header.is_first_frm = 1;
     header.is_parted = 0;
     header.payload_lenth = extradata_size;
     header.payload_offset = 0x20;
     header.pts = 0;
+    header.hdr_type = 1;
 
     memcpy(pkt_handle.data, &header, 0x20);
     memcpy(pkt_handle.data + 0x20, format_ctx->streams[0]->codecpar->extradata, extradata_size);
@@ -75,17 +77,17 @@ int main(int argc, char *argv[])
     bsf_ctx->time_base_in = format_ctx->streams[0]->time_base;
     av_bsf_init(bsf_ctx);
 
-    AVPacket av_pkt;
+    AVPacket av_pkt_raw;
     AVPacket av_pkt_annexb;
-    av_init_packet(&av_pkt);
+    av_init_packet(&av_pkt_raw);
     av_init_packet(&av_pkt_annexb);
 
     shram_set_u8(&shram, SHRAM_OFFSET_PAUSE, 0);
 
-    while (av_read_frame(format_ctx, &av_pkt) >= 0) {
-        printf("frame size: %d\n", av_pkt.size);
+    while (av_read_frame(format_ctx, &av_pkt_raw) >= 0) {
+        printf("frame size: %d\n", av_pkt_raw.size);
 
-        av_bsf_send_packet(bsf_ctx, &av_pkt);
+        av_bsf_send_packet(bsf_ctx, &av_pkt_raw);
         while (true) {
             ret = av_bsf_receive_packet(bsf_ctx, &av_pkt_annexb);
             if (ret == AVERROR(EAGAIN)) {
@@ -98,13 +100,14 @@ int main(int argc, char *argv[])
 
         dji_claim_io_pkt(mpc, &pkt_handle);
 
-        header.eof = 0;
+        header.eof = 1;
         header.eos = 0;
         header.is_first_frm = 0;
         header.is_parted = 0;
         header.payload_lenth = av_pkt_annexb.size;
         header.payload_offset = 0x20;
         header.pts = av_pkt_annexb.pts;
+        header.hdr_type = 1;
         printf("pts: %lld\n", av_pkt_annexb.pts);
 
         memcpy(pkt_handle.data, &header, 0x20);
