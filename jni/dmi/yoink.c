@@ -10,7 +10,9 @@
 #include "duss_media.h"
 #include "shram.h"
 
-int dump_fd = -1;
+FILE *dump_f = NULL;
+
+void yoink_close();
 
 void yoink_open() {
     time_t t = time(NULL);
@@ -18,28 +20,28 @@ void yoink_open() {
     char buf[256];
     strftime(buf, sizeof(buf), "/storage/sdcard0/dmi_dump_%Y%m%d_%H%M%S", tm);
 
-    if (dump_fd > 0) {
-        close(dump_fd);
+    if (dump_f != NULL) {
+        yoink_close();
     }
 
-    dump_fd = open(buf, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+    dump_f = fopen(buf, "w");
 }
 
 void yoink_close() {
-    if (dump_fd < 0) {
+    if (dump_f == NULL) {
         return;
     }
 
-    fsync(dump_fd);
-    close(dump_fd);
-    dump_fd = -1;
+    fflush(dump_f);
+    fflush(dump_f);
+    dump_f = NULL;
 }
 
 void yoink_do(int fd, bridge_io_pkt_t *pkt) {
     printf("yoinking frame... (fd: %d, pkt: %p)\n", fd, pkt);
     printf("paddr: %x, size: %x, notify: %x\n", pkt->paddr, pkt->size, pkt->notify);
 
-    uint32_t page_size = pkt->size + 0xfff & 0xfffff000;
+    uint32_t page_size = (pkt->size + 0xfff) & 0xfffff000;
     uint32_t page_offset = pkt->paddr & 0xfff;
 
     void *page = mmap(NULL, page_size, 3, 1, fd, pkt->paddr & 0xfffff000);
@@ -51,7 +53,7 @@ void yoink_do(int fd, bridge_io_pkt_t *pkt) {
     void *data = page + page_offset;
 
     stream_in_header_t *header = data;
-    void *payload = data + sizeof(stream_in_header_t);
+    uint8_t *payload = data + sizeof(stream_in_header_t);
 
     printf("header->hdr_type: %x\n", header->hdr_type);
     printf("header->is_parted: %x\n", header->is_parted);
@@ -62,9 +64,27 @@ void yoink_do(int fd, bridge_io_pkt_t *pkt) {
     printf("header->payload_lenth: %x\n", header->payload_lenth);
     printf("header->is_first_frm: %x\n", header->is_first_frm);
 
-    write(dump_fd, header, sizeof(stream_in_header_t));
-    write(dump_fd, payload, header->payload_lenth);
-    fsync(dump_fd);
+    fwrite(header, sizeof(stream_in_header_t), 1, dump_f);
+    fwrite(payload, header->payload_lenth, 1, dump_f);
+    fflush(dump_f);
 
     munmap(page, page_size);
+}
+
+void yoink_frame(uint8_t *buf, size_t len, uint8_t key, uint8_t eos, uint32_t pts) {
+    stream_in_header_t header;
+    memset(&header, 0, sizeof(header));
+
+    header.hdr_type = 0;
+    header.is_parted = 0;
+    header.is_first_frm = 0;
+    header.eof = 1;
+    header.eos = eos;
+    header.pts = pts;
+    header.payload_offset = sizeof(stream_in_header_t);
+    header.payload_lenth = len;
+
+    fwrite(&header, sizeof(stream_in_header_t), 1, dump_f);
+    fwrite(buf, len, 1, dump_f);
+    fflush(dump_f);
 }

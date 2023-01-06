@@ -19,4 +19,4 @@ typedef struct io_pkt_handle {
 } io_pkt_handle_t;
 
 void dji_claim_io_pkt(int fd, io_pkt_handle_t *pkt);
-void dji_release_io_pkt(int fd, io_pkt_handle_t *pkt);
+void dji_release_io_pkt(int fd, io_pkt_handle_t *pkt, size_t pkt_size);

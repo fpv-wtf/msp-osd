@@ -40,7 +40,7 @@ void dji_claim_io_pkt(int fd, io_pkt_handle_t *handle) {
         usleep(100000);
     }
 
-    handle->page_size = handle->pkt.size + 0xfff & 0xfffff000;
+    handle->page_size = (handle->pkt.size + 0xfff) & 0xfffff000;
     handle->page_offset = handle->pkt.paddr & 0xfff;
 
     if (0x1000 < handle->page_size + handle->page_offset) {
@@ -51,7 +51,10 @@ void dji_claim_io_pkt(int fd, io_pkt_handle_t *handle) {
     handle->data = handle->page + handle->page_offset;
 }
 
-void dji_release_io_pkt(int fd, io_pkt_handle_t *handle) {
+void dji_release_io_pkt(int fd, io_pkt_handle_t *handle, size_t pkt_size) {
+    handle->pkt.size = pkt_size;
+    handle->pkt.notify = 1;
+
     munmap(handle->page, handle->page_size);
 
     while (ioctl(fd, DUSS_RELEASE_BRIDGE_IO_PKT, &handle->pkt) != 0) {
