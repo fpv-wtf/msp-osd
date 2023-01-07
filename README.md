@@ -322,7 +322,7 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 |`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
-| `fast_serial` | Change serial baud rate to 240400 baud, which can improve OSD performance in some situations | true/false | false |
+| `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations | true/false | false |
 
 ## FAQ / Suggestions
 
