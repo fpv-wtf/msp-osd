@@ -14,4 +14,4 @@ void dmi_pb_close(dmi_pb_handle_t* handle);
 
 void dmi_pb_send_extradata(dmi_pb_handle_t* handle, uint8_t *extradata, size_t extradata_size);
 void dmi_pb_send_packet(dmi_pb_handle_t* handle, AVPacket *pkt);
-
+void dmi_pb_send(dmi_pb_handle_t* handle, stream_in_header_t *header, uint8_t *data, size_t size);

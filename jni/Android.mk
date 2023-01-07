@@ -92,6 +92,16 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
+	dmi/dji_media.c \
+	dmi/dmi_pb.c \
+	dmi/dmi_net.c \
+	dmi/shram.c
+LOCAL_MODULE := dmi-net
+LOCAL_SHARED_LIBRARIES := libavcodec libavformat libavutil
+include $(BUILD_EXECUTABLE)
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES:= \
 	dmi/yoink.c \
 	dmi/dji_media.c \
 	dmi/shram.c

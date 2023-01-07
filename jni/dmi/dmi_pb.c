@@ -3,8 +3,6 @@
 #include "duss_media.h"
 #include "shram.h"
 
-static void dmi_pb_send(dmi_pb_handle_t* handle, stream_in_header_t *header, uint8_t *data, size_t size);
-
 static uint8_t *mangle_extradata(uint8_t *extradata, size_t extradata_size, size_t *new_extradata_size);
 static uint32_t get_nalu_size(uint8_t nalu_len, uint8_t *frame);
 static void *mangle_frame(uint8_t *frame, size_t frame_size, size_t *new_frame_size);
@@ -67,11 +65,11 @@ void dmi_pb_send_packet(dmi_pb_handle_t* handle, AVPacket *pkt) {
     header.payload_offset = sizeof(stream_in_header_t);
     header.pts = 0;
 
-    dmi_pb_send(handle, &header, new_frame, new_frame_size);
+    dmi_pb_send(&handle, &header, new_frame, new_frame_size);
     free(new_frame);
 }
 
-static void dmi_pb_send(dmi_pb_handle_t* handle, stream_in_header_t *header, uint8_t *data, size_t size) {
+void dmi_pb_send(dmi_pb_handle_t* handle, stream_in_header_t *header, uint8_t *data, size_t size) {
     io_pkt_handle_t pkt_handle;
 
     dji_claim_io_pkt(handle->media_playback_channel, &pkt_handle);
