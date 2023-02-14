@@ -23,6 +23,33 @@
                 false
             ]
         },
+        "show_au_data_product_raw": {
+            "type": "boolean",
+            "title": "Show RAW Product Info",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "show_au_data_modem_part1_raw": {
+            "type": "boolean",
+            "title": "Show RAW Modem Info Part 1",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "show_au_data_modem_part2_raw": {
+            "type": "boolean",
+            "title": "Show RAW Modem Info Part 2",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
         "rec_enabled": {
             "type": "boolean",
             "title": "Enable OSD recording",

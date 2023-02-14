@@ -1,6 +1,9 @@
 {
     "show_waiting": true,
     "show_au_data": false,
+    "show_au_data_product_raw": false,
+    "show_au_data_modem_part1_raw": false,
+    "show_au_data_modem_part2_raw": false,
     "fakehd_enable": false,
     "fakehd_hide_throttle_element": false,
     "fakehd_lock_center": false,
