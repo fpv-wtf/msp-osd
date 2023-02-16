@@ -300,12 +300,47 @@ To apply options, type `package-config apply msp-osd`.
 | `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D | WWWWWWCCWWWWWWWD |
 | `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S | S |
 |`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying. | true/false | false |
-|`show_au_data`| enables AU data overlay on the right | true/false | false |
+|`show_au_data`| enables AU data overlay on the right (only one show_au possible --> last one with true is used if more then one true aktiv) | true/false | false |
+|`show_au_data_product_raw`| Show RAW Product Info overlay on the right (only one show_au possible --> last one with true is used if more then one true aktiv) | true/false | false |
+|`show_au_data_modem_part1_raw`| Show RAW Modem Info Part 1 overlay on the right (only one show_au possible --> last one with true is used if more then one true aktiv) | true/false | false |
+|`show_au_data_modem_part2_raw`| Show RAW Modem Info Part 2 overlay on the right (only one show_au possible --> last one with true is used if more then one true aktiv) | true/false | false |
 |`show_waiting`| enables or disables MSP WAITING message | true/false | true |
 |`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false | false |
 |`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | false |
 |`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | false |
 
+### show_au_data_product_raw
+| C1 | C2 | C3 | C4|
+| ------ | ----------- | ---- |--------|
+|`frm_width`|`mipi_csi_frm_dropped`|`outliner_frame_interval`|`if_pb_pause`|
+|`frm_height`|`display_frm_dropped`|`outliner_frame_interval_cnt`|`liveview_pipeline_running`|
+|`fps`|`audio_pts`|`max_frame_delay_e2e`|`avIn_pipeline_running`|
+|`enc_strategy`|`local_fps_den`|`min_frame_delay_e2e`|`avIn_stream_type`|
+|`lcdc_underflow_cnt`|`frame_delay_e2e`|`avg_frame_delay_e2e`|`pb_flush`|
+|`enc_sto_frm_dropped`|`cam_frame_interval`|`if_switch`|`disp_pannel_need_reset`|
+|`enc_lv_frm_dropped`|`if_change_pipe`|`pad`|
+
+### show_au_data_modem_part1_raw
+| C1 | C2 | C3 | C4|
+| ------ | ----------- | ---- |--------|
+|`frm_idx`|`cur_time`|`cp_report`|`machine_role`|
+|`frm_isI`|`delta_time`|`cp_report_seq`|`is_reverse`|
+|`frm_len`|`dbg_msc`|`client_type`|`cp_tx_power`|
+|`frm_dsti`|`dbg_ap_ready`|`cp_boot_status0`|`gnd_type`|
+|`frm_dstf`|`dbg_cp_ready`|`cp_boot_status1`|`cp_sssfn`|
+|`channel_status`|`local_id`|`board_version`|`ulow_en`|
+|`dec_err_status`|`cp_state`|`board_sub_version`|`mipi_rx_response`|
+
+### show_au_data_modem_part2_raw
+| C1 | C2 | C3 | C4|
+| ------ | ----------- | ---- |--------|
+|`reserved01`|`area_substate`|`frm_delay_for_display`|`field_0x85`|
+|`reserved02`|`GsCtrl`|`wifi_sdr_mode`|`field_0x86`|
+|`ap_reboot_flag`|`GsSubState`|`frm_isI_for_display`|`field_0x87`|
+|`ap_reboot_ack_flag`|`com_uart_status`|`country_code`|`cpa7_version`|
+|`secure_sync_flag`|`fcr_rx_status`|`frm_len_for_display`|`dsp_version`|
+|`reserve00`|`fcr_tx_status`|`delta_time_for_display`|`u8_dual_band_capability`|
+|`area_state`|`frm_idx_for_display`|`uint8_t_reboot_reason`|
 
 So for example, to disable the WAITING message:
 

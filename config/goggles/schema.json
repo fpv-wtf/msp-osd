@@ -8,6 +8,18 @@
 			"name": "Show VTx Temperature and Voltage",
 			"widget": "checkbox"
 		},
+		"show_au_data_product_raw": {
+			"name": "Show RAW Product Info",
+			"widget": "checkbox"
+		},
+		"show_au_data_modem_part1_raw": {
+			"name": "Show RAW Modem Info Part 1",
+			"widget": "checkbox"
+		},
+		"show_au_data_modem_part2_raw": {
+			"name": "Show RAW Modem Info Part 2",
+			"widget": "checkbox"
+		},
 		"fakehd_enable": {
 			"name": "Enable FakeHD Mode",
 			"widget": "checkbox"

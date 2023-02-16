@@ -146,12 +146,12 @@ static display_info_t hd_display_info = {
 };
 
 static display_info_t overlay_display_info = {
-    .char_width = 20,
-    .char_height = 10,
+    .char_width = 60,
+    .char_height = 22,
     .font_width = 24,
     .font_height = 36,
-    .x_offset = 960,
-    .y_offset = 450,
+    .x_offset = 0,
+    .y_offset = 0,
     .font_page_1 = NULL,
     .font_page_2 = NULL,
 };
@@ -588,6 +588,49 @@ static void check_is_au_overlay_enabled()
     }
 }
 
+#define SHOW_AU_DATA_PRODUCT_RAW_KEY "show_au_data_product_raw"
+static int au_product_enabled = 0;
+#define SHOW_AU_DATA_MODEM_PART1_RAW_KEY "show_au_data_modem_part1_raw"
+static int au_modem_enabled_part1 = 0;
+#define SHOW_AU_DATA_MODEM_PART2_RAW_KEY "show_au_data_modem_part2_raw"
+static int au_modem_enabled_part2 = 0;
+
+static void check_is_au_product_enabled_enabled()
+{
+    DEBUG_PRINT("Checking for AU product overlay enabled: ");
+    if (get_boolean_config_value(SHOW_AU_DATA_PRODUCT_RAW_KEY))
+    {
+        DEBUG_PRINT("Enabled\n");
+        au_product_enabled = 1;
+    } else {
+        DEBUG_PRINT("Disabled\n");
+    }
+}
+
+static void check_is_au_modem_enabled_part1_enabled()
+{
+    DEBUG_PRINT("Checking for AU model part1 overlay enabled: ");
+    if (get_boolean_config_value(SHOW_AU_DATA_MODEM_PART1_RAW_KEY))
+    {
+        DEBUG_PRINT("Enabled\n");
+        au_modem_enabled_part1 = 1;
+    } else {
+        DEBUG_PRINT("Disabled\n");
+    }
+}
+
+static void check_is_au_modem_enabled_part2_enabled()
+{
+    DEBUG_PRINT("Checking for AU model part1 overlay enabled: ");
+    if (get_boolean_config_value(SHOW_AU_DATA_MODEM_PART2_RAW_KEY))
+    {
+        DEBUG_PRINT("Enabled\n");
+        au_modem_enabled_part2 = 1;
+    } else {
+        DEBUG_PRINT("Disabled\n");
+    }
+}
+
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
     DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant);
@@ -595,9 +638,261 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     clear_overlay();
     if(au_overlay_enabled) {
         snprintf(str, 8, "%d C", packet->tx_temperature);
-        display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
+        display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 8);
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
-        display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+        display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 8);
+    }else if(au_product_enabled) {
+        snprintf(str, 8, "%d", frm_width(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_height(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 9, str, 8); 
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", fps(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", enc_strategy(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", lcdc_underflow_cnt(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", enc_sto_frm_dropped(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", enc_lv_frm_dropped(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", mipi_csi_frm_dropped(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", display_frm_dropped(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", audio_pts(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", local_fps_num(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", local_fps_den(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frame_delay_e2e(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cam_frame_interval(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", outliner_frame_interval(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", outliner_frame_interval_cnt(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", max_frame_delay_e2e(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", min_frame_delay_e2e(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", avg_frame_delay_e2e(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", if_switch(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", if_change_pipe(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", if_pb_pause(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", liveview_pipeline_running(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", avIn_pipeline_running(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", avIn_stream_type(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", pb_flush(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", disp_pannel_need_reset(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", pad(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+    }else if(au_modem_enabled_part1) {
+        snprintf(str, 8, "%d", frm_idx(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));        
+        snprintf(str, 8, "%d", frm_isI(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 9, str, 8); 
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_len(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_dsti(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_dstf(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", channel_status(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", dec_err_status(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cur_time(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", delta_time(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", dbg_msc(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", dbg_ap_ready(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", dbg_cp_ready(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", local_id(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_state(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_report(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_report_seq(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", client_type(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_boot_status0(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_boot_status1(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", board_version(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", board_sub_version(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", machine_role(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", is_reverse(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_tx_power(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", gnd_type(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cp_sssfn(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", ulow_en(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", mipi_rx_response(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+    }else if(au_modem_enabled_part2) {
+        snprintf(str, 8, "%d", reserved01(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));        
+        snprintf(str, 8, "%d", reserved02(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 9, str, 8); 
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", ap_reboot_flag(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", ap_reboot_ack_flag(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", secure_sync_flag(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", reserve00(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", area_state(radio_shm));
+        display_print_string(5, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", area_substate(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", GsCtrl(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", GsSubState(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", com_uart_status(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", fcr_rx_status(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", fcr_tx_status(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_idx_for_display(radio_shm));
+        display_print_string(20, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_delay_for_display(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", wifi_sdr_mode(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_isI_for_display(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", country_code(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", frm_len_for_display(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", delta_time_for_display(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", uint8_t_reboot_reason(radio_shm));
+        display_print_string(35, overlay_display_info.char_height - 4, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", field_0x85(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 10, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", field_0x86(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 9, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", field_0x87(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 8, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", cpa7_version(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 7, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", dsp_version(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 6, str, 8);
+        memset(str,0,sizeof(str));
+        snprintf(str, 8, "%d", u8_dual_band_capability(radio_shm));
+        display_print_string(50, overlay_display_info.char_height - 5, str, 8);
+        memset(str,0,sizeof(str));
     }
     if(len > 6) {
         DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
@@ -807,6 +1102,9 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     rec_load_config();
     rec_pb_load_config();
     check_is_au_overlay_enabled();
+    check_is_au_product_enabled_enabled();
+    check_is_au_modem_enabled_part1_enabled();
+    check_is_au_modem_enabled_part2_enabled();
 
     uint8_t is_v2_goggles = dji_goggles_are_v2();
     DEBUG_PRINT("Detected DJI goggles %s\n", is_v2_goggles ? "V2" : "V1");
