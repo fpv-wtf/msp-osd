@@ -9,6 +9,6 @@
     "fakehd_layout_debug": false,
     "fakehd_columns": "S",
     "fakehd_rows": "WWWWWWCCWWWWWWWD",
-    "rec_enabled": false,
-    "rec_pb_enabled": false
+    "rec_enabled": true,
+    "rec_pb_enabled": true
 }

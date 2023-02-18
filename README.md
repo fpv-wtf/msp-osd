@@ -249,6 +249,8 @@ When enabled, this should fix INAV delta update related issues as well as provid
 
 To enable:
 
+This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration file will need to be updated by hand as well.
+
 Use the CLI button in the configurator on your VTx side after updating to 0.7.0.
 
 ```
@@ -258,9 +260,7 @@ package-config apply msp-osd
 
 If the apply hangs, just reboot your VTx.
 
-Note that INAV HD mode sync issues may still be present, use the usual workarounds (enter menu or switch screens) to fix these.
-
-Compressed mode may also be valuable for other FCs, as it should make the overall link much more reliable and stable.
+If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
 
 ### Generate your own Font from an analog font (advanced)
 
@@ -303,8 +303,8 @@ To apply options, type `package-config apply msp-osd`.
 |`show_au_data`| enables AU data overlay on the right | true/false | false |
 |`show_waiting`| enables or disables MSP WAITING message | true/false | true |
 |`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false | false |
-|`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | false |
-|`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | false |
+|`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | true |
+|`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | true |
 
 
 So for example, to disable the WAITING message:
@@ -319,7 +319,7 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 
 | Option | Description | Type | Default|
 | ------ | ----------- | ---- |--------|
-|`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| false |
+|`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| true |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
 | `fast_serial` | Change serial baud rate to 240400 baud, which can improve OSD performance in some situations | true/false | false |
