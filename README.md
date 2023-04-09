@@ -98,11 +98,9 @@ A diagram to help...
 
 ##### To configure/enable:
 
-1. Plug in your Goggles + connect them to the WTFOS Configurator.
-2. Click on the `CLI` tab.
-3. Type/paste `package-config set msp-osd fakehd_enable true` and press Enter.
-4. Type/paste `package-config apply msp-osd` and press Enter.
-5. Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your goggles connected, and check "Fake HD"
+
+Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
 
 Configuration of the grid is also possible; see below.
 
@@ -176,7 +174,7 @@ Using the default row config; here's what they all look like:
 
 Rows config accepts a 16 character long string; each character configuring it's corresponding row. The default FakeHD config would be set like this:
 
-`package-config set msp-osd fakehd_rows WWWWWWCCWWWWWWWD`
+`fakehd_rows = WWWWWWCCWWWWWWWD`
 
 The characters are case sensitive, but the configurator will reject invalid characters.
 
@@ -184,7 +182,7 @@ The characters are case sensitive, but the configurator will reject invalid char
 
 Columns accepts a single character configuring how the whole grid is aligned. The default would be set like this:
 
-`package-config set msp-osd fakehd_columns S`
+`fakehd_columns = S`
 
 The characters are case sensitive, but the configurator will reject invalid characters.
 
@@ -249,16 +247,9 @@ When enabled, this should fix INAV delta update related issues as well as provid
 
 To enable:
 
-This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration file will need to be updated by hand as well.
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Air Unit / Vista plugged in to edit package options.
 
-Use the CLI button in the configurator on your VTx side after updating to 0.7.0.
-
-```
-package-config set msp-osd compress_osd true
-package-config apply msp-osd
-```
-
-If the apply hangs, just reboot your VTx.
+This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
 
 If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
 
@@ -282,13 +273,9 @@ You can customize the font color by changing the 255 255 255 RGB values.
 
 ## Configuration options
 
-Configuration options can be set using the CLI function in the WTFOS Configurator.
+Configuration options can be set using the WTFOS Configurator.
 
-To see available options, type `package-config get msp-osd` and press Enter.
-
-To set an option, type `package-config set msp-osd key value` and press Enter. Options do NOT set immediately, see next step:
-
-To apply options, type `package-config apply msp-osd`.
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plugged in to edit options.
 
 ### Current available options (Goggles):
 
@@ -306,15 +293,6 @@ To apply options, type `package-config apply msp-osd`.
 |`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | true |
 |`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | true |
 
-
-So for example, to disable the WAITING message:
-
-Click the CLI tab.
-
-Type `package-config set msp-osd show_waiting false` and press ENTER.
-
-Next, Type `package-config apply msp-osd` and press ENTER.
-
 ### Current available options (Air Unit/Vista):
 
 | Option | Description | Type | Default|
@@ -323,6 +301,7 @@ Next, Type `package-config apply msp-osd` and press ENTER.
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
 | `fast_serial` | Change serial baud rate to 240400 baud, which can improve OSD performance in some situations | true/false | false |
+| `disable_betaflight_hd` | Disable HD Mode, which is otherwise set by default with Betaflight 4.4 | true/false | false |
 
 ## FAQ / Suggestions
 
@@ -334,17 +313,13 @@ https://github.com/Knifa/mcm2img/tree/templates
 
 ### Why is everything so big / can I make the text smaller (betaflight)?
 
-Betaflight does not support HD OSD. So you have the same 30 * 16 grid as analog uses. The field of view in the DJI goggles makes this look big.
-
-We have a workaround that will work for some use cases; see fakehd under Betaflight above.
-
-Otherwise, you can swap to a different font to make the characters smaller, but the grid spacing is the same.
+For Betaflight prior to 4.4, look into FakeHD.
+For Betaflight after 4.4, you should see "HD" fonts by default. Make sure your VTx (AU/Vista) is powered up and visit the Betaflight Configurator to move OSD items to the edge of the screen.
 
 ### How can I get my INAV/ArduPilot/Kiss Ultra OSD closer to the edge of the screen / Why is FakeHD closer to the edges?
 
- - The current MSP HD grid size (ie: hd in INAV/ArduPilot/Kiss Ultra) is 50 characters wide. We'll call this RealHD.
  - The goggles need 60 characters to go edge to edge - so the 50 in the hd grid doesn't quite fill it
- - So the RealHD grid is displayed centered in the goggles - gaps on both edges.
+ - So, depending on the Flight Controller's setup, the RealHD grid is displayed centered in the goggles - gaps on both edges.
  - FakeHD had no compatibility constraints like this so we were able to use the full width of the screens.
  - Consequently, FakeHD can get nearer the edges.
  - Currently no solution to get RealHD closer to the edges.
@@ -352,6 +327,7 @@ Otherwise, you can swap to a different font to make the characters smaller, but 
 ### What is RealHD
 
 Sometimes we refer to the proper MSP OSD HD grid supported by ArduPilot / Kiss Ultra / INAV as RealHD, to distinguish from FakeHD.
+
 # Compiling (development and debugging)
 
 To build for DJI, install the [Android NDK](https://developer.android.com/ndk/downloads) and add the NDK toolchain to your PATH, then use `ndk-build` to build the targets.
