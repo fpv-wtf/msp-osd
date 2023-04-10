@@ -10,7 +10,7 @@
         "fast_serial": {
             "type": "boolean",
             "title": "Fast Serial",
-            "description": "",
+            "description": "Increase serial speed to 230400 baud. You will need to change your flight controller to 230400 baud as well.",
             "enum": [
                 true,
                 false
@@ -19,7 +19,7 @@
         "cache_serial": {
             "type": "boolean",
             "title": "Cache Responses",
-            "description": "",
+            "description": "Cache serial responses. Useful if you are having serial speed issues. Disables special DJI features like DJI Settings Menu PID tuning.",
             "enum": [
                 true,
                 false
@@ -28,21 +28,21 @@
         "compress_osd": {
             "title": "Compress OSD",
             "type": "boolean",
-            "description": "Send full frames of compressed data instead of sending MSP to the goggles.",
+            "description": "Send full frames of compressed data. Disable to send raw MSP data.",
             "enum": [
                 true,
                 false
             ]
           },
           "osd_update_rate_hz": {
-            "name": "OSD update rate (for Compressed OSD)",
+            "title": "OSD update rate (for Compressed OSD)",
             "type": "number",
-            "description": "OSD update rate, used only for compressed OSD.",
+            "description": "OSD update rate in Hz, used only for compressed OSD.",
             "minimum": 1,
             "maximum": 20
           },
           "disable_betaflight_hd": {
-            "name": "Disable Betaflight HD Mode",
+            "title": "Disable Betaflight HD Mode",
             "type": "boolean",
             "description": "Disable HD Mode in Betaflight 4.4.",
             "enum": [
