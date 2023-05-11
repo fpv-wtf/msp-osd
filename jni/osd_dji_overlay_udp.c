@@ -57,12 +57,14 @@
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
-typedef enum {
+typedef enum
+{
     FONT_VARIANT_GENERIC,
     FONT_VARIANT_BETAFLIGHT,
     FONT_VARIANT_INAV,
     FONT_VARIANT_ARDUPILOT,
-    FONT_VARIANT_KISS_ULTRA
+    FONT_VARIANT_KISS_ULTRA,
+    FONT_VARIANT_QUICKSILVER
 } font_variant_e;
 
 #define FORCE_RENDER_HZ 2
@@ -290,6 +292,8 @@ static font_variant_e font_variant_from_string(char *variant_string) {
         font_variant = FONT_VARIANT_INAV;
     } else if (strncmp(current_fc_variant, "ULTR", 4) == 0) {
         font_variant = FONT_VARIANT_KISS_ULTRA;
+    } else if (strncmp(current_fc_variant, "QUIC", 4) == 0) {
+        font_variant = FONT_VARIANT_QUICKSILVER;
     }
     return font_variant;
 }
@@ -312,6 +316,9 @@ static void get_font_path_with_prefix(char *font_path_dest, const char *font_pat
             break;
         case FONT_VARIANT_KISS_ULTRA:
             snprintf(name_buf, len, "%s_ultra", font_path);
+            break;
+        case FONT_VARIANT_QUICKSILVER:
+            snprintf(name_buf, len, "%s_quic", font_path);
             break;
         default:
             snprintf(name_buf, len, "%s", font_path);
