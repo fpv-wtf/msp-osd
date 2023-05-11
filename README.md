@@ -212,6 +212,10 @@ More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji
 
 Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
+### QUICKSILVER
+
+Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configuring-Quicksilver/#setup
+
 ## Choose a Font
 
 * Download a font package. See below for known community fonts!
@@ -227,6 +231,7 @@ Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 | INAV       | `font_inav.bin`, `font_inav_2.bin` | `font_inav_hd.bin`, `font_inav_hd_2.bin`|
 | Ardupilot       | `font_ardu.bin`, `font_ardu_2.bin` | `font_ardu_hd.bin`, `font_ardu_hd_2.bin`|
 | KISS Ultra       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
+| QUICKSILVER       | `font_quic.bin`, `font_quic_2.bin` | `font_quic_hd.bin`, `font_quic_hd_2.bin`|
 | Generic/Fallback       | `font.bin`, `font_2.bin` | `font_hd.bin`, `font_hd_2.bin`|
 
 VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
