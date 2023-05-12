@@ -1,6 +1,6 @@
 {
-    "title": "MSP OSD",
-    "description": "Configure the OSD",
+    "title": "MSP OSD - Goggles",
+    "description": "",
     "type": "object",
     "units": [ "msp-osd-goggles" ],
     "required": [],
@@ -79,15 +79,6 @@
                                 true
                             ]
                         },
-                        "fakehd_hide_throttle_element": {
-                            "type": "boolean",
-                            "title": "FakeHD hide throttle element",
-                            "description": "",
-                            "enum": [
-                                true,
-                                false
-                            ]
-                        },
                         "fakehd_lock_center": {
                             "type": "boolean",
                             "title": "Lock FakeHD to centered mode",
@@ -143,15 +134,6 @@
                             "maxLength": 16,
                             "minLength": 16,
                             "pattern": "^[LCRWTFD]{16}$"
-                        },
-                        "fakehd_layout_debug": {
-                            "type": "boolean",
-                            "title": "FakeHD layout debug",
-                            "description": "Undocumented feature to fill the grid with numbers for layout debugging; remember to disable",
-                            "enum": [
-                                true,
-                                false
-                            ]
                         }
                     }
                 }

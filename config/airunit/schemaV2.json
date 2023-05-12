@@ -1,16 +1,41 @@
 {
     "title": "MSP OSD",
-    "description": "Configure the OSD",
+    "description": "Airside OSD config",
     "type": "object",
     "units": [
         "msp-osd-airside"
     ],
     "required": [],
     "properties": {
+        "compress_osd": {
+            "title": "Compress OSD",
+            "type": "boolean",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
+        "osd_update_rate_hz": {
+            "title": "OSD update rate (for Compressed OSD)",
+            "type": "number",
+            "description": "",
+            "minimum": 1,
+            "maximum": 20
+        },
+        "disable_betaflight_hd": {
+            "title": "Disable Betaflight HD Mode",
+            "type": "boolean",
+            "description": "",
+            "enum": [
+                true,
+                false
+            ]
+        },
         "fast_serial": {
             "type": "boolean",
             "title": "Fast Serial",
-            "description": "Increase serial speed to 230400 baud. You will need to change your flight controller to 230400 baud as well.",
+            "description": "",
             "enum": [
                 true,
                 false
@@ -19,36 +44,11 @@
         "cache_serial": {
             "type": "boolean",
             "title": "Cache Responses",
-            "description": "Cache serial responses. Useful if you are having serial speed issues. Disables special DJI features like DJI Settings Menu PID tuning.",
+            "description": "",
             "enum": [
                 true,
                 false
             ]
-        },
-        "compress_osd": {
-            "title": "Compress OSD",
-            "type": "boolean",
-            "description": "Send full frames of compressed data. Disable to send raw MSP data.",
-            "enum": [
-                true,
-                false
-            ]
-          },
-          "osd_update_rate_hz": {
-            "title": "OSD update rate (for Compressed OSD)",
-            "type": "number",
-            "description": "OSD update rate in Hz, used only for compressed OSD.",
-            "minimum": 1,
-            "maximum": 20
-          },
-          "disable_betaflight_hd": {
-            "title": "Disable Betaflight HD Mode",
-            "type": "boolean",
-            "description": "Disable HD Mode in Betaflight 4.4.",
-            "enum": [
-                true,
-                false
-            ]
-          }
+        }
     }
 }
