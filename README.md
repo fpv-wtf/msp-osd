@@ -313,7 +313,7 @@ Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plug
 |`compress_osd`| Enable sending full frames of compressed data. Disable to send raw MSP data [Read more](#Compressed-Transmission) | true/false| true |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
 | `disable_betaflight_hd` | Disable HD Mode, which is otherwise set by default in Betaflight 4.4 | true/false | false |
-| `fast_serial` | Change serial baud rate to 240400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match. | true/false | false |
+| `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match. | true/false | false |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
 
 ## FAQ / Suggestions
