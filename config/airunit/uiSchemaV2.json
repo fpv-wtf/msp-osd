@@ -9,7 +9,7 @@
         "ui:help": "Disable HD Mode, which is otherwise set by default if configured in Betaflight 4.4"
     },
     "fast_serial": {
-        "ui:help": "Change serial baud rate to 240400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match."
+        "ui:help": "Change serial baud rate to 230400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match."
     },
     "cache_serial": {
         "ui:help": "Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure"
