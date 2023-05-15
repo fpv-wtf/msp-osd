@@ -1,0 +1,35 @@
+{
+    "show_waiting": {
+        "ui:help": "Enables or disables WAITING FOR OSD message"
+    },
+    "show_au_data": {
+        "ui:help": "Enables AU data (temp/voltage) overlay on the right"
+    },
+    "rec_enabled": {
+        "ui:help": "Enable OSD recording to .msp files alongside video"
+    },
+    "rec_pb_enabled": {
+        "ui:help": "Enable OSD playback if .msp file is stored alongside video (ie: OSD recording is enabled)"
+    },
+    "hide_diagnostics": {
+        "ui:help": "Hide the diagnostic information in the bottom right"
+    },
+    "fakehd_enable": {
+        "ui:help": "Enables FakeHD. [Read more](https://github.com/fpv-wtf/msp-osd#fakehd)"
+    },
+    "fakehd_lock_center": {
+        "ui:help": "Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying. [Read more](https://github.com/fpv-wtf/msp-osd#i-dont-want-gaps-at-all)"
+    },
+    "fakehd_menu_switch": {
+        "ui:help": "FakeHD will use this character as the menu switch to detect when you are in menus/postflight and triggger centering. [Read more](https://github.com/fpv-wtf/msp-osd#menu-switching---getting-rid-of-gaps-when-displaying-menu--post-flight-stats--displaying-centered)"
+    },
+    "fakehd_hide_menu_switch": {
+        "ui:help": "FakeHD will hide the menu switch set above; and the next 5 characters"
+    },
+    "fakehd_columns": {
+        "ui:help": "FakeHD column alignment config. [Read more](https://github.com/fpv-wtf/msp-osd#customising-the-default-fakehd-grid)"
+    },
+    "fakehd_rows": {
+        "ui:help": "FakeHD row alignment config, each character configures the alignment for one row. [Read more](https://github.com/fpv-wtf/msp-osd#customising-the-default-fakehd-grid)"
+    }
+}

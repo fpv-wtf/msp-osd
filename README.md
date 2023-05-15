@@ -1,6 +1,8 @@
-# DisplayPort OSD Framebuffer
+# MSP-OSD - Full OSD / Displayport OSD
 
-This takes Betaflight MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and renders them to a framebuffer overlaid under the DJI `dji_glasses` menu system.
+This package gives you support for full flight controller driven OSD in line with those on analog + other HD systems.
+
+Technically - it takes MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and renders them to a framebuffer overlaid under the DJI `dji_glasses` menu system.
 
 A custom `font.bin` package may be placed on the root of the goggles SD card, at which point it will override the font in `/blackbox/font.bin`.
 
@@ -86,9 +88,9 @@ serial 30 1 115200 57600 0 115200
 
 #### FakeHD
 
-Betaflight's OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
+Betaflight's (before 4.4) OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
 
-Until Betaflight adds support for a larger grid, as a workaround, we have a mode called "FakeHD". It chops up the Betaflight OSD into sections and positions them evenly around an HD grid (with gaps between). Two rows are left unsplit + centered to use for warnings, and the bottom row is unsplit/offset to sit between the DJI OSD elements. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have gaps to contend with).
+For versions of Betaflight before 4.4 (or other FC firmwares without HD support), as a workaround, we have a mode called "FakeHD". It chops up the OSD into sections and positions them evenly around an HD grid (with gaps between) - the way this is done is configurable, explained below. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have the gaps to contend with).
 
 A diagram to help...
 
@@ -216,9 +218,11 @@ Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configuring-Quicksilver/#setup
 
-## Choose a Font
+## Fonts
 
-* Download a font package. See below for known community fonts!
+We bundle in default fonts for the flight controller variants we support. [Preview images are available here](docs/fonts). Or you can use a custom one...
+
+* Download a font package. See below for known community fonts.
 * Rename the files for your desired font to `font_<fc variant>` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
 * Place these four files on the root of your Goggles SD card.
 * Reboot.
@@ -242,22 +246,6 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
  - [SNEAKY_FPV's colour fonts for INAV, ARDU and BF](https://sites.google.com/view/sneaky-fpv/home)
  - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
 
-### Compressed Transmission
-
-As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
-
-If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
-
-When enabled, this should fix INAV delta update related issues as well as provide better link stability.
-
-To enable:
-
-Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Air Unit / Vista plugged in to edit package options.
-
-This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
-
-If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
-
 ### Generate your own Font from an analog font (advanced)
 
 * Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
@@ -276,6 +264,24 @@ If you continue to have issues with especially INAV character corruption, it is 
 
 You can customize the font color by changing the 255 255 255 RGB values.
 
+Useful tool for working with fonts: https://github.com/shellixyz/hd_fpv_osd_font_tool
+
+## Compressed Transmission
+
+As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
+
+If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
+
+When enabled, this should fix INAV delta update related issues as well as provide better link stability.
+
+To enable:
+
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Air Unit / Vista plugged in to edit package options.
+
+This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
+
+If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
+
 ## Configuration options
 
 Configuration options can be set using the WTFOS Configurator.
@@ -286,27 +292,29 @@ Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plug
 
 | Option | Description | Type | Default|
 | ------ | ----------- | ---- |--------|
-|`fakehd_enable`| enables [FakeHD](#FakeHD); the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled if the Flight Controller supports proper HD / RealHD | true/false| false |
-|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postfligght and triggger centering. | integer/number | 4 (Betaflight Throttle) |
-|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false | false |
-| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D | WWWWWWCCWWWWWWWD |
-| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S | S |
-|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying. | true/false | false |
-|`show_au_data`| enables AU data overlay on the right | true/false | false |
-|`show_waiting`| enables or disables MSP WAITING message | true/false | true |
-|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false | false |
+|`show_waiting`| enables or disables WAITING FOR OSD message | true/false | true |
+|`show_au_data`| enables AU data (temp/voltage) overlay on the right | true/false | false |
 |`rec_enabled`| enable OSD recording to .msp files alongside video | true/false | true |
 |`rec_pb_enabled`| enable OSD playback if .msp file is stored alongside video | true/false | true |
+|`hide_diagnostics`| hide the diagnostic information in the bottom right | true/false | false |
+|`fakehd_enable`| enables [FakeHD](#FakeHD); the other FakeHD options don't do anything if this is disabled. FakeHD is force disabled if the Flight Controller supports proper HD / RealHD | true/false| false |
+|`fakehd_lock_center`| Lock FakeHD in centered mode all the time; no gaps/spreading out even when you are flying. | true/false | false |
+|`fakehd_menu_switch`| FakeHD will use this character as the menu switch to detect when you are in menus/postflight and triggger centering. | integer/number | 4 (Betaflight Throttle) |
+|`fakehd_hide_menu_switch`| FakeHD will hide the menu switch set above; and the next 5 characters | true / false | false |
+| `fakehd_columns` | FakeHD column alignment config | Single character, one of T M B S | S |
+| `fakehd_rows` | FakeHD row alignment config, each character configures the alignment for one row | 16 characters, each one of L C R W T F D | WWWWWWCCWWWWWWWD |
+
+
 
 ### Current available options (Air Unit/Vista):
 
 | Option | Description | Type | Default|
 | ------ | ----------- | ---- |--------|
-|`compress_osd`| Enable [compressed transmission](#Compressed-Transmission) - see information above | true/false| true |
+|`compress_osd`| Enable sending full frames of compressed data. Disable to send raw MSP data [Read more](#Compressed-Transmission) | true/false| true |
 | `osd_update_rate_hz` | Configure the update rate in hz for the OSD when using compressed transmission | integer | 10 |
+| `disable_betaflight_hd` | Disable HD Mode, which is otherwise set by default in Betaflight 4.4 | true/false | false |
+| `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match. | true/false | false |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
-| `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations | true/false | false |
-| `disable_betaflight_hd` | Disable HD Mode, which is otherwise set by default with Betaflight 4.4 | true/false | false |
 
 ## FAQ / Suggestions
 
@@ -331,7 +339,7 @@ For Betaflight after 4.4, you should see "HD" fonts by default. Make sure your V
 
 ### What is RealHD
 
-Sometimes we refer to the proper MSP OSD HD grid supported by ArduPilot / Kiss Ultra / INAV as RealHD, to distinguish from FakeHD.
+Sometimes we refer to the proper MSP OSD HD grid supported by ArduPilot / Kiss Ultra / INAV / Betaflight (from 4.4) + others as RealHD, to distinguish from FakeHD.
 
 # Compiling (development and debugging)
 
