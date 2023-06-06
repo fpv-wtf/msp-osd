@@ -245,6 +245,7 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
  - [KNIFA's Material](https://github.com/Knifa/material-osd/releases)
  - [SNEAKY_FPV's colour fonts for INAV, ARDU and BF](https://sites.google.com/view/sneaky-fpv/home)
  - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
+ - [Kw0ngk4n's Neue OSD](https://github.com/Kw0ngk4n/Neue-OSD)
 
 ### Generate your own Font from an analog font (advanced)
 
