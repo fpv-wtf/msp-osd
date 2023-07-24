@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 
 #define MSP_CMD_API_VERSION 1

@@ -28,6 +28,7 @@
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
 
+#include "util/debug.h"
 #include "util/fs_util.h"
 #include "util/time_util.h"
 #include "rec/rec.h"
@@ -76,12 +77,6 @@ typedef enum
 
 #define BACK_BUTTON_DELAY 4
 
-#ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
-#else
-#define DEBUG_PRINT(fmt, args...)
-#endif
-
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
   (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) )
@@ -113,6 +108,8 @@ static uint8_t which_fb = 0;
 struct timespec last_render;
 
 static char current_fc_variant[5];
+
+static uint8_t frame_waiting = 0;
 
 static display_info_t sd_display_info = {
     .char_width = 30,
@@ -447,113 +444,6 @@ static void msp_set_options(uint8_t font_num, msp_hd_options_e is_hd) {
 static void display_print_string(uint8_t init_x, uint8_t y, const char *string, uint8_t len) {
     for(uint8_t x = 0; x < len; x++) {
         draw_character(&overlay_display_info, overlay_character_map, x + init_x, y, string[x]);
-    }
-}
-
-/* DJI framebuffer configuration */
-
-static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
-    return 0;
-}
-
-void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_handle, duss_disp_plane_id_t plane_id) {
-    uint32_t hal_device_open_unk = 0;
-    duss_result_t res = 0;
-    display_state->disp_instance_handle = disp;
-    display_state->ion_handle = ion_handle;
-    display_state->plane_id = plane_id;
-
-    // PLANE BLENDING
-
-    display_state->pb_0->is_enable = 1;
-
-    // TODO just check hwid to figure this out. Not actually V1/V2 related but an HW version ID.
-
-    display_state->pb_0->voffset = GOGGLES_V1_VOFFSET;
-    display_state->pb_0->hoffset = 0;
-
-    // On Goggles V1, the UI and video are in Z-Order 1. On Goggles V2, they're in Z-Order 4.
-    // Unfortunately, this means we cannot draw below the DJI UI on Goggles V1. But, on Goggles V2 we get what we want.
-
-    display_state->pb_0->order = 2;
-
-    // Global alpha - disable as we want per pixel alpha.
-
-    display_state->pb_0->glb_alpha_en = 0;
-    display_state->pb_0->glb_alpha_val = 0;
-
-    // These aren't documented. Blending algorithm 0 is employed for menus and 1 for screensaver.
-
-    display_state->pb_0->blending_alg = 1;
-
-    // No idea what this "plane mode" actually does but it's different on V2
-    uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
-
-    DEBUG_PRINT("acquire plane\n");
-    res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
-    if (res != 0) {
-        DEBUG_PRINT("failed to acquire plane");
-        exit(0);
-    }
-    res = duss_hal_display_register_frame_cycle_callback(display_state->disp_instance_handle, plane_id, &pop_func, 0);
-    if (res != 0) {
-        DEBUG_PRINT("failed to register callback");
-        exit(0);
-    }
-
-    res = duss_hal_display_plane_blending_set(display_state->disp_instance_handle, plane_id, display_state->pb_0);
-
-    if (res != 0) {
-        DEBUG_PRINT("failed to set blending");
-        exit(0);
-    }
-    DEBUG_PRINT("alloc ion buf\n");
-    res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_0,0x473100,0x400,0,0x17);
-    if (res != 0) {
-        DEBUG_PRINT("failed to allocate VRAM");
-        exit(0);
-    }
-    res = duss_hal_mem_map(display_state->ion_buf_0, &display_state->fb0_virtual_addr);
-    if (res != 0) {
-        DEBUG_PRINT("failed to map VRAM");
-        exit(0);
-    }
-    res = duss_hal_mem_get_phys_addr(display_state->ion_buf_0, &display_state->fb0_physical_addr);
-    if (res != 0) {
-        DEBUG_PRINT("failed to get FB0 phys addr");
-        exit(0);
-    }
-    DEBUG_PRINT("first buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb0_virtual_addr, display_state->fb0_physical_addr);
-
-    res = duss_hal_mem_alloc(display_state->ion_handle,&display_state->ion_buf_1,0x473100,0x400,0,0x17);
-    if (res != 0) {
-        DEBUG_PRINT("failed to allocate FB1 VRAM");
-        exit(0);
-    }
-    res = duss_hal_mem_map(display_state->ion_buf_1,&display_state->fb1_virtual_addr);
-    if (res != 0) {
-        DEBUG_PRINT("failed to map FB1 VRAM");
-        exit(0);
-    }
-    res = duss_hal_mem_get_phys_addr(display_state->ion_buf_1, &display_state->fb1_physical_addr);
-    if (res != 0) {
-        DEBUG_PRINT("failed to get FB1 phys addr");
-        exit(0);
-    }
-    DEBUG_PRINT("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
-
-    for(int i = 0; i < 2; i++) {
-        duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
-        fb->buffer = i ? display_state->ion_buf_1 : display_state->ion_buf_0;
-        fb->pixel_format = display_state->is_v2_goggles ? DUSS_PIXFMT_RGBA8888_GOGGLES_V2 : DUSS_PIXFMT_RGBA8888; // 20012 instead on V2
-        fb->frame_id = i;
-        fb->planes[0].bytes_per_line = 0x1680;
-        fb->planes[0].offset = 0;
-        fb->planes[0].plane_height = 810;
-        fb->planes[0].bytes_written = 0x473100;
-        fb->width = 1440;
-        fb->height = 810;
-        fb->plane_count = 1;
     }
 }
 

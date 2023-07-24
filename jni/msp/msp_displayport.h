@@ -1,4 +1,6 @@
+#pragma once
 #include <stdint.h>
+#include "msp.h"
 
 typedef enum {
     MSP_DISPLAYPORT_KEEPALIVE,

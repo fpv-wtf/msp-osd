@@ -1,3 +1,5 @@
+#pragma once
+
 void load_fakehd_config();
 void fakehd_disable();
 void fakehd_enable();
