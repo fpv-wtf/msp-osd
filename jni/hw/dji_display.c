@@ -276,14 +276,16 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     }
 }
 
-void dji_display_push_frame(dji_display_state_t *display_state, uint8_t which_fb) {
+uint8_t dji_display_push_frame(dji_display_state_t *display_state, uint8_t which_fb) {
     duss_frame_buffer_t *fb = which_fb ? display_state->fb_1 : display_state->fb_0;
     duss_hal_mem_sync(fb->buffer, 1);
     if (display_state->frame_waiting == 0) {
         display_state->frame_waiting = 1;
         duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
+        return !which_fb;
     } else {
         DEBUG_PRINT("!!! Dropped frame due to pending frame push!\n");
+        return which_fb;
     }
 }
 

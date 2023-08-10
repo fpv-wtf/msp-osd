@@ -252,8 +252,7 @@ static void render_screen() {
     if (display_mode == DISPLAY_DISABLED) {
         clear_framebuffer();
     }
-    dji_display_push_frame(dji_display, which_fb);
-    which_fb = !which_fb;
+    which_fb = dji_display_push_frame(dji_display, which_fb);
     DEBUG_PRINT("drew a frame\n");
     clock_gettime(CLOCK_MONOTONIC, &last_render);
 }
