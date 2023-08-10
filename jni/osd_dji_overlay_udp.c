@@ -104,7 +104,6 @@ static uint16_t msp_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t msp_render_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
-static uint8_t which_fb = 0;
 struct timespec last_render;
 
 static char current_fc_variant[5];
@@ -189,7 +188,7 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
     for(int y = 0; y < display_info->char_height; y++) {
         for(int x = 0; x < display_info->char_width; x++) {
             uint16_t c = character_map[x][y];
-            if (c != 0) {
+            // if (c != 0) {
                 font = display_info->font_page_1;
                 if (c > 255) {
                     c = c & 0xFF;
@@ -211,7 +210,7 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
                     target_offset += WIDTH * BYTES_PER_PIXEL - (display_info->font_width * BYTES_PER_PIXEL);
                 }
                 // DEBUG_PRINT("%c", c > 31 ? c : 20);
-            }
+            // }
             // DEBUG_PRINT(" ");
         }
         // DEBUG_PRINT("\n");
@@ -219,15 +218,15 @@ static void draw_character_map(display_info_t *display_info, void* restrict fb_a
 }
 
 static void clear_framebuffer() {
-    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
+    void *fb_addr = dji_display_get_fb_address(dji_display);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
 }
 
 static void draw_screen() {
-    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
+    void *fb_addr = dji_display_get_fb_address(dji_display);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
-    memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
+    // memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
 
     if (fakehd_is_enabled()) {
         fakehd_map_sd_character_map_to_hd(msp_character_map, msp_render_character_map);
@@ -252,7 +251,7 @@ static void render_screen() {
     if (display_mode == DISPLAY_DISABLED) {
         clear_framebuffer();
     }
-    which_fb = dji_display_push_frame(dji_display, which_fb);
+    dji_display_push_frame(dji_display);
     DEBUG_PRINT("drew a frame\n");
     clock_gettime(CLOCK_MONOTONIC, &last_render);
 }

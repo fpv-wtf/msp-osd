@@ -5,9 +5,12 @@
 #define GOGGLES_V1_VOFFSET 575
 #define GOGGLES_V2_VOFFSET 215
 
+static uint8_t which_fb = 0;
+
 static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
     dji_display_state_t *display_state = (dji_display_state_t *)user_ctx;
     display_state->frame_waiting = 0;
+    printf("fbdebug pop_func\n");
     return 0;
 }
 
@@ -63,7 +66,7 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     // Blending algorithm 1 seems to work.
 
     display_state->pb_0->blending_alg = 1;
-    
+
     duss_hal_device_desc_t device_descs[3] = {
         {"/dev/dji_display", &duss_hal_attach_disp, &duss_hal_detach_disp, 0x0},
         {"/dev/ion", &duss_hal_attach_ion_mem, &duss_hal_detach_ion_mem, 0x0},
@@ -71,7 +74,7 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     };
 
     duss_hal_initialize(device_descs);
-    
+
     res = duss_hal_device_open("/dev/dji_display",&hal_device_open_unk,&display_state->disp_handle);
     if (res != 0) {
         printf("failed to open dji_display device");
@@ -82,13 +85,13 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
         printf("failed to open display hal");
         exit(0);
     }
-    
+
     res = duss_hal_display_reset(display_state->disp_instance_handle);
     if (res != 0) {
         printf("failed to reset display");
         exit(0);
     }
-    
+
     // No idea what this "plane mode" actually does but it's different on V2
     uint8_t acquire_plane_mode = display_state->is_v2_goggles ? 6 : 0;
 
@@ -109,7 +112,7 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     }
 
     res = duss_hal_display_plane_blending_set(display_state->disp_instance_handle, plane_id, display_state->pb_0);
-    
+
     if (res != 0) {
         printf("failed to set blending");
         exit(0);
@@ -158,7 +161,7 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
         exit(0);
     }
     printf("second buffer VRAM mapped virtual memory is at %p : %p\n", display_state->fb1_virtual_addr, display_state->fb1_physical_addr);
-    
+
     for(int i = 0; i < 2; i++) {
         duss_frame_buffer_t *fb = i ? display_state->fb_1 : display_state->fb_0;
         fb->buffer = i ? display_state->ion_buf_1 : display_state->ion_buf_0;
@@ -276,20 +279,23 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     }
 }
 
-uint8_t dji_display_push_frame(dji_display_state_t *display_state, uint8_t which_fb) {
-    duss_frame_buffer_t *fb = which_fb ? display_state->fb_1 : display_state->fb_0;
-    duss_hal_mem_sync(fb->buffer, 1);
+void dji_display_push_frame(dji_display_state_t *display_state) {
+    // print which_fb
+    printf("fbdebug which_fb: %d\n", which_fb);
     if (display_state->frame_waiting == 0) {
+        which_fb = !which_fb;
+        duss_frame_buffer_t *fb = which_fb ? display_state->fb_1 : display_state->fb_0;
+        duss_hal_mem_sync(fb->buffer, 1);
         display_state->frame_waiting = 1;
+        printf("fbdebug pushing frame\n");
         duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
-        return !which_fb;
     } else {
         DEBUG_PRINT("!!! Dropped frame due to pending frame push!\n");
-        return which_fb;
+        printf("fbdebug dropping frame\n");
     }
 }
 
-void *dji_display_get_fb_address(dji_display_state_t *display_state, uint8_t which_fb) {
+void *dji_display_get_fb_address(dji_display_state_t *display_state) {
      return which_fb ? display_state->fb1_virtual_addr : display_state->fb0_virtual_addr;
 }
 
