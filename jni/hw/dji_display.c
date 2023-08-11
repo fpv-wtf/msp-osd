@@ -5,11 +5,9 @@
 #define GOGGLES_V1_VOFFSET 575
 #define GOGGLES_V2_VOFFSET 215
 
-static uint8_t which_fb = 0;
-
 static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
     dji_display_state_t *display_state = (dji_display_state_t *)user_ctx;
-    display_state->frame_waiting = 0;
+    display_state->frame_drawn = 0;
     printf("fbdebug pop_func\n");
     return 0;
 }
@@ -21,7 +19,7 @@ dji_display_state_t *dji_display_state_alloc(uint8_t is_v2_goggles) {
     display_state->fb_1 = (duss_frame_buffer_t *)calloc(1,sizeof(duss_frame_buffer_t));
     display_state->pb_0 = (duss_disp_plane_blending_t *)calloc(1, sizeof(duss_disp_plane_blending_t));
     display_state->is_v2_goggles = is_v2_goggles;
-    display_state->frame_waiting = 0;
+    display_state->frame_drawn = 0;
     return display_state;
 }
 
@@ -280,22 +278,19 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
 }
 
 void dji_display_push_frame(dji_display_state_t *display_state) {
-    // print which_fb
-    printf("fbdebug which_fb: %d\n", which_fb);
-    if (display_state->frame_waiting == 0) {
-        which_fb = !which_fb;
-        duss_frame_buffer_t *fb = which_fb ? display_state->fb_1 : display_state->fb_0;
+    if (display_state->frame_drawn == 0) {
+        duss_frame_buffer_t *fb = display_state->fb_0;
         duss_hal_mem_sync(fb->buffer, 1);
-        display_state->frame_waiting = 1;
+        display_state->frame_drawn = 1;
         printf("fbdebug pushing frame\n");
         duss_hal_display_push_frame(display_state->disp_instance_handle, display_state->plane_id, fb);
     } else {
         DEBUG_PRINT("!!! Dropped frame due to pending frame push!\n");
-        printf("fbdebug dropping frame\n");
     }
+    memcpy(display_state->fb0_virtual_addr, display_state->fb1_virtual_addr, sizeof(uint32_t) * 1440 * 810);
 }
 
 void *dji_display_get_fb_address(dji_display_state_t *display_state) {
-     return which_fb ? display_state->fb1_virtual_addr : display_state->fb0_virtual_addr;
+     return display_state->fb1_virtual_addr;
 }
 
