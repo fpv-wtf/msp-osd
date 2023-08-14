@@ -16,7 +16,7 @@ LOCAL_SHARED_LIBRARIES := duml_hal
 LOCAL_SRC_FILES := \
 	displayport_osd_shim.c \
 	fakehd/fakehd.c \
-        font/font.c \
+	font/font.c \
 	hw/dji_display.c \
 	hw/dji_radio_shm.c \
 	hw/dji_services.c \
@@ -31,7 +31,6 @@ LOCAL_SRC_FILES := \
 	rec/rec_shim.c \
 	rec/rec_util.c \
 	rec/rec.c \
-	util/fs_util.c \
 	toast/toast.c \
 	util/fs_util.c \
 	libspng/spng.c

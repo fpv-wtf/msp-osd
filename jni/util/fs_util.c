@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#include "fs_util.h"
+
 #define DICTIONARY_PATH "/opt/mspdictionaries"
 
 int32_t get_int_from_fs(char* path) {

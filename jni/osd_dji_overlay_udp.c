@@ -196,7 +196,7 @@ static void clear_framebuffer() {
 static void draw_screen() {
     clear_framebuffer();
 
-    void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
+    void *fb_addr = dji_display_get_fb_address(dji_display);
 
     if (fakehd_is_enabled()) {
         fakehd_map_sd_character_map_to_hd(msp_character_map, msp_render_character_map);
@@ -482,16 +482,7 @@ static void rec_pb_timeout_hook()
 
         DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
         uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
-        load_font(
-            &osd_display_info->font_page_1,
-            0,
-            is_hd,
-            rec_config->font_variant);
-        load_font(
-            &osd_display_info->font_page_2,
-            1,
-            is_hd,
-            rec_config->font_variant);
+        load_font(osd_display_info, rec_config->font_variant);
 
         // TODO: Sketchy swap here?
         // Might end playback after swapping channel, maybe? So back on live channel but with
@@ -515,8 +506,7 @@ static void rec_pb_timeout_hook()
             fakehd_enable();
         }
 
-        free(osd_display_info->font_page_1);
-        free(osd_display_info->font_page_2);
+        close_font(osd_display_info);
         free(osd_display_info);
     }
 }

@@ -7,15 +7,10 @@
 
 #include "../libspng/spng.h"
 #include "font.h"
+#include "../util/debug.h"
 
 #define BYTES_PER_PIXEL 4
 #define HD_FONT_WIDTH 24
-
-#ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
-#else
-#define DEBUG_PRINT(fmt, args...)
-#endif
 
 /* Font helper methods */
 
@@ -244,7 +239,7 @@ void convert_bin_fonts(const char *file_location)
                     continue;
                 }
                 void* mmappedData = mmap(NULL, desired_filesize, PROT_READ, MAP_PRIVATE, fd, 0);
-                if (mmappedData != MAP_FAILED) {                    
+                if (mmappedData != MAP_FAILED) {
                     for(int char_num = 0; char_num < NUM_CHARS; char_num++) {
                         for(int y = 0; y < display_info.font_height; y++) {
                             // Copy each character line at a time into the correct font buffer
@@ -284,6 +279,6 @@ void convert_bin_fonts(const char *file_location)
             free(image_buf);
             fclose(out_fd);
         }
-    }  
+    }
 }
 
