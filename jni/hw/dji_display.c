@@ -5,13 +5,6 @@
 #define GOGGLES_V1_VOFFSET 575
 #define GOGGLES_V2_VOFFSET 215
 
-static duss_result_t pop_func(duss_disp_instance_handle_t *disp_handle,duss_disp_plane_id_t plane_id, duss_frame_buffer_t *frame_buffer,void *user_ctx) {
-    dji_display_state_t *display_state = (dji_display_state_t *)user_ctx;
-    display_state->frame_drawn = 0;
-    printf("fbdebug pop_func\n");
-    return 0;
-}
-
 dji_display_state_t *dji_display_state_alloc(uint8_t is_v2_goggles) {
     dji_display_state_t *display_state = calloc(1, sizeof(dji_display_state_t));
     display_state->disp_instance_handle = (duss_disp_instance_handle_t *)calloc(1, sizeof(duss_disp_instance_handle_t));
@@ -96,11 +89,6 @@ void dji_display_open_framebuffer(dji_display_state_t *display_state, duss_disp_
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
         printf("failed to acquire plane");
-        exit(0);
-    }
-    res = duss_hal_display_register_frame_cycle_callback(display_state->disp_instance_handle, plane_id, &pop_func, display_state);
-    if (res != 0) {
-        printf("failed to register callback");
         exit(0);
     }
     res = duss_hal_display_port_enable(display_state->disp_instance_handle, 3, 1);
@@ -213,11 +201,6 @@ void dji_display_open_framebuffer_injected(dji_display_state_t *display_state, d
     res = duss_hal_display_aquire_plane(display_state->disp_instance_handle,acquire_plane_mode,&plane_id);
     if (res != 0) {
         DEBUG_PRINT("failed to acquire plane");
-        exit(0);
-    }
-    res = duss_hal_display_register_frame_cycle_callback(display_state->disp_instance_handle, plane_id, &pop_func, 0);
-    if (res != 0) {
-        DEBUG_PRINT("failed to register callback");
         exit(0);
     }
 
