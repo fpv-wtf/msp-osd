@@ -13,6 +13,7 @@
 #include "net/serial.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
+#include "util/debug.h"
 #include "util/time_util.h"
 #include "util/fs_util.h"
 
@@ -41,12 +42,6 @@ enum {
 
 // The Betaflight MSP minor version in which MSP DisplayPort sizing is supported.
 #define MSP_DISPLAY_SIZE_VERSION 45
-
-#ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
-#else
-#define DEBUG_PRINT(fmt, args...)
-#endif
 
 typedef struct msp_cache_entry_s {
     struct timespec time;

@@ -22,6 +22,7 @@
 #include "net/data_protocol.h"
 #include "msp/msp.h"
 #include "msp/msp_displayport.h"
+#include "util/debug.h"
 #include "util/fs_util.h"
 
 #define MSP_PORT 7654
@@ -47,12 +48,6 @@
 #define EV_CODE_BACK 0xc9
 
 #define BACK_BUTTON_DELAY 4
-
-#ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
-#else
-#define DEBUG_PRINT(fmt, args...)
-#endif
 
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \

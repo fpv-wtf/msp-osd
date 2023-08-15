@@ -16,12 +16,7 @@
 #include "msp/msp_displayport.h"
 #include "net/serial.h"
 #include "net/network.h"
-
-#ifdef DEBUG
-#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
-#else
-#define DEBUG_PRINT(fmt, args...)
-#endif
+#include "util/debug.h"
 
 #define X_OFFSET 120
 

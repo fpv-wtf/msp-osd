@@ -1,3 +1,5 @@
+#pragma once
+
 #include <termios.h>
 
 int open_serial_port(const char *device, speed_t baudrate);

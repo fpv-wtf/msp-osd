@@ -1,3 +1,5 @@
+
+#pragma once
 #include <stdint.h>
 
 #define RTOS_SHM_ADDRESS 0xfffc1000

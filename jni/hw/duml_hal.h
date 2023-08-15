@@ -1,5 +1,4 @@
-#ifndef DUML_HAL_H
-#define DUML_HAL_H
+#pragma once
 #include <stdint.h>
 
 typedef int32_t duss_result_t;
@@ -259,4 +258,3 @@ duss_result_t duss_hal_attach_disp(char *param_1,duss_hal_obj **param_2);
 duss_result_t duss_hal_attach_ion_mem(char *param_1,duss_hal_obj **param_2);
 duss_result_t duss_hal_detach_ion_mem();
 duss_result_t duss_hal_detach_disp();
-#endif
