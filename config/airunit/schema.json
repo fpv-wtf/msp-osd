@@ -8,6 +8,10 @@
         "name": "Cache Responses",
         "widget": "checkbox"
       },
+      "dump_serial": {
+        "name": "Cache Responses",
+        "widget": "checkbox"
+      },
       "compress_osd": {
         "name": "Compress OSD",
         "widget": "checkbox"

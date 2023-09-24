@@ -25,6 +25,7 @@
 #define COMPRESS_KEY "compress_osd"
 #define UPDATE_RATE_KEY "osd_update_rate_hz"
 #define NO_BTFL_HD_KEY "disable_betaflight_hd"
+#define DUMP_SERIAL_KEY "dump_serial"
 
 // The MSP_PORT is used to send MSP passthrough messages.
 // The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
@@ -66,6 +67,7 @@ uint8_t update_rate_hz = 2;
 
 int pty_fd;
 int serial_fd;
+int dump_fd;
 int socket_fd;
 int compressed_fd;
 
@@ -73,6 +75,7 @@ static volatile sig_atomic_t quit = 0;
 static uint8_t serial_passthrough = 1;
 static uint8_t compress = 0;
 static uint8_t no_btfl_hd = 0;
+static uint8_t dump_serial = 1;
 
 static void sig_handler(int _)
 {
@@ -334,6 +337,10 @@ int main(int argc, char *argv[]) {
         no_btfl_hd = 1;
     }
 
+    if(get_boolean_config_value(DUMP_SERIAL_KEY)) {
+        dump_serial = 1;
+    }
+
     if(fast_serial == 1) {
         printf("Configured to use 230400 baud rate. \n");
     }
@@ -360,6 +367,21 @@ int main(int argc, char *argv[]) {
         printf("Failed to open serial port!\n");
         return 1;
     }
+    if(dump_serial) {
+        time_t t; 
+        time(&t);
+
+        char dump_name[256];
+        sprintf(&dump_name, "/blackbox/serial - %s.dat", ctime(&t));
+        dump_fd = fopen(&dump_name, "w");
+        if (dump_fd <= 0) {
+            printf("Failed to open %s\n", &dump_name);
+        }
+        else {
+            printf("Logging serial traffic to %s\n", &dump_name);
+        }
+    }
+
     pty_fd = open_pty(&pty_name_ptr);
     printf("Allocated PTY %s\n", pty_name_ptr);
     if ((argc - optind) > 2) {
@@ -401,6 +423,9 @@ int main(int argc, char *argv[]) {
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
             DEBUG_PRINT("RECEIVED data! length %d\n", serial_data_size);
+            if(dump_serial) {
+                fwrite(serial_data, serial_data_size, 1, dump_fd);
+            }
             for (ssize_t i = 0; i < serial_data_size; i++) {
                 msp_process_data(rx_msp_state, serial_data[i]);
             }
