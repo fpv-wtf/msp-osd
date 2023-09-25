@@ -364,6 +364,15 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
     if (mmappedData != MAP_FAILED) {
         memcpy(font_data, mmappedData, desired_filesize);
         *font = font_data;
+        //Check for all 0x00 pages 
+        for(int i = 0; i < desired_filesize; i=i+4) {
+            if((uint32_t *)(font_data+i) != 0x00000000) {
+                DEBUG_PRINT("Font page %s is empty, ignoring\n", file_path);
+                free(font_data);
+                *font = 0;
+                break;
+            }
+        }
     } else {
         DEBUG_PRINT("Could not map font %s\n", file_path);
         free(font_data);
