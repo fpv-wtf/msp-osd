@@ -365,13 +365,17 @@ static int open_font(const char *filename, void **font, uint8_t page, uint8_t is
         memcpy(font_data, mmappedData, desired_filesize);
         *font = font_data;
         //Check for all 0x00 pages 
+        uint8_t data_found = 0;
         for(int i = 0; i < desired_filesize; i=i+4) {
             if((uint32_t *)(font_data+i) != 0x00000000) {
-                DEBUG_PRINT("Font page %s is empty, ignoring\n", file_path);
-                free(font_data);
-                *font = 0;
+                data_found = 1;
                 break;
             }
+        }
+        if(!data_found) {
+            DEBUG_PRINT("Font page %s is empty, ignoring\n", file_path);
+            free(font_data);
+            *font = 0;
         }
     } else {
         DEBUG_PRINT("Could not map font %s\n", file_path);
