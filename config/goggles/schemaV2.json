@@ -58,7 +58,16 @@
                 true,
                 false
             ]
-        }
+        },
+        "vtx_msp": {
+            "type": "boolean",
+            "title": "Enable VTX MSP",
+            "description": "Control video channel from Betaflight or ELRS Lua script VTX admin",
+            "enum": [
+                true,
+                false
+            ]
+		}
     },
     "dependencies": {
         "fakehd_enable": {

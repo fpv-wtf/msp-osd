@@ -31,5 +31,8 @@
     },
     "fakehd_rows": {
         "ui:help": "FakeHD row alignment config, each character configures the alignment for one row. [Read more](https://github.com/fpv-wtf/msp-osd#customising-the-default-fakehd-grid)"
-    }
+    },
+    "vtx_msp": {
+        "ui:help": "Enable VTX MSP protocol to control the video channel from Betaflight or ELRS Lua script VTX admin"
+    },
 }

@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <dlfcn.h>
+#include "json/osd_config.h"
 #include "util/debug.h"
 
-
+#define VTX_MPS_CONFIG_KEY "vtx_msp"
 
 static void *tp1801_gui_lib = NULL;
 static uint32_t (* setChannelPilotOriginal)(void *this,unsigned short param_1, bool param_2) = 0;
@@ -11,6 +12,10 @@ static uint32_t userSettingsInstance = 0;
 static int8_t currentChannel = -1;
 
 void changeChannel(int8_t channel) {
+    if(!get_boolean_config_value(VTX_MPS_CONFIG_KEY)) {
+        return;
+    }
+
     //Load SetPilotChannel original
     setChannelPilotOriginal = dlsym (RTLD_NEXT, "_ZN17GlassUserSettings15setPilotChannelEtb");
     if (setChannelPilotOriginal == NULL) {

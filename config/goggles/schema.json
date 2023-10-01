@@ -60,6 +60,10 @@
 		"hide_diagnostics": {
 			"name": "Hide diagnostic information",
 			"widget": "checkbox"
+		},
+		"vtx_msp": {
+			"name": "Enable VTX MSP",
+			"widget": "checkbox"
 		}
 	},
 	"units": [
