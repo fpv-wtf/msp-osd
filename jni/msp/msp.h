@@ -17,6 +17,10 @@
 #define MSP_CMD_DISPLAYPORT 182
 #define MSP_CMD_SET_OSD_CANVAS 188
 
+// https://github.com/betaflight/betaflight/blob/master/src/main/msp/msp_protocol.h#L201C1-L202C50
+#define MSP_CMD_VTX_CONFIG 88 // from FC
+#define MSP_CMD_SET_VTX_CONFIG 89 // to FC
+
 typedef enum {
     MSP_ERR_NONE,
     MSP_ERR_HDR,

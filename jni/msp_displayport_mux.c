@@ -74,6 +74,8 @@ static uint8_t serial_passthrough = 1;
 static uint8_t compress = 0;
 static uint8_t no_btfl_hd = 0;
 
+int8_t fc_vtx_channel = -1;
+
 static void sig_handler(int _)
 {
     quit = 1;
@@ -139,6 +141,20 @@ static void send_variant_request(int serial_fd) {
 static void send_version_request(int serial_fd) {
     uint8_t buffer[6];
     construct_msp_command(buffer, MSP_CMD_API_VERSION, NULL, 0, MSP_OUTBOUND);
+    write(serial_fd, &buffer, sizeof(buffer));
+}
+
+static void send_vtx_config_request(int serial_fd) {
+    DEBUG_PRINT("Sending VTX CONFIG requests message...\n");
+    uint8_t buffer[6];
+    construct_msp_command(buffer, MSP_CMD_VTX_CONFIG, NULL, 0, MSP_OUTBOUND);
+    write(serial_fd, &buffer, sizeof(buffer));
+}
+
+static void send_vtx_set_config_request(int serial_fd) {
+    DEBUG_PRINT("Sending VTX READY message...\n");
+    uint8_t buffer[6];
+    construct_msp_command(buffer, MSP_CMD_SET_VTX_CONFIG, NULL, 0, MSP_OUTBOUND);
     write(serial_fd, &buffer, sizeof(buffer));
 }
 
@@ -208,6 +224,15 @@ static void rx_msp_callback(msp_msg_t *msp_message)
             }
             break;
         }
+        case MSP_CMD_VTX_CONFIG: {
+            DEBUG_PRINT("Received VTX CONFIG message...\n");
+            printf("data: %d %d %d \n", msp_message->payload[0],  msp_message->payload[1],  msp_message->payload[2]);
+            // TODO: Damage control accessing to index 2 if not exists
+            fc_vtx_channel = msp_message->payload[2];
+        }
+        case MSP_CMD_SET_VTX_CONFIG: {
+            DEBUG_PRINT("Received SET VTX CONFIG message...\n");
+        }
         default: {
             uint16_t size = msp_data_from_msg(message_buffer, msp_message);
             if(serial_passthrough || cache_msp_message(msp_message)) {
@@ -249,8 +274,9 @@ static void send_data_packet(int data_socket_fd, dji_shm_state_t *dji_shm) {
     data.version_specifier = 0xFFFF;
     data.tx_temperature = get_int_from_fs(CPU_TEMP_PATH);
     data.tx_voltage = get_int_from_fs(AU_VOLTAGE_PATH);
+    data.fc_vtx_channel = fc_vtx_channel;
     memcpy(data.fc_variant, current_fc_identifier, sizeof(current_fc_identifier));
-    DEBUG_PRINT("got voltage %f V temp %d C variant %.4s\n", (float)(data.tx_voltage / 64.0f), data.tx_temperature, data.fc_variant);
+    DEBUG_PRINT("got voltage %f V temp %d C variant %.4s and channel %d\n", (float)(data.tx_voltage / 64.0f), data.tx_temperature, data.fc_variant, data.fc_vtx_channel);
     write(data_socket_fd, &data, sizeof(data));
 }
 
@@ -390,6 +416,8 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &last_data);
     clock_gettime(CLOCK_MONOTONIC, &last_frame);
 
+    send_vtx_set_config_request(serial_fd);
+
     while (!quit) {
         poll_fds[0].fd = serial_fd;
         poll_fds[1].fd = pty_fd;
@@ -431,6 +459,8 @@ int main(int argc, char *argv[]) {
             if(current_fc_identifier[0] == 0) {
                 send_variant_request(serial_fd);
             }
+            //INFO: For testing purpose, request VTX_CONFIG
+            send_vtx_config_request(serial_fd);
         }
         if(compress && (timespec_subtract_ns(&now, &last_frame) > (NSEC_PER_SEC / update_rate_hz))) {
             send_compressed_screen(compressed_fd);

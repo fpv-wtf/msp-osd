@@ -34,6 +34,8 @@
 #include "rec/rec.h"
 #include "rec/rec_pb.h"
 
+#include "util/vtx_manager.c"
+
 #define MSP_PORT 7654
 #define DATA_PORT 7655
 #define COMPRESSED_DATA_PORT 7656
@@ -485,7 +487,7 @@ static void check_is_au_overlay_enabled()
 
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
-    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant);
+    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s and vtx channel %d\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant, packet->fc_vtx_channel);
     char str[8];
     clear_overlay();
     if(au_overlay_enabled) {
@@ -494,6 +496,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
     }
+    changeChannel(packet->fc_vtx_channel);
     if(len > 6) {
         DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
         // should have FC type
