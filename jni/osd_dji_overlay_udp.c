@@ -79,6 +79,9 @@ typedef enum
 
 #define BACK_BUTTON_DELAY 4
 
+#define VTX_MPS_CONFIG_KEY "vtx_msp"
+static u_int8_t vtx_manager_enabled;
+
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
   (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000) )
@@ -496,7 +499,9 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
     }
-    changeChannel(packet->fc_vtx_channel);
+    if(vtx_manager_enabled == 1) {
+        changeChannel(packet->fc_vtx_channel);
+    }
     if(len > 6) {
         DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
         // should have FC type
@@ -754,6 +759,9 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int compression_dict_size = 0;
     void *compression_dict = open_dict(DICTIONARY_VERSION, &compression_dict_size);
+
+    vtx_manager_enabled = get_boolean_config_value(VTX_MPS_CONFIG_KEY);
+    setupVTXManager();
 
     uint64_t event_number;
     while (!quit)

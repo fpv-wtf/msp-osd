@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <dlfcn.h>
-#include "json/osd_config.h"
 #include "util/debug.h"
 #include "vtx_manager.h"
 
-#define VTX_MPS_CONFIG_KEY "vtx_msp"
 #define CHANNEL_PUBLIC 8
 
 static void *tp1801_gui_lib = NULL;
@@ -14,7 +12,11 @@ static uint32_t userSettingsInstance = 0;
 static __gs_gui_config *gs_gui_config = 0;
 static int8_t currentChannel = -1;
 
-void setupManager() {
+void setupVTXManager() {
+    if(setChannelPilotOriginal != NULL)  {
+        return;
+    }
+
     //Load SetPilotChannel original
     setChannelPilotOriginal = dlsym (RTLD_NEXT, "_ZN17GlassUserSettings15setPilotChannelEtb");
     if (setChannelPilotOriginal == NULL) {
@@ -46,12 +48,6 @@ void setupManager() {
 }
 
 void changeChannel(int8_t channel) {
-    if(!get_boolean_config_value(VTX_MPS_CONFIG_KEY)) {
-        return;
-    }
-
-    setupManager();
-
     if (channel <= 0 || channel > 8) {
         printf("VTX_MANAGER Error:, invalid channel index: %d\n", channel);
         return;
