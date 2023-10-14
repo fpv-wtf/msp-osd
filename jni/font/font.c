@@ -64,12 +64,13 @@ void get_font_path_with_extension(char *font_path_dest, const char *font_path, c
         snprintf(res_buf, len, "%s", "");
     }
     snprintf(font_path_dest, len, "%s%s%s", name_buf, res_buf, extension);
+    DEBUG_PRINT("Font path: %s\n", font_path_dest);
 }
 
 static int open_font(const char *filename, display_info_t *display_info, font_variant_e font_variant)
 {
     char file_path[255];
-    int is_hd = (display_info->char_width == HD_FONT_WIDTH) ? 1 : 0;
+    int is_hd = (display_info->font_width == HD_FONT_WIDTH) ? 1 : 0;
     get_font_path_with_extension(file_path, filename, ".png", 255, is_hd, font_variant);
     DEBUG_PRINT("Opening font: %s\n", file_path);
     struct stat st;
