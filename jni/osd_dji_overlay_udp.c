@@ -344,7 +344,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
             DEBUG_PRINT("Changed current FC variant to %.4s\n", current_fc_variant);
             toast("FC %.4s", current_fc_variant);
             close_all_fonts();
-            load_fonts(font_variant_from_string(current_fc_variant));
+            load_fonts(current_fc_variant);
             // This is not a typo - fill in any missing fonts for the current variant with the generic one.
             load_fonts(FONT_VARIANT_GENERIC);
         }
@@ -401,7 +401,7 @@ static void rec_msp_draw_complete_hook()
             .font_height = current_display_info->font_height,
             .x_offset = current_display_info->x_offset,
             .y_offset = current_display_info->y_offset,
-            .font_variant = font_variant_from_string(current_fc_variant),
+            .font_variant = current_fc_variant,
         };
 
         rec_start(&config);

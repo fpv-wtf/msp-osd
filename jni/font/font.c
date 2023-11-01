@@ -14,46 +14,16 @@
 
 /* Font helper methods */
 
-font_variant_e font_variant_from_string(char *variant_string) {
-    font_variant_e font_variant = FONT_VARIANT_GENERIC;
-    if(strncmp(variant_string, "ARDU", 4) == 0) {
-        font_variant = FONT_VARIANT_ARDUPILOT;
-    } else if (strncmp(variant_string, "BTFL", 4) == 0) {
-        font_variant = FONT_VARIANT_BETAFLIGHT;
-    } else if (strncmp(variant_string, "INAV", 4) == 0) {
-        font_variant = FONT_VARIANT_INAV;
-    } else if (strncmp(variant_string, "ULTR", 4) == 0) {
-        font_variant = FONT_VARIANT_KISS_ULTRA;
-    } else if (strncmp(variant_string, "QUIC", 4) == 0) {
-        font_variant = FONT_VARIANT_QUICKSILVER;
-    }
-    return font_variant;
-}
-
-void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, font_variant_e font_variant)
+void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, char *font_variant)
 {
     char name_buf[len];
     char res_buf[len];
 
-    switch (font_variant)
+    if (font_variant[0] == '\0')
     {
-        case FONT_VARIANT_BETAFLIGHT:
-            snprintf(name_buf, len, "%s_bf", font_path);
-            break;
-        case FONT_VARIANT_INAV:
-            snprintf(name_buf, len, "%s_inav", font_path);
-            break;
-        case FONT_VARIANT_ARDUPILOT:
-            snprintf(name_buf, len, "%s_ardu", font_path);
-            break;
-        case FONT_VARIANT_KISS_ULTRA:
-            snprintf(name_buf, len, "%s_ultra", font_path);
-            break;
-        case FONT_VARIANT_QUICKSILVER:
-            snprintf(name_buf, len, "%s_quic", font_path);
-            break;
-        default:
-            snprintf(name_buf, len, "%s", font_path);
+        snprintf(name_buf, len, "%s_%s", font_path, font_variant);
+    } else {
+        snprintf(name_buf, len, "%s", font_path);
     }
 
     if (is_hd)
@@ -67,7 +37,7 @@ void get_font_path_with_extension(char *font_path_dest, const char *font_path, c
     DEBUG_PRINT("Font path: %s\n", font_path_dest);
 }
 
-static int open_font(const char *filename, display_info_t *display_info, font_variant_e font_variant)
+static int open_font(const char *filename, display_info_t *display_info, char *font_variant)
 {
     char file_path[255];
     int is_hd = (display_info->font_width == HD_FONT_WIDTH) ? 1 : 0;
@@ -165,12 +135,45 @@ static int open_font(const char *filename, display_info_t *display_info, font_va
         return -1;
 }
 
-void load_font(display_info_t *display_info, font_variant_e font_variant) {
+void load_font(display_info_t *display_info, char *font_variant) {
     // Note: load_font will not replace an existing font.
     if(display_info->fonts[0] == NULL) {
-        if (open_font(SDCARD_FONT_PATH, display_info, font_variant) < 0) {
-            if (open_font(ENTWARE_FONT_PATH, display_info, font_variant) < 0) {
-                open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+        int loaded_font = 0;
+
+        // try the three paths for the current font
+        loaded_font = open_font(SDCARD_FONT_PATH, display_info, font_variant);
+        if (loaded_font < 0) {
+            loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant);
+        }
+        if (loaded_font < 0) {
+            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+        }
+
+        // we used to map BTFL to BF in the font filename, so support BF still for B/C
+        if (loaded_font < 0 && font_variant == "BTFL")
+        {
+            loaded_font = open_font(SDCARD_FONT_PATH, display_info, "BF");
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "BF");
+            }
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "BF");
+            }
+        }
+
+        // finally, if we have no fonts for this FC, fallback to the default font
+        if (loaded_font)
+        {
+            loaded_font = open_font(SDCARD_FONT_PATH, display_info, "");
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "");
+            }
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "");
             }
         }
     }
@@ -207,13 +210,17 @@ void convert_bin_fonts(const char *file_location)
         .fonts = {NULL, NULL, NULL, NULL},
     };
 
-    for(int is_hd = 0; is_hd < 2; is_hd++) {
-        for(int i = 0; i < FONT_VARIANT_COUNT; i++) {
+    char *legacy_fcs[6] = {"", "bf", "inav", "ardu", "ultra", "quic"};
+
+    for (int is_hd = 0; is_hd < 2; is_hd++)
+    {
+        for (int i = 0; i < 6; i++)
+        {
             int page_count = 1;
             char file_path[255];
-            get_font_path_with_extension(file_path, file_location, ".bin", 255, is_hd, i);
+            get_font_path_with_extension(file_path, file_location, ".bin", 255, is_hd, legacy_fcs[i]);
             char page_2_file_path[255];
-            get_font_path_with_extension(page_2_file_path, file_location, "_2.bin", 255, is_hd, i);
+            get_font_path_with_extension(page_2_file_path, file_location, "_2.bin", 255, is_hd, legacy_fcs[i]);
             char *file_paths[2] = {file_path, page_2_file_path};
             struct stat st;
             memset(&st, 0, sizeof(st));
@@ -259,7 +266,7 @@ void convert_bin_fonts(const char *file_location)
                 munmap(mmappedData, desired_filesize);
             }
             char out_file_path[255];
-            get_font_path_with_extension(out_file_path, file_location, ".png", 255, is_hd, i);
+            get_font_path_with_extension(out_file_path, file_location, ".png", 255, is_hd, legacy_fcs[i]);
             FILE* out_fd = fopen(out_file_path, "wb");
             if(out_fd == NULL) {
                 DEBUG_PRINT("Could not open output %s\n", out_file_path);
