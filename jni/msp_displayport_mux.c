@@ -471,7 +471,6 @@ int main(int argc, char *argv[]) {
 
         if(timespec_subtract_ns(&now, &last_telemetry) > NSEC_PER_SEC / (update_rate_hz * 3))
         {
-// msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size, msp_direction_e direction);
             uint8_t buffer[8] = "";
             clock_gettime(CLOCK_MONOTONIC, &last_data);
             construct_msp_command(buffer, telemetry_commands[current_telemetry_item++], NULL, 0, MSP_OUTBOUND);
