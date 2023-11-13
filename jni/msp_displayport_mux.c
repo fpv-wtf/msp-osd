@@ -475,6 +475,7 @@ int main(int argc, char *argv[]) {
             clock_gettime(CLOCK_MONOTONIC, &last_data);
             construct_msp_command(buffer, telemetry_commands[current_telemetry_item++], NULL, 0, MSP_OUTBOUND);
             write(serial_fd, buffer, 6);
+            current_telemetry_item = current_telemetry_item % 3;
         }
     }
     close_dji_radio_shm(&dji_radio);
