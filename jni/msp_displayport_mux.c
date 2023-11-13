@@ -55,6 +55,10 @@ static uint32_t fb_cursor = 0;
 
 static uint8_t message_buffer[256]; // only needs to be the maximum size of an MSP packet, we only care to fwd MSP
 static char current_fc_identifier[4];
+/* For telemetry handling */
+
+static msp_state_t *rx_msp_state = NULL;
+static msp_state_t *tx_msp_state = NULL;
 
 /* For compressed full-frame transmission */
 static uint16_t msp_character_map_buffer[MAX_DISPLAY_X][MAX_DISPLAY_Y];
@@ -177,7 +181,7 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         case MSP_CMD_FC_VARIANT: {
             // This is an FC Variant response, so we want to use it to set our FC variant.
             DEBUG_PRINT("Got FC Variant response!\n");
-            if(strncmp(current_fc_identifier, msp_message->payload, 4) != 0) {
+            if(strncmp(current_fc_identifier, (const char *)msp_message->payload, 4) != 0) {
                 // FC variant changed or was updated. Update the current FC identifier and send an MSP version request.
                 memcpy(current_fc_identifier, msp_message->payload, 4);
                 send_version_request(serial_fd);
@@ -208,12 +212,36 @@ static void rx_msp_callback(msp_msg_t *msp_message)
             }
             break;
         }
+        case MSP_CMD_ALTITUDE:
+            {
+                uint32_t *msp_altitude = (uint32_t *)msp_message->payload;
+                rx_msp_state->telemetry.altitude =  *msp_altitude;
+            }
+            goto passthrough;
+        case MSP_CMD_ATTITUDE:
+            {
+                uint16_t *angles = (uint16_t *)msp_message->payload;
+                rx_msp_state->telemetry.roll = angles[0];
+                rx_msp_state->telemetry.pitch = angles[1];
+                rx_msp_state->telemetry.yaw = angles[2];
+            }
+            goto passthrough;
+        case MSP_CMD_RAW_GPS:
+            {
+                uint16_t *speed = (uint16_t *)(msp_message->payload + 12);
+                rx_msp_state->telemetry.speed =  *speed;
+            }
+            goto passthrough;
         default: {
-            uint16_t size = msp_data_from_msg(message_buffer, msp_message);
-            if(serial_passthrough || cache_msp_message(msp_message)) {
-                // Either serial passthrough was on, or the cache was enabled but missed (a response was not available). 
-                // Either way, this means we need to send the message through to DJI.
-                write(pty_fd, message_buffer, size);
+            passthrough:
+            {
+                uint16_t size = msp_data_from_msg(message_buffer, msp_message);
+                if (serial_passthrough || cache_msp_message(msp_message))
+                {
+                    // Either serial passthrough was on, or the cache was enabled but missed (a response was not available).
+                    // Either way, this means we need to send the message through to DJI.
+                    write(pty_fd, message_buffer, size);
+                }
             }
             break;
         }
@@ -293,6 +321,9 @@ int main(int argc, char *argv[]) {
     memset(msp_character_map_buffer, 0, sizeof(msp_character_map_buffer));
     memset(msp_character_map_draw, 0, sizeof(msp_character_map_draw));
 
+    uint16_t telemetry_commands[] = { MSP_CMD_ALTITUDE, MSP_CMD_ATTITUDE, MSP_CMD_RAW_GPS};
+    uint8_t current_telemetry_item = 0;
+
     int compression_dict_size = 0;
     void *compression_dict = open_dict(COMPRESSED_DATA_VERSION, &compression_dict_size);
 
@@ -351,8 +382,8 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, sig_handler);
     struct pollfd poll_fds[2];
     const char *pty_name_ptr;
-    msp_state_t *rx_msp_state = calloc(1, sizeof(msp_state_t));
-    msp_state_t *tx_msp_state = calloc(1, sizeof(msp_state_t));
+    rx_msp_state = calloc(1, sizeof(msp_state_t));
+    tx_msp_state = calloc(1, sizeof(msp_state_t));
     rx_msp_state->cb = &rx_msp_callback;
     tx_msp_state->cb = &tx_msp_callback;
     serial_fd = open_serial_port(serial_port, fast_serial ? B230400 : B115200);
@@ -385,10 +416,11 @@ int main(int argc, char *argv[]) {
 
     uint8_t serial_data[256];
     ssize_t serial_data_size;
-    struct timespec now, last_data, last_frame;
+    struct timespec now, last_data, last_frame, last_telemetry;;
     clock_gettime(CLOCK_MONOTONIC, &now);
     clock_gettime(CLOCK_MONOTONIC, &last_data);
     clock_gettime(CLOCK_MONOTONIC, &last_frame);
+    clock_gettime(CLOCK_MONOTONIC, &last_telemetry);
 
     while (!quit) {
         poll_fds[0].fd = serial_fd;
@@ -396,7 +428,7 @@ int main(int argc, char *argv[]) {
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
 
-        poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 2));
+        poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 3));
         
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
@@ -435,6 +467,15 @@ int main(int argc, char *argv[]) {
         if(compress && (timespec_subtract_ns(&now, &last_frame) > (NSEC_PER_SEC / update_rate_hz))) {
             send_compressed_screen(compressed_fd);
             clock_gettime(CLOCK_MONOTONIC, &last_frame);
+        }
+
+        if(timespec_subtract_ns(&now, &last_telemetry) > NSEC_PER_SEC / (update_rate_hz * 3))
+        {
+// msp_error_e construct_msp_command(uint8_t message_buffer[], uint8_t command, uint8_t payload[], uint8_t size, msp_direction_e direction);
+            uint8_t buffer[8] = "";
+            clock_gettime(CLOCK_MONOTONIC, &last_data);
+            construct_msp_command(buffer, telemetry_commands[current_telemetry_item++], NULL, 0, MSP_OUTBOUND);
+            write(serial_fd, buffer, 6);
         }
     }
     close_dji_radio_shm(&dji_radio);

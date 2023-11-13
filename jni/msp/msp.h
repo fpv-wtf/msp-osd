@@ -17,6 +17,11 @@
 #define MSP_CMD_DISPLAYPORT 182
 #define MSP_CMD_SET_OSD_CANVAS 188
 
+// Telemetry commands
+#define MSP_CMD_RAW_GPS  106
+#define MSP_CMD_ATTITUDE 108
+#define MSP_CMD_ALTITUDE 109
+
 typedef enum {
     MSP_ERR_NONE,
     MSP_ERR_HDR,
@@ -49,11 +54,20 @@ typedef struct msp_msg_s {
 
 typedef void (*msp_msg_callback)(msp_msg_t *);
 
+typedef struct msp_telemetry_s {
+    uint32_t altitude; // cm
+    uint16_t speed; // 
+    uint16_t roll; // 0.1 degrees
+    uint16_t pitch; // 0.1 degrees
+    uint16_t yaw; // degrees
+} msp_telemetry_t;
+
 typedef struct msp_state_s {
     msp_msg_callback cb;
     msp_state_machine_e state;
     uint8_t buf_ptr;
     msp_msg_t message;
+    msp_telemetry_t telemetry;
 } msp_state_t;
 
 uint16_t msp_data_from_msg(uint8_t message_buffer[], msp_msg_t *msg);
