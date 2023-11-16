@@ -429,7 +429,7 @@ int main(int argc, char *argv[]) {
         poll_fds[0].events = POLLIN;
         poll_fds[1].events = POLLIN;
 
-        poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 3));
+        poll(poll_fds, 2, ((MSEC_PER_SEC / (update_rate_hz * 3))));
         
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
