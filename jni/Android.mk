@@ -37,7 +37,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I.
+LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I. -DLZ4_STATIC_LINKING_ONLY
 LOCAL_CXXFLAGS += -fPIC -std=c99 -O3 -I.
 LOCAL_SRC_FILES:= \
 	hw/dji_radio_shm.c \
