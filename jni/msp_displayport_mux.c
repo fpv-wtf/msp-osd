@@ -26,13 +26,6 @@
 #define UPDATE_RATE_KEY "osd_update_rate_hz"
 #define NO_BTFL_HD_KEY "disable_betaflight_hd"
 
-// The MSP_PORT is used to send MSP passthrough messages.
-// The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
-
-#define MSP_PORT 7654
-#define DATA_PORT 7655
-#define COMPRESSED_DATA_PORT 7656
-
 #define COMPRESSED_DATA_VERSION 1
 
 enum {

@@ -22,6 +22,15 @@
 #define MSP_CMD_ATTITUDE 108
 #define MSP_CMD_ALTITUDE 109
 
+// The MSP_PORT is used to send MSP passthrough messages.
+#define MSP_PORT 7654
+// The DATA_PORT is used to send arbitrary data - for example, bitrate and temperature data.
+#define DATA_PORT 7655
+// COMPRESSED_DATA_PORT is used to send MSP DisplayPort character framebuffer
+#define COMPRESSED_DATA_PORT 7656
+// The TELEMETRY_DATA_PORT is used to send telemetry state
+#define TELEMETRY_DATA_PORT 7657
+
 typedef enum {
     MSP_ERR_NONE,
     MSP_ERR_HDR,
