@@ -244,7 +244,41 @@ static void msp_clear_screen() {
     memset(msp_render_character_map, 0, sizeof(msp_render_character_map));
 }
 
+// TODO: Change so we change framebuffer and run after draw_screen()
+static void render_telemetry() {
+    char buf[MAX_DISPLAY_X];
+    int sz = snprintf(buf, MAX_DISPLAY_X - 1, "ALT %im", telemetry.altitude / 100);
+    for(int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[0][i] = buf[i];
+    }
+    sz = snprintf(buf, MAX_DISPLAY_X - 1, "PIT %i", telemetry.pitch / 10);
+    for(int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[1][i] = buf[i];
+    }
+
+    sz = snprintf(buf, MAX_DISPLAY_X - 1, "ROL %i", telemetry.roll / 10);
+    for(int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[2][i] = buf[i];
+    }
+
+    sz = snprintf(buf, MAX_DISPLAY_X - 1, "YAW %i", telemetry.yaw);
+    for (int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[3][i] = buf[i];
+    }
+
+    sz = snprintf(buf, MAX_DISPLAY_X - 1, "SPD %i", telemetry.speed);
+    for (int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[4][i] = buf[i];
+    }
+    sz = snprintf(buf, MAX_DISPLAY_X - 1, "ALT %i", telemetry.speed);
+    for (int i = 0; i < sz && buf[i]; ++i) {
+        msp_render_character_map[5][i] = buf[i];
+    }
+}
+
 static void render_screen() {
+    // TODO: Move to after draw_screen, once we have graphics
+    render_telemetry();
     draw_screen();
     if (display_mode == DISPLAY_DISABLED) {
         clear_framebuffer();
