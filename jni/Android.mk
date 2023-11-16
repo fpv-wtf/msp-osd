@@ -7,7 +7,8 @@ LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
-LOCAL_CFLAGS += -fPIC -std=c99 -O3
+LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I.
+LOCAL_CXXFLAGS += -fPIC -std=c99 -O3 -I.
 LOCAL_LDFLAGS += -fPIC
 LOCAL_LDLIBS := -llog
 LOCAL_ARM_NEON := true
@@ -36,6 +37,8 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
+LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I.
+LOCAL_CXXFLAGS += -fPIC -std=c99 -O3 -I.
 LOCAL_SRC_FILES:= \
 	hw/dji_radio_shm.c \
 	json/osd_config.c \
@@ -48,5 +51,6 @@ LOCAL_SRC_FILES:= \
 	util/fs_util.c \
 	lz4/lz4.c
 LOCAL_MODULE := msp_displayport_mux
+
 include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
