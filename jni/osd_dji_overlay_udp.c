@@ -34,9 +34,6 @@
 #include "rec/rec.h"
 #include "rec/rec_pb.h"
 
-#define MSP_PORT 7654
-#define DATA_PORT 7655
-#define COMPRESSED_DATA_PORT 7656
 #define DICTIONARY_VERSION 1
 
 #define WIDTH 1440
@@ -105,6 +102,7 @@ static uint16_t msp_render_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static uint16_t overlay_character_map[MAX_DISPLAY_X][MAX_DISPLAY_Y];
 static displayport_vtable_t *display_driver;
 struct timespec last_render;
+static msp_telemetry_t telemetry = {};
 
 static char current_fc_variant[5];
 
@@ -264,7 +262,7 @@ static void msp_draw_complete() {
         if (rec_is_osd_recording() == true)
         {
             rec_write_frame(
-                fakehd_is_enabled() ? msp_render_character_map : msp_character_map,
+                fakehd_is_enabled() ? msp_render_character_map[0] : msp_character_map[0],
                 MAX_DISPLAY_X * MAX_DISPLAY_Y);
         }
     }
@@ -509,6 +507,15 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
     }
 }
 
+static void process_telemetry_data(void *buf, int len) {
+    if(len == sizeof(telemetry)) {
+        memcpy(&telemetry, buf, len);
+        DEBUG_PRINT("Received valid telemetry data!\n", decompressed_size);
+    } else {
+        DEBUG_PRINT("Received invalid telemetry data! (%sz != %sz)\n", decompressed_size, len, sizeof(telemetry));
+    }
+}
+
 static void process_compressed_data(void *buf, int len, void *dict, int dict_size) {
     compressed_data_header_t *header = (compressed_data_header_t*)buf;
     if (header->version != DICTIONARY_VERSION) {
@@ -533,7 +540,7 @@ static void process_compressed_data(void *buf, int len, void *dict, int dict_siz
             }
             break;
     }
-    int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
+    int decompressed_size = LZ4_decompress_safe_usingDict((buf + sizeof(compressed_data_header_t)), (char *)msp_character_map, len - sizeof(compressed_data_header_t), sizeof(msp_character_map), dict, dict_size);
     DEBUG_PRINT("Decompressed %d bytes!\n", decompressed_size);
     msp_draw_complete();
 }
@@ -731,9 +738,10 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     int msp_socket_fd = bind_socket(MSP_PORT);
     int data_socket_fd = bind_socket(DATA_PORT);
     int compressed_socket_fd = bind_socket(COMPRESSED_DATA_PORT);
+    int telemetry_socket_fd = bind_socket(TELEMETRY_DATA_PORT);
     printf("*** MSP-OSD: MSP-OSD started up, listening on port %d\n", MSP_PORT);
 
-    struct pollfd poll_fds[4];
+    struct pollfd poll_fds[5];
     int recv_len = 0;
     uint8_t byte = 0;
     uint8_t buffer[8192];
@@ -763,9 +771,11 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
         poll_fds[2].events = POLLIN;
         poll_fds[3].fd = compressed_socket_fd;
         poll_fds[3].events = POLLIN;
+        poll_fds[4].fd = telemetry_socket_fd;
+        poll_fds[4].events = POLLIN;
 
         // spin every 250ms if we didn't get a packet, then check and see if we need to do the toast/overlay logic
-        poll(poll_fds, 4, 250);
+        poll(poll_fds, 5, 250);
 
         clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -803,6 +813,14 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
             }
         }
 
+        if(poll_fds[4].revents) {
+            // Got telemetry data
+            if (0 < (recv_len = recvfrom(compressed_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len))) {
+                DEBUG_PRINT("got TELEMETRY data packet len %d\n", recv_len);
+                process_telemetry_data(buffer, recv_len);
+            }
+        }
+
         if(poll_fds[3].revents) {
             // Got compressed data
             if (0 < (recv_len = recvfrom(compressed_socket_fd,&buffer,sizeof(buffer),0,(struct sockaddr*)&src_addr,&src_addr_len)))
@@ -836,6 +854,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     close(msp_socket_fd);
     close(data_socket_fd);
     close(compressed_socket_fd);
+    close(telemetry_socket_fd);
     close(event_fd);
     return;
 }
