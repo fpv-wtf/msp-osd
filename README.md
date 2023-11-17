@@ -386,7 +386,7 @@ adb shell LD_PRELOAD=/tmp/libdisplayport_osd_shim.so dji_gls_wm150_original -g
 
 ```
 ndk-build
-adb push msp_displayport_mux /blackbox
+adb push libs/armeabi-v7a/msp_displayport_mux /blackbox
 adb shell setprop dji.hdvt_uav_service 0
 adb shell mv /dev/ttyS1 /dev/ttyS1_moved
 adb shell nohup /blackbox/msp_displayport_mux 192.168.41.2 /dev/ttyS1_moved /dev/ttyS1 &
