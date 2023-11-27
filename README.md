@@ -246,6 +246,7 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
  - [SNEAKY_FPV's colour fonts for INAV, ARDU and BF](https://sites.google.com/view/sneaky-fpv/home)
  - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
  - [Kw0ngk4n's Neue OSD](https://github.com/Kw0ngk4n/WTF-Neue-OSD)
+ - [EVilm1's OSD Font](https://github.com/EVilm1/EVilm1-OSD-Font)
 
 ### Generate your own Font from an analog font (advanced)
 
@@ -266,6 +267,15 @@ VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight cont
 You can customize the font color by changing the 255 255 255 RGB values.
 
 Useful tool for working with fonts: https://github.com/shellixyz/hd_fpv_osd_font_tool
+
+## Modify / Move original DJI OSD elements
+
+You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
+
+Elements position, visibility, font and icons can be modified by editing the internal googles files.
+This is possible by connecting to the googles using ADB. You can even preview changes using a Python script!
+
+This is not a trivial thing for everyone to do, the full tutorial can be found [here](https://github.com/EVilm1/WIKI-HACK-DJI-OSD#6-advanced-setup-modify-the-dji-hud-elements).
 
 ## Compressed Transmission
 
