@@ -27,7 +27,7 @@ int connect_to_server(char *address, int port)
     servaddr.sin_addr.s_addr = inet_addr(address);
     servaddr.sin_port = htons(port);
 
-    if (connect(sockfd, &servaddr, sizeof(servaddr)) != 0)
+    if (connect(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) != 0)
     {
         printf("connection failed!\n");
         return -1;

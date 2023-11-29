@@ -7,3 +7,6 @@ ipk/airunit/build
 repo
 obj
 libs
+# vim files
+*~
+*.swp
