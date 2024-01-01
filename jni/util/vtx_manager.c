@@ -6,7 +6,9 @@
 #define CHANNEL_PUBLIC 8
 
 static void *tp1801_gui_lib = NULL;
-static uint32_t (* setChannelPilotOriginal)(void *this,unsigned short param_1, bool param_2) = 0;
+// static uint32_t (* setChannelPilotOriginal)(void *this,unsigned short param_1, bool param_2) = 0;
+// or
+static uint32_t (* setChannelPilotOriginal)(uint32_t this, unsigned short param_1, bool param_2) = 0;
 static uint32_t (* userSettingsGetInstanceOriginal)() = 0;
 static uint32_t userSettingsInstance = 0;
 static __gs_gui_config *gs_gui_config = 0;
@@ -14,6 +16,7 @@ static int8_t currentChannel = -1;
 
 void setupVTXManager() {
     if(setChannelPilotOriginal != NULL)  {
+        //Already setup
         return;
     }
 
