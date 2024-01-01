@@ -239,9 +239,9 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         }
         case MSP_CMD_VTX_CONFIG: {
             DEBUG_PRINT("Received VTX CONFIG message...\n");
-            printf("data: %d %d %d \n", msp_message->payload[0],  msp_message->payload[1],  msp_message->payload[2]);
-            // TODO: Damage control accessing to index 2 if not exists
-            fc_vtx_channel = msp_message->payload[2];
+            if(sizeof(msp_message->payload) > 2) {
+                fc_vtx_channel = msp_message->payload[2];
+            }
         }
         case MSP_CMD_SET_VTX_CONFIG: {
             DEBUG_PRINT("Received SET VTX CONFIG message...\n");

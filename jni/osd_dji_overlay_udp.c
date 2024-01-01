@@ -499,7 +499,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
     }
-    if(vtx_manager_enabled == 1) {
+    if(vtx_manager_enabled == true) {
         changeChannel(packet->fc_vtx_channel);
     }
     if(len > 6) {
@@ -760,8 +760,11 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     int compression_dict_size = 0;
     void *compression_dict = open_dict(DICTIONARY_VERSION, &compression_dict_size);
 
+    // VTX Manager
     vtx_manager_enabled = get_boolean_config_value(VTX_MPS_CONFIG_KEY);
-    setupVTXManager();
+    if(vtx_manager_enabled == true) {
+        setupVTXManager();
+    }
 
     uint64_t event_number;
     while (!quit)

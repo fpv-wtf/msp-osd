@@ -36,16 +36,16 @@ uint8_t * resetVTXTableMessage() {
 }
 
 uint8_t * setupVTXPowerMessage(int index, int value, char name[]) {
-  uint8_t name_size = sizeof(name);
+  uint8_t name_size = strlen(name);
   uint8_t payload_size = 4 + name_size;
   uint8_t vtx_power[4 + 3] = {
     index, // idx
     value & 0xFF, // powerValue LSB
     (value >> 8) & 0xFF, // powerValue MSB
-    sizeof(name), // label lenght
+    strlen(name), // label lenght
   };
 
-  for(int i = 0; i < sizeof(name); i++) {
+  for(int i = 0; i < strlen(name); i++) {
     vtx_power[i] = name[i];
   }
   /*txPacket[8] = idx;
