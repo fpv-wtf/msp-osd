@@ -34,7 +34,7 @@
 #include "rec/rec.h"
 #include "rec/rec_pb.h"
 
-#include "util/vtx_manager.c"
+#include "util/vtx_manager.h"
 
 #define MSP_PORT 7654
 #define DATA_PORT 7655

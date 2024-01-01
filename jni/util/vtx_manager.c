@@ -2,6 +2,8 @@
 #include <dlfcn.h>
 #include "util/debug.h"
 #include "vtx_manager.h"
+#include "../rec/rec_shim.h"
+
 
 #define CHANNEL_PUBLIC 8
 

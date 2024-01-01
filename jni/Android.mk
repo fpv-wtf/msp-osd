@@ -32,7 +32,8 @@ LOCAL_SRC_FILES := \
 	rec/rec_util.c \
 	rec/rec.c \
 	toast/toast.c \
-	util/fs_util.c
+	util/fs_util.c \
+	util/vtx_manager.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)

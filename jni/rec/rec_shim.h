@@ -5649,6 +5649,8 @@ struct __gs_gui_config
     int (*get_sd_status)(void *, int, uint8_t *, uint32_t *, uint32_t *);
     int (*play_pwm_buzzer)(void *, int, int, int);
     int (*buzzer_enable_bat)(void *, _Bool);
+    void * gs_info;
+    int (*gs_modem_set_public_chnl)(void *ctx);
 };
 
 struct AVCodecParserContext
