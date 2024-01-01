@@ -16,6 +16,7 @@
 #include "util/debug.h"
 #include "util/time_util.h"
 #include "util/fs_util.h"
+#include "./msp/msp_vtx.c"
 
 #define CPU_TEMP_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/temp1"
 #define AU_VOLTAGE_PATH "/sys/devices/platform/soc/f0a00000.apb/f0a71000.omc/voltage4"
@@ -153,9 +154,21 @@ static void send_vtx_config_request(int serial_fd) {
 
 static void send_vtx_set_config_request(int serial_fd) {
     DEBUG_PRINT("Sending VTX READY message...\n");
-    uint8_t buffer[6];
-    construct_msp_command(buffer, MSP_CMD_SET_VTX_CONFIG, NULL, 0, MSP_OUTBOUND);
-    write(serial_fd, &buffer, sizeof(buffer));
+
+    uint8_t *buffer = resetVTXTableMessage();
+    write(serial_fd, buffer, sizeof(buffer));
+
+    buffer = setupVTXPowerMessage(0, 25, "25 ");
+    write(serial_fd, buffer, sizeof(buffer));
+    buffer = setupVTXPowerMessage(0, 200, "200 ");
+    write(serial_fd, buffer, sizeof(buffer));
+    buffer = setupVTXPowerMessage(0, 500, "500 ");
+    write(serial_fd, buffer, sizeof(buffer));
+    buffer = setupVTXPowerMessage(0, 700, "700 ");
+    write(serial_fd, buffer, sizeof(buffer));
+
+    buffer = setupVTXBandMessage();
+    write(serial_fd, buffer, sizeof(buffer));
 }
 
 static void copy_to_msp_frame_buffer(void *buffer, uint16_t size) {
@@ -236,7 +249,7 @@ static void rx_msp_callback(msp_msg_t *msp_message)
         default: {
             uint16_t size = msp_data_from_msg(message_buffer, msp_message);
             if(serial_passthrough || cache_msp_message(msp_message)) {
-                // Either serial passthrough was on, or the cache was enabled but missed (a response was not available). 
+                // Either serial passthrough was on, or the cache was enabled but missed (a response was not available).
                 // Either way, this means we need to send the message through to DJI.
                 write(pty_fd, message_buffer, size);
             }
@@ -390,8 +403,8 @@ int main(int argc, char *argv[]) {
     printf("Allocated PTY %s\n", pty_name_ptr);
     if ((argc - optind) > 2) {
         unlink(argv[optind + 2]);
-        symlink(pty_name_ptr, argv[optind + 2]);   
-        printf("Relinked %s to %s\n", argv[optind + 2], pty_name_ptr); 
+        symlink(pty_name_ptr, argv[optind + 2]);
+        printf("Relinked %s to %s\n", argv[optind + 2], pty_name_ptr);
     }
     socket_fd = connect_to_server(ip_address, MSP_PORT);
     compressed_fd = connect_to_server(ip_address, COMPRESSED_DATA_PORT);
@@ -425,7 +438,7 @@ int main(int argc, char *argv[]) {
         poll_fds[1].events = POLLIN;
 
         poll(poll_fds, 2, ((MSEC_PER_SEC / update_rate_hz) / 2));
-        
+
         // We got inbound serial data, process it as MSP data.
         if (0 < (serial_data_size = read(serial_fd, serial_data, sizeof(serial_data)))) {
             DEBUG_PRINT("RECEIVED data! length %d\n", serial_data_size);
