@@ -65,7 +65,7 @@ typedef struct display_info_s {
     uint16_t y_offset;
     void *font_page_1;
     void *font_page_2;
-} display_info_t; 
+} display_info_t;
 
 static volatile sig_atomic_t quit = 0;
 static dji_display_state_t *dji_display;
@@ -143,7 +143,7 @@ static void draw_character_map(display_info_t *display_info, void *fb_addr, uint
                         // fall back to writing page 1 chars if we don't have a page 2 font
                         font = display_info->font_page_2;
                     }
-                } 
+                }
                 uint32_t pixel_x = (x * display_info->font_width) + display_info->x_offset;
                 uint32_t pixel_y = (y * display_info->font_height) + display_info->y_offset;
                 uint32_t character_offset = (((display_info->font_height * display_info->font_width) * BYTES_PER_PIXEL) * c);
@@ -169,7 +169,7 @@ static void draw_screen() {
     void *fb_addr = dji_display_get_fb_address(dji_display, which_fb);
     // DJI has a backwards alpha channel - FF is transparent, 00 is opaque.
     memset(fb_addr, 0x000000FF, WIDTH * HEIGHT * BYTES_PER_PIXEL);
-    
+
     draw_character_map(current_display_info, fb_addr, msp_character_map);
     draw_character_map(&overlay_display_info, fb_addr, overlay_character_map);
 }
@@ -284,7 +284,7 @@ static void close_fonts(display_info_t *display_info) {
 
 static void msp_set_options(uint8_t font_num, uint8_t is_hd) {
     msp_clear_screen();
-    if(is_hd) { 
+    if(is_hd) {
         current_display_info = &hd_display_info;
     } else {
         current_display_info = &sd_display_info;
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
 
     int event_fd = open(INPUT_FILENAME, O_RDONLY);
     assert(event_fd > 0);
-    
+
     dji_shm_state_t radio_shm;
     memset(&radio_shm, 0, sizeof(radio_shm));
 
@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
     if(display_mode == DISPLAY_RUNNING) {
         stop_display();
     }
-    
+
     free(display_driver);
     free(msp_state);
     close(msp_socket_fd);
