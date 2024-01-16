@@ -19,7 +19,7 @@ void get_font_path_with_extension(char *font_path_dest, const char *font_path, c
     char name_buf[len];
     char res_buf[len];
 
-    if (font_variant[0] == '\0')
+    if (font_variant != NULL && strlen(font_variant) > 0)
     {
         snprintf(name_buf, len, "%s_%s", font_path, font_variant);
     } else {
