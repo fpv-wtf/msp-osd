@@ -162,6 +162,19 @@ void load_font(display_info_t *display_info, char *font_variant) {
                 loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "BF");
             }
         }
+        // we used to map ULTR to ULTRA in the font filename, so support ULTRA still for B/C
+        if (loaded_font < 0 && font_variant == "ULTR")
+        {
+            loaded_font = open_font(SDCARD_FONT_PATH, display_info, "ULTRA");
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "ULTRA");
+            }
+            if (loaded_font < 0)
+            {
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "ULTRA");
+            }
+        }
 
         // finally, if we have no fonts for this FC, fallback to the default font
         if (loaded_font)
