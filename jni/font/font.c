@@ -150,7 +150,7 @@ void load_font(display_info_t *display_info, char *font_variant) {
         }
 
         // we used to map BTFL to BF in the font filename, so support BF still for B/C
-        if (loaded_font < 0 && font_variant == "BTFL")
+        if (loaded_font < 0 && strcmp(font_variant, "BTFL") == 0)
         {
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "BF");
             if (loaded_font < 0)
@@ -163,7 +163,7 @@ void load_font(display_info_t *display_info, char *font_variant) {
             }
         }
         // we used to map ULTR to ULTRA in the font filename, so support ULTRA still for B/C
-        if (loaded_font < 0 && font_variant == "ULTR")
+        if (loaded_font < 0 && strcmp(font_variant, "ULTR") == 0)
         {
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "ULTRA");
             if (loaded_font < 0)
