@@ -7,7 +7,8 @@ LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
-LOCAL_CFLAGS += -fPIC -std=c99 -O3
+LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I.
+LOCAL_CXXFLAGS += -fPIC -std=c99 -O3 -I.
 LOCAL_LDFLAGS += -fPIC
 LOCAL_LDLIBS := -llog
 LOCAL_ARM_NEON := true
@@ -31,11 +32,14 @@ LOCAL_SRC_FILES := \
 	rec/rec_util.c \
 	rec/rec.c \
 	toast/toast.c \
-	util/fs_util.c
+	util/fs_util.c \
+	util/vtx_manager.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
+LOCAL_CFLAGS += -fPIC -std=c99 -O3 -I. -DLZ4_STATIC_LINKING_ONLY
+LOCAL_CXXFLAGS += -fPIC -std=c99 -O3 -I.
 LOCAL_SRC_FILES:= \
 	hw/dji_radio_shm.c \
 	json/osd_config.c \

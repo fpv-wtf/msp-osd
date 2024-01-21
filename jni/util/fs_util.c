@@ -34,7 +34,7 @@ void *open_dict(int dict_version, int *size) {
     size_t filesize = st.st_size;
     int fd = open(file_path, O_RDONLY, 0);
     if (!fd) {
-        return -1;
+        return (void *)-1;
     }
     void* dict = malloc(filesize);
     void* mmappedData = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);

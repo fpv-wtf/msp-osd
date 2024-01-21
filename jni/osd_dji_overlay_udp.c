@@ -34,6 +34,8 @@
 #include "rec/rec.h"
 #include "rec/rec_pb.h"
 
+#include "util/vtx_manager.h"
+
 #define MSP_PORT 7654
 #define DATA_PORT 7655
 #define COMPRESSED_DATA_PORT 7656
@@ -76,6 +78,9 @@ typedef enum
 #define EV_CODE_BACK 0xc9
 
 #define BACK_BUTTON_DELAY 4
+
+#define VTX_MPS_CONFIG_KEY "vtx_msp"
+static u_int8_t vtx_manager_enabled;
 
 #define SWAP32(data)   \
 ( (((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) | \
@@ -485,7 +490,7 @@ static void check_is_au_overlay_enabled()
 
 static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_shm) {
     packet_data_t *packet = (packet_data_t *)buf;
-    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant);
+    DEBUG_PRINT("got data %04X version spec %d C %f V variant %.4s and vtx channel %d\n", packet->version_specifier, packet->tx_temperature, packet->tx_voltage / 64.0f, packet->fc_variant, packet->fc_vtx_channel);
     char str[8];
     clear_overlay();
     if(au_overlay_enabled) {
@@ -493,6 +498,9 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
         display_print_string(overlay_display_info.char_width - 5, overlay_display_info.char_height - 8, str, 5);
         snprintf(str, 8, "A %2.1fV", packet->tx_voltage / 64.0f);
         display_print_string(overlay_display_info.char_width - 7, overlay_display_info.char_height - 7, str, 7);
+    }
+    if(vtx_manager_enabled == true) {
+        changeChannel(packet->fc_vtx_channel);
     }
     if(len > 6) {
         DEBUG_PRINT("Got new packet with variant %.4s\n", packet->fc_variant);
@@ -751,6 +759,12 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
 
     int compression_dict_size = 0;
     void *compression_dict = open_dict(DICTIONARY_VERSION, &compression_dict_size);
+
+    // VTX Manager
+    vtx_manager_enabled = get_boolean_config_value(VTX_MPS_CONFIG_KEY);
+    if(vtx_manager_enabled == true) {
+        setupVTXManager();
+    }
 
     uint64_t event_number;
     while (!quit)

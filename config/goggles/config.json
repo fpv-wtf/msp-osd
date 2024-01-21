@@ -10,5 +10,6 @@
     "fakehd_columns": "S",
     "fakehd_rows": "WWWWWWCCWWWWWWWD",
     "rec_enabled": true,
-    "rec_pb_enabled": true
+    "rec_pb_enabled": true,
+    "vtx_msp": false
 }

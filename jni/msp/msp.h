@@ -17,6 +17,12 @@
 #define MSP_CMD_DISPLAYPORT 182
 #define MSP_CMD_SET_OSD_CANVAS 188
 
+// https://github.com/betaflight/betaflight/blob/master/src/main/msp/msp_protocol.h#L201C1-L202C50
+#define MSP_CMD_VTX_CONFIG 88 // from FC
+#define MSP_CMD_SET_VTX_CONFIG 89 // to FC
+#define MSP_CMD_SET_VTXTABLE_BAND    227    // to FC        set vtxTable band/channel data (one band at a time)
+#define MSP_CMD_SET_VTXTABLE_POWERLEVEL 228 // to FC         set vtxTable powerLevel data (one powerLevel at a time)
+
 typedef enum {
     MSP_ERR_NONE,
     MSP_ERR_HDR,
