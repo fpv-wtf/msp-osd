@@ -66,7 +66,7 @@ void changeChannel(int8_t channel) {
     DEBUG_PRINT("VTX_MANAGER: requesting to the goggles to set channel %d\n", channel);
 
     if(channel == CHANNEL_PUBLIC){
-        gs_gui_config->gs_modem_set_public_chnl(gs_gui_config->gs_info);
+        gs_gui_config->gs_modem_set_public_chnl(gs_gui_config->ctx);
     } else {
         int8_t channelIdx = channel - 1;
         setChannelPilotOriginal(userSettingsGetInstanceOriginal(), channelIdx, true);
