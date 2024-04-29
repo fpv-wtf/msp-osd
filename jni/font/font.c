@@ -136,25 +136,44 @@ static int open_font(const char *filename, display_info_t *display_info, char *f
 }
 
 void load_font(display_info_t *display_info, char *font_variant) {
-    DEBUG_PRINT("Loading font %s\n", font_variant);
+
     // Note: load_font will not replace an existing font.
     if(display_info->fonts[0] == NULL) {
         int loaded_font = 0;
-        char *fallback_font_variant;
-        if (font_variant!=NULL && strcmp(font_variant, "BTFL") == 0)
+        DEBUG_PRINT("IN LOAD_FONT\n");
+        // create a copy of font_variant
+        char font_variant_lower[5] = "";
+        if (font_variant  != NULL)
         {
-            DEBUG_PRINT("Setting fallback font variant to BF\n");
-            fallback_font_variant = "BF";
+            DEBUG_PRINT("Lowercasing variant\n");
+            int length = sizeof(font_variant) / sizeof(char);
+            for (int i = 0; i < length; i++)
+            {
+                font_variant_lower[i] = tolower(font_variant[i]);
+            }
         }
-        else if (font_variant != NULL && strcmp(font_variant, "ULTR") == 0)
+        else
         {
-            DEBUG_PRINT("Setting fallback font variant to ULTRA\n");
-            fallback_font_variant = "ULTRA";
+            DEBUG_PRINT("Font variant is NULL\n");
+        }
+
+        DEBUG_PRINT("Loading font %s\n", font_variant_lower);
+
+        char *fallback_font_variant = "";
+        if (font_variant_lower!=NULL && strcmp(font_variant_lower, "btfl") == 0)
+        {
+            DEBUG_PRINT("Setting fallback font variant to bf\n");
+            fallback_font_variant = "bf";
+        }
+        else if (font_variant_lower != NULL && strcmp(font_variant_lower, "ultr") == 0)
+        {
+            DEBUG_PRINT("Setting fallback font variant to ultra\n");
+            fallback_font_variant = "ultra";
         }
 
         // try the three paths for the current font
-        DEBUG_PRINT("Loading from: %s %s\n", SDCARD_FONT_PATH, font_variant);
-        loaded_font = open_font(SDCARD_FONT_PATH, display_info, font_variant);
+        DEBUG_PRINT("Loading from: %s %s\n", SDCARD_FONT_PATH, font_variant_lower);
+        loaded_font = open_font(SDCARD_FONT_PATH, display_info, font_variant_lower);
         if (loaded_font < 0 && strcmp(fallback_font_variant, "") != 0)
         {
             DEBUG_PRINT("Loading fallback variant from: %s %s\n", SDCARD_FONT_PATH, fallback_font_variant);
@@ -162,8 +181,8 @@ void load_font(display_info_t *display_info, char *font_variant) {
         }
         if (loaded_font < 0)
         {
-            DEBUG_PRINT("Loading from: %s %s\n", FALLBACK_FONT_PATH, font_variant);
-            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+            DEBUG_PRINT("Loading from: %s %s\n", FALLBACK_FONT_PATH, font_variant_lower);
+            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant_lower);
         }
         if (loaded_font < 0 && strcmp(fallback_font_variant, "") != 0)
         {
@@ -172,8 +191,8 @@ void load_font(display_info_t *display_info, char *font_variant) {
         }
         if (loaded_font < 0)
         {
-            DEBUG_PRINT("Loading from: %s %s\n", ENTWARE_FONT_PATH, font_variant);
-            loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant);
+            DEBUG_PRINT("Loading from: %s %s\n", ENTWARE_FONT_PATH, font_variant_lower);
+            loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant_lower);
         }
 
 
