@@ -142,11 +142,13 @@ void load_font(display_info_t *display_info, char *font_variant) {
 
         // try the three paths for the current font
         loaded_font = open_font(SDCARD_FONT_PATH, display_info, font_variant);
-        if (loaded_font < 0) {
-            loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant);
-        }
-        if (loaded_font < 0) {
+        if (loaded_font < 0)
+        {
             loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+        }
+        if (loaded_font < 0)
+        {
+            loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant);
         }
 
         // we used to map BTFL to BF in the font filename, so support BF still for B/C
@@ -155,11 +157,11 @@ void load_font(display_info_t *display_info, char *font_variant) {
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "BF");
             if (loaded_font < 0)
             {
-                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "BF");
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "BF");
             }
             if (loaded_font < 0)
             {
-                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "BF");
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "BF");
             }
         }
         // we used to map ULTR to ULTRA in the font filename, so support ULTRA still for B/C
@@ -168,11 +170,11 @@ void load_font(display_info_t *display_info, char *font_variant) {
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "ULTRA");
             if (loaded_font < 0)
             {
-                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "ULTRA");
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "ULTRA");
             }
             if (loaded_font < 0)
             {
-                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "ULTRA");
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "ULTRA");
             }
         }
 
@@ -182,11 +184,11 @@ void load_font(display_info_t *display_info, char *font_variant) {
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "");
             if (loaded_font < 0)
             {
-                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "");
+                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "");
             }
             if (loaded_font < 0)
             {
-                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "");
+                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "");
             }
         }
     }
