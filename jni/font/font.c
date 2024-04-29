@@ -136,58 +136,60 @@ static int open_font(const char *filename, display_info_t *display_info, char *f
 }
 
 void load_font(display_info_t *display_info, char *font_variant) {
+    DEBUG_PRINT("Loading font %s\n", font_variant);
     // Note: load_font will not replace an existing font.
     if(display_info->fonts[0] == NULL) {
         int loaded_font = 0;
+        char *fallback_font_variant;
+        if (font_variant!=NULL && strcmp(font_variant, "BTFL") == 0)
+        {
+            DEBUG_PRINT("Setting fallback font variant to BF\n");
+            fallback_font_variant = "BF";
+        }
+        else if (font_variant != NULL && strcmp(font_variant, "ULTR") == 0)
+        {
+            DEBUG_PRINT("Setting fallback font variant to ULTRA\n");
+            fallback_font_variant = "ULTRA";
+        }
 
         // try the three paths for the current font
+        DEBUG_PRINT("Loading from: %s %s\n", SDCARD_FONT_PATH, font_variant);
         loaded_font = open_font(SDCARD_FONT_PATH, display_info, font_variant);
-        if (loaded_font < 0)
+        if (loaded_font < 0 && strcmp(fallback_font_variant, "") != 0)
         {
-            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+            DEBUG_PRINT("Loading fallback variant from: %s %s\n", SDCARD_FONT_PATH, fallback_font_variant);
+            loaded_font = open_font(SDCARD_FONT_PATH, display_info, fallback_font_variant);
         }
         if (loaded_font < 0)
         {
+            DEBUG_PRINT("Loading from: %s %s\n", FALLBACK_FONT_PATH, font_variant);
+            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, font_variant);
+        }
+        if (loaded_font < 0 && strcmp(fallback_font_variant, "") != 0)
+        {
+            DEBUG_PRINT("Loading fallback variant from: %s %s\n", FALLBACK_FONT_PATH, fallback_font_variant);
+            loaded_font = open_font(FALLBACK_FONT_PATH, display_info, fallback_font_variant);
+        }
+        if (loaded_font < 0)
+        {
+            DEBUG_PRINT("Loading from: %s %s\n", ENTWARE_FONT_PATH, font_variant);
             loaded_font = open_font(ENTWARE_FONT_PATH, display_info, font_variant);
         }
 
-        // we used to map BTFL to BF in the font filename, so support BF still for B/C
-        if (loaded_font < 0 && strcmp(font_variant, "BTFL") == 0)
-        {
-            loaded_font = open_font(SDCARD_FONT_PATH, display_info, "BF");
-            if (loaded_font < 0)
-            {
-                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "BF");
-            }
-            if (loaded_font < 0)
-            {
-                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "BF");
-            }
-        }
-        // we used to map ULTR to ULTRA in the font filename, so support ULTRA still for B/C
-        if (loaded_font < 0 && strcmp(font_variant, "ULTR") == 0)
-        {
-            loaded_font = open_font(SDCARD_FONT_PATH, display_info, "ULTRA");
-            if (loaded_font < 0)
-            {
-                loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "ULTRA");
-            }
-            if (loaded_font < 0)
-            {
-                loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "ULTRA");
-            }
-        }
 
         // finally, if we have no fonts for this FC, fallback to the default font
         if (loaded_font)
         {
+            DEBUG_PRINT("Loading generic from: %s\n", SDCARD_FONT_PATH);
             loaded_font = open_font(SDCARD_FONT_PATH, display_info, "");
             if (loaded_font < 0)
             {
+                DEBUG_PRINT("Loading generic from: %s\n", FALLBACK_FONT_PATH);
                 loaded_font = open_font(FALLBACK_FONT_PATH, display_info, "");
             }
             if (loaded_font < 0)
             {
+                DEBUG_PRINT("Loading generic from: %s\n", ENTWARE_FONT_PATH);
                 loaded_font = open_font(ENTWARE_FONT_PATH, display_info, "");
             }
         }
@@ -249,6 +251,7 @@ void convert_bin_fonts(const char *file_location)
             if(page_1_filesize == desired_filesize) {
                 DEBUG_PRINT("Found a font to convert: %s %d\n", file_path, desired_filesize);
             } else {
+                DEBUG_PRINT("Font %s is not the right size, skipping\n", file_path);
                 continue;
             }
             if(page_2_filesize == desired_filesize) {
@@ -301,6 +304,7 @@ void convert_bin_fonts(const char *file_location)
             spng_ctx_free(enc);
             free(image_buf);
             fclose(out_fd);
+            DEBUG_PRINT("Converted font %s to %s\n", file_path, out_file_path);
         }
     }
 }
