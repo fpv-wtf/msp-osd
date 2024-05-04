@@ -45,9 +45,9 @@ goggle_ipk: install
 	cp -r ipk/goggle/data ipk/goggle/build/
 	echo "2.0" > ipk/goggle/build/debian-binary
 	cp -r ipk/goggle/control ipk/goggle/build/
-	cd ipk/goggle/build/control && gtar czvf ../control.tar.gz .
-	cd ipk/goggle/build/data && gtar czvf ../data.tar.gz .
-	cd ipk/goggle/build && gtar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
+	cd ipk/goggle/build/control && tar czvf ../control.tar.gz .
+	cd ipk/goggle/build/data && tar czvf ../data.tar.gz .
+	cd ipk/goggle/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
 
 airunit_ipk: install
 	$(eval PKG_NAME := $(shell cat ./ipk/airunit/control/control | grep Package | cut -d" " -f2))
@@ -58,9 +58,9 @@ airunit_ipk: install
 	echo "2.0" > ipk/airunit/build/debian-binary
 	cp -r ipk/airunit/data ipk/airunit/build/
 	cp -r ipk/airunit/control ipk/airunit/build/
-	cd ipk/airunit/build/control && gtar czvf ../control.tar.gz .
-	cd ipk/airunit/build/data && gtar czvf ../data.tar.gz .
-	cd ipk/airunit/build && gtar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
+	cd ipk/airunit/build/control && tar czvf ../control.tar.gz .
+	cd ipk/airunit/build/data && tar czvf ../data.tar.gz .
+	cd ipk/airunit/build && tar czvf "../../${IPK_NAME}" ./control.tar.gz ./data.tar.gz ./debian-binary
 
 ipk: install goggle_ipk airunit_ipk
 
