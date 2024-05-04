@@ -102,7 +102,7 @@ A diagram to help...
 
 Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your goggles connected, and check "Fake HD"
 
-Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.bin` / `font_bf_hd_2.bin` (NB: FakeHD no longer uses font_hd.bin / font_hd_2.bin)
+Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.png`
 
 Configuration of the grid is also possible; see below.
 
@@ -220,53 +220,36 @@ Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configurin
 
 ## Fonts
 
-We bundle in default fonts for the flight controller variants we support. [Preview images are available here](docs/fonts). Or you can use a custom one...
+We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (font is SNEAKYFPV's Europa - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12 we use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.
 
 * Download a font package. See below for known community fonts.
-* Rename the files for your desired font to `font_<fc variant>` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
-* Place these four files on the root of your Goggles SD card.
+* Rename the files for your desired font to `font_<fc variant>.png` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
+* Place these two PNG files on the root of your Goggles SD card.
 * Reboot.
 
 ### FC Specific Font File Names
 
 | Flight controller | SD | HD |
 | ----------------- | -- | -- |
-| Betaflight       | `font_bf.bin`, `font_bf_2.bin` | `font_bf_hd.bin`, `font_bf_hd_2.bin` |
-| INAV       | `font_inav.bin`, `font_inav_2.bin` | `font_inav_hd.bin`, `font_inav_hd_2.bin`|
-| Ardupilot       | `font_ardu.bin`, `font_ardu_2.bin` | `font_ardu_hd.bin`, `font_ardu_hd_2.bin`|
-| KISS Ultra       | `font_ultra.bin`, `font_ultra_2.bin` | `font_ultra_hd.bin`, `font_ultra_hd_2.bin`|
-| QUICKSILVER       | `font_quic.bin`, `font_quic_2.bin` | `font_quic_hd.bin`, `font_quic_hd_2.bin`|
-| Generic/Fallback       | `font.bin`, `font_2.bin` | `font_hd.bin`, `font_hd_2.bin`|
+| Betaflight       | `font_btfl.png` | `font_btfl_hd.png` |
+| INAV       | `font_inav.png` | `font_inav_hd.png`|
+| Ardupilot       | `font_ardu.png` | `font_ardu_hd.png`|
+| KISS Ultra       | `font_ultr.png` | `font_ulta_hd.png`|
+| QUICKSILVER       | `font_quic.png` | `font_quic_hd.png`|
+| Generic/Fallback       | `font.png` | `font_hd.png`|
 
-VTx (AU/Vista) which have not had their msp-osd upgraded, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
+Airside VTx (AU/Vista) which have a very old version of msp-osd on, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
+
+You can also add fonts for firmwares not in this list; using the generic filename, or put the MSP identifier in (lower case it) the filename - ```font_<fc_variant>.png / font_<fc_variant>_hd.png```
 
 ### Suggested Third Party Fonts
 
- - [KNIFA's Material](https://github.com/Knifa/material-osd/releases)
+ - [KNIFA's Material](https://github.com/Knifa/material-osd/releases) - use the Walksnail version for MSP-OSD >= 0.12
  - [SNEAKY_FPV's colour fonts for INAV, ARDU and BF](https://sites.google.com/view/sneaky-fpv/home)
  - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
  - [Kw0ngk4n's Neue OSD](https://github.com/Kw0ngk4n/WTF-Neue-OSD)
  - [EVilm1's OSD Font](https://github.com/EVilm1/EVilm1-OSD-Font)
 
-### Generate your own Font from an analog font (advanced)
-
-* Download [mcm2img](https://github.com/bri3d/mcm2img) and set up a working Python environment to run it.
-
-* Locate the font you'd like to install - it will be a `.mcm` file, in the source code repository or configurator for your Flight Controller.
-
-* For Betaflight: https://github.com/betaflight/betaflight-configurator/tree/master/resources/osd/2
-* For INAV: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/
-* For Ardupilot: https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_OSD/fonts
-
-* Run `python3 mcm2img.py mcmfile.mcm font RGBA 255 255 255`
-
-* Place the 4 files this makes (font.bin, font_2.bin, font_hd.bin, font_hd_2.bin) on the root of the SD card in the goggles.
-
-* Reboot
-
-You can customize the font color by changing the 255 255 255 RGB values.
-
-Useful tool for working with fonts: https://github.com/shellixyz/hd_fpv_osd_font_tool
 
 ## Modify / Move original DJI OSD elements
 
