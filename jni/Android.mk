@@ -9,13 +9,14 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS += -fPIC -std=c99 -O3
 LOCAL_LDFLAGS += -fPIC
-LOCAL_LDLIBS := -llog
+LOCAL_LDLIBS := -llog -lz
 LOCAL_ARM_NEON := true
 LOCAL_MODULE := displayport_osd_shim
 LOCAL_SHARED_LIBRARIES := duml_hal
 LOCAL_SRC_FILES := \
 	displayport_osd_shim.c \
 	fakehd/fakehd.c \
+	font/font.c \
 	hw/dji_display.c \
 	hw/dji_radio_shm.c \
 	hw/dji_services.c \
@@ -31,7 +32,8 @@ LOCAL_SRC_FILES := \
 	rec/rec_util.c \
 	rec/rec.c \
 	toast/toast.c \
-	util/fs_util.c
+	util/fs_util.c \
+	libspng/spng.c
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)

@@ -9,21 +9,21 @@ LIB_SHIMS = libshims/libduml_hal.so
 
 #this doesn't work by default
 #an extra duss_result_t(frame_pop_handler)
-#is generated that the compiler doesn't like 
+#is generated that the compiler doesn't like
 libshims/%.c: %.h
 	stubgen -g -e .c -l -N -t libshims -p "../" -n $<
 
 libshims/lib%.so: libshims/%.c
 	$(CC) -Wno-c2x-extensions -O2 -shared -Wl,-soname,libduml_hal.so -o $@ $< $(CFLAGS)
-	
+
 libshims: $(LIB_SHIMS)
 
 all: jni/*
-	ndk-build	
+	ndk-build
 
 install: all
 	install -d ipk/goggle/build/data/opt/fonts/
-	install fonts/*.bin ipk/goggle/build/data/opt/fonts/
+	install fonts/*.png ipk/goggle/build/data/opt/fonts/
 	install -d ipk/goggle/build/data/opt/mspdictionaries/
 	install dictionaries/*.bin ipk/goggle/build/data/opt/mspdictionaries/
 	install -d ipk/goggle/build/data/opt/etc/preload.d/
@@ -69,7 +69,7 @@ repo: ipk
 	cp ipk/*.ipk repo/
 	../opkg-utils-0.5.0/opkg-make-index ./repo/ > repo/Packages
 	http-server -p 8042 ./repo/
-	
+
 clean:
 	rm -rf **/*.o
 	rm -rf *.o
