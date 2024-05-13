@@ -29,7 +29,9 @@ MSP-OSD 0.12+ now supports this feature and includes the required 4 page coloure
 A Betaflight CLI command is needed to take advantage of the this feature:
 `set displayport_msp_fonts = 0,1,2,3`
 This tells Betaflight to use a specific [colour] page when displaying the warning.
-If you are not using a Betaflight 4 page font, and this value is set to `0,1,2,3`, some OSD elements may not display.  In this case, set the value to `0,0,0,0`.  Meaning every warning will use the first page of the font.
+
+##### *Important*
+If you are **not** using a Betaflight 4 page font, and this value is set to `0,1,2,3`, some OSD elements may not display.  In this case, set the value to `0,0,0,0`.  Meaning every warning will use the first page of the font.
 
 ### Betaflight - Since 4.4
 
@@ -141,11 +143,12 @@ Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configurin
 We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.
 
 ***Note the following in regards to when a font file is used from where***
-If the SD card is not present at the time the goggles were powered on, the built in fonts on the goggles are used.
+
 1. If the SD card was present at the time the goggles were powered on, fonts that exist on the SD card are used, otherwise the built in font on the goggles is used.
 2. If the SD card contains a font file that follows the naming font_<fc_variant>.png or font_<fc_variant>_hd.png, that font will be used; otherwise
 3. If the SD card contains a font file that follows a historical naming convention after converting from .bin (e.g. *font_bf.png* as opposed to *font_btfl.png*) that font file will be used; otherwise
 4. Use the goggles font file.
+5. If the SD card is not present at the time the goggles were powered on, the built in fonts on the goggles are used.
 
 * Download a font package. See below for known community fonts.
 * Rename the files (don't rename .bin to .png) for your desired font to `font_<fc variant>.png` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
