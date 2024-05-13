@@ -27,7 +27,7 @@ This means that to support the extra 3 colours, a 4 page font file is required.
 
 MSP-OSD 0.12+ now supports this feature and includes the required 4 page coloured font for Betaflight by default.
 A Betaflight CLI command is needed to take advantage of the this feature:
-`set displayport_msp_fonts 0,1,2,3`
+`set displayport_msp_fonts = 0,1,2,3`
 This tells Betaflight to use a specific [colour] page when displaying the warning.
 If you are not using a Betaflight 4 page font, and this value is set to `0,1,2,3`, some OSD elements may not display.  In this case, set the value to `0,0,0,0`.  Meaning every warning will use the first page of the font.
 
