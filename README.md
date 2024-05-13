@@ -124,7 +124,7 @@ OSD_TYPE = 5
 ```
 
 Recent versions of MSP-OSD fully support Ardupilot with a specific HD FPV font.
-If you wish to use a Betaflight font instead of an Ardupilot font, you can also set ``MSP_OPTIONS = 4` to allow the use of a Betaflight font.
+If you wish to use a Betaflight font instead of an Ardupilot font, you can also set `MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
 
