@@ -27,11 +27,11 @@ static int fakehd_trigger_y = 99;
 static char fakehd_columns = 'S';
 static char fakehd_rows[INPUT_COLS] = "WWWWWWCCWWWWWWWD";
 
-// #ifdef DEBUG
+#ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, fmt, ##args)
-// #else
-// #define DEBUG_PRINT(fmt, args...)
-// #endif
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 void load_fakehd_config()
 {

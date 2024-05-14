@@ -5,11 +5,11 @@
 #include "../hw/dji_services.h"
 #include "rec_shim.h"
 
-// #ifdef DEBUG
+#ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec_shim: " fmt "\n", ##args)
-// #else
-// #define DEBUG_PRINT(fmt, args...)
-// #endif
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 duss_osal_priority_t (*duss_osal_task_create_orig)(
     duss_osal_task_attrib_t *task_attrib,

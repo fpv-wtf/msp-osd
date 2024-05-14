@@ -21,11 +21,11 @@
 
 #define FRAME_SIZE (sizeof(rec_frame_header_t) + (sizeof(uint16_t) * MAX_T))
 
-// #ifdef DEBUG
+#ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec_pb: " fmt "\n", ##args)
-// #else
-// #define DEBUG_PRINT(fmt, args...)
-// #endif
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 cp_vdec_t *rec_pb_cp_vdec = NULL;
 vdec_local_player_t *rec_pb_vdec_local_player = NULL;

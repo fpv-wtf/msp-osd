@@ -10,11 +10,11 @@
 
 #define REC_CONFIG_ENABLED_KEY "rec_enabled"
 
-// #ifdef DEBUG
+#ifdef DEBUG
 #define DEBUG_PRINT(fmt, args...) fprintf(stderr, "msp_osd.rec: " fmt "\n", ##args)
-// #else
-// #define DEBUG_PRINT(fmt, args...)
-// #endif
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
 
 static bool rec_is_ready();
 static uint32_t rec_get_frame_idx();
