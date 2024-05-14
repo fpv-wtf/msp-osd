@@ -36,6 +36,7 @@ static bool rec_pb_enabled = false;
 static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
 
+static uint32_t header_size = 0;
 static int64_t frame_counter = 0;
 
 static uint32_t *frame_idxs;
@@ -96,6 +97,7 @@ int rec_pb_start()
     {
         DEBUG_PRINT("header ok!");
         memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
+        header_size = sizeof(rec_file_header_t);
     }
     else if (file_header.version == 1)
     {
@@ -134,6 +136,7 @@ int rec_pb_start()
         }
 
         memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
+        header_size = sizeof(rec_file_header_v1_t);
     }
     else
     {
@@ -147,7 +150,7 @@ int rec_pb_start()
 
     fseek(osd_fd, 0, SEEK_END);
     uint32_t file_size = ftell(osd_fd);
-    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+    fseek(osd_fd, header_size, SEEK_SET);
     DEBUG_PRINT("file size: %d", file_size);
 
     frame_idx_len = file_size / FRAME_SIZE;
@@ -163,7 +166,7 @@ int rec_pb_start()
         fseek(osd_fd, sizeof(uint16_t) * MAX_T, SEEK_CUR);
     }
 
-    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+    fseek(osd_fd, header_size, SEEK_SET);
 
     current_frame_idx = 0;
     frame_counter = rec_pb_cp_vdec->frames_sent;
@@ -221,7 +224,7 @@ int rec_pb_do_next_frame(uint16_t *map_out)
 
     fseek(
         osd_fd,
-        sizeof(rec_file_header_t) + (closest_frame_idx * FRAME_SIZE) + sizeof(rec_frame_header_t),
+        header_size + (closest_frame_idx * FRAME_SIZE) + sizeof(rec_frame_header_t),
         SEEK_SET);
     fread(map_out, sizeof(uint16_t), MAX_T, osd_fd);
 
