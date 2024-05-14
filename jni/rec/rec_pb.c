@@ -11,6 +11,8 @@
 
 #include "rec_pb.h"
 
+#include "../font/font.h"
+
 #define REC_PB_CONFIG_ENABLED_KEY "rec_pb_enabled"
 
 #define MAX_X 60
@@ -34,6 +36,7 @@ static bool rec_pb_enabled = false;
 static FILE *osd_fd = NULL;
 static rec_config_t osd_config = {0};
 
+static uint32_t header_size = 0;
 static int64_t frame_counter = 0;
 
 static uint32_t *frame_idxs;
@@ -90,7 +93,52 @@ int rec_pb_start()
         return 1;
     }
 
-    if (file_header.version != REC_VERSION)
+    if (file_header.version == REC_VERSION)
+    {
+        DEBUG_PRINT("header ok!");
+        memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
+        header_size = sizeof(rec_file_header_t);
+    }
+    else if (file_header.version == 1)
+    {
+        DEBUG_PRINT("header is v1");
+        rec_file_header_v1_t file_header_v1;
+        fseek(osd_fd, 0, SEEK_SET);
+
+        fread(&file_header_v1, sizeof(rec_file_header_v1_t), 1, osd_fd);
+        if (strncmp(file_header_v1.magic, REC_MAGIC, sizeof(REC_MAGIC)) != 0)
+        {
+            DEBUG_PRINT("invalid osd file");
+            fclose(osd_fd);
+            osd_fd = NULL;
+            return 1;
+        }
+
+        switch (file_header_v1.config.font_variant)
+        {
+        case FONT_VARIANT_BETAFLIGHT:
+            strcpy(file_header.config.font_variant, "BTFL");
+            break;
+        case FONT_VARIANT_INAV:
+            strcpy(file_header.config.font_variant, "INAV");
+            break;
+        case FONT_VARIANT_ARDUPILOT:
+            strcpy(file_header.config.font_variant, "ARDU");
+            break;
+        case FONT_VARIANT_KISS_ULTRA:
+            strcpy(file_header.config.font_variant, "ULTR");
+            break;
+        case FONT_VARIANT_QUICKSILVER:
+            strcpy(file_header.config.font_variant, "QUIC");
+            break;
+        default:
+            file_header.config.font_variant[0] = '\0'; // Empty string
+        }
+
+        memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
+        header_size = sizeof(rec_file_header_v1_t);
+    }
+    else
     {
         DEBUG_PRINT("invalid osd file version! expected: %d, got: %d", REC_VERSION, file_header.version);
         fclose(osd_fd);
@@ -98,14 +146,11 @@ int rec_pb_start()
         return 1;
     }
 
-    DEBUG_PRINT("header ok!");
-    memcpy(&osd_config, &file_header.config, sizeof(rec_config_t));
-
     DEBUG_PRINT("loading frame indexes");
 
     fseek(osd_fd, 0, SEEK_END);
     uint32_t file_size = ftell(osd_fd);
-    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+    fseek(osd_fd, header_size, SEEK_SET);
     DEBUG_PRINT("file size: %d", file_size);
 
     frame_idx_len = file_size / FRAME_SIZE;
@@ -121,7 +166,7 @@ int rec_pb_start()
         fseek(osd_fd, sizeof(uint16_t) * MAX_T, SEEK_CUR);
     }
 
-    fseek(osd_fd, sizeof(rec_file_header_t), SEEK_SET);
+    fseek(osd_fd, header_size, SEEK_SET);
 
     current_frame_idx = 0;
     frame_counter = rec_pb_cp_vdec->frames_sent;
@@ -179,7 +224,7 @@ int rec_pb_do_next_frame(uint16_t *map_out)
 
     fseek(
         osd_fd,
-        sizeof(rec_file_header_t) + (closest_frame_idx * FRAME_SIZE) + sizeof(rec_frame_header_t),
+        header_size + (closest_frame_idx * FRAME_SIZE) + sizeof(rec_frame_header_t),
         SEEK_SET);
     fread(map_out, sizeof(uint16_t), MAX_T, osd_fd);
 
@@ -203,3 +248,4 @@ bool rec_pb_is_ready()
 {
     return rec_pb_cp_vdec != NULL && rec_pb_vdec_local_player != NULL;
 }
+

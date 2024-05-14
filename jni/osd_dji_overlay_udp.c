@@ -245,7 +245,7 @@ static void msp_callback(msp_msg_t *msp_message)
     displayport_process_message(display_driver, msp_message);
 }
 
-static void load_fonts(font_variant_e font_variant) {
+static void load_fonts(char* font_variant) {
     char file_path[255];
     get_font_path_with_extension(file_path, "font", ".png", 255, 0, font_variant);
     toast(file_path);
@@ -346,7 +346,7 @@ static void process_data_packet(uint8_t *buf, int len, dji_shm_state_t *radio_sh
             close_all_fonts();
             load_fonts(current_fc_variant);
             // This is not a typo - fill in any missing fonts for the current variant with the generic one.
-            load_fonts(FONT_VARIANT_GENERIC);
+            load_fonts(FALLBACK_FONT);
         }
     }
 }
@@ -400,9 +400,9 @@ static void rec_msp_draw_complete_hook()
             .font_width = current_display_info->font_width,
             .font_height = current_display_info->font_height,
             .x_offset = current_display_info->x_offset,
-            .y_offset = current_display_info->y_offset,
-            .font_variant = current_fc_variant,
+            .y_offset = current_display_info->y_offset
         };
+        strcpy(config.font_variant, current_fc_variant);
 
         rec_start(&config);
     }
@@ -480,7 +480,7 @@ static void rec_pb_timeout_hook()
         DEBUG_PRINT("msp_osd: playback config, x_offset: %d\n", osd_display_info->x_offset);
         DEBUG_PRINT("msp_osd: playback config, y_offset: %d\n", osd_display_info->y_offset);
 
-        DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %d\n", rec_config->font_variant);
+        DEBUG_PRINT("msp_osd: gls playing dvr, loading font variant %s\n", rec_config->font_variant);
         uint8_t is_hd = osd_display_info->font_width != sd_display_info.font_width;
         load_font(osd_display_info, rec_config->font_variant);
 
@@ -577,7 +577,7 @@ void osd_directfb(duss_disp_instance_handle_t *disp, duss_hal_obj_handle_t ion_h
     memset(&last_render, 0, sizeof(last_render));
     memset(&now, 0, sizeof(now));
 
-    load_fonts(FONT_VARIANT_GENERIC);
+    load_fonts(FALLBACK_FONT);
     open_dji_radio_shm(&radio_shm);
     start_display(is_v2_goggles, disp, ion_handle);
 

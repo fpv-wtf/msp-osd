@@ -42,6 +42,15 @@ void rec_start(rec_config_t *config)
         sizeof(rec_file_name));
     DEBUG_PRINT("rec_file_name: %s", rec_file_name);
 
+    DEBUG_PRINT("Config:\n");
+    DEBUG_PRINT("  Char Width: %u\n", config->char_width);
+    DEBUG_PRINT("  Char Height: %u\n", config->char_height);
+    DEBUG_PRINT("  Font Width: %u\n", config->font_width);
+    DEBUG_PRINT("  Font Height: %u\n", config->font_height);
+    DEBUG_PRINT("  X Offset: %u\n", config->x_offset);
+    DEBUG_PRINT("  Y Offset: %u\n", config->y_offset);
+    DEBUG_PRINT("  Font Variant: %.5s\n", config->font_variant);
+
     rec_fd = fopen(rec_file_name, "wb");
     if (rec_fd == NULL)
     {

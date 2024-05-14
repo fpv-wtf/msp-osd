@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define REC_MAGIC "MSPOSD"
-#define REC_VERSION 1
+#define REC_VERSION 2
 
 typedef struct rec_config_t
 {
@@ -14,7 +14,7 @@ typedef struct rec_config_t
     uint8_t font_height;
     uint16_t x_offset;
     uint16_t y_offset;
-    uint8_t font_variant;
+    char font_variant[5];
 } __attribute__((packed)) rec_config_t;
 
 typedef struct rec_file_header_t
@@ -23,6 +23,24 @@ typedef struct rec_file_header_t
     uint16_t version;
     rec_config_t config;
 } __attribute__((packed)) rec_file_header_t;
+
+typedef struct rec_config_v1_t
+{
+    uint8_t char_width;
+    uint8_t char_height;
+    uint8_t font_width;
+    uint8_t font_height;
+    uint16_t x_offset;
+    uint16_t y_offset;
+    uint8_t font_variant;
+} __attribute__((packed)) rec_config_v1_t;
+
+typedef struct rec_file_header_v1_t
+{
+    char magic[7];
+    uint16_t version;
+    rec_config_v1_t config;
+} __attribute__((packed)) rec_file_header_v1_t;
 
 typedef struct rec_frame_header_t
 {

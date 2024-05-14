@@ -8,6 +8,8 @@
 #define ENTWARE_FONT_PATH "/opt/fonts/font"
 #define SDCARD_FONT_PATH "/storage/sdcard0/font"
 
+#define FALLBACK_FONT NULL
+
 typedef enum
 {
     FONT_VARIANT_GENERIC,
@@ -19,6 +21,6 @@ typedef enum
     FONT_VARIANT_COUNT
 } font_variant_e;
 
-void load_font(display_info_t *display_info, char *font_variant);
+void load_font(display_info_t *display_info, const char *font_variant);
 void close_font(display_info_t *display_info);
-void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, char *font_variant);
+void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, const char *font_variant);

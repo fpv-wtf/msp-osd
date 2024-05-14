@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+// #include <ctype.h>
 
 #include "../libspng/spng.h"
 #include "font.h"
@@ -14,7 +15,7 @@
 
 /* Font helper methods */
 
-void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, char *font_variant)
+void get_font_path_with_extension(char *font_path_dest, const char *font_path, const char *extension, uint8_t len, uint8_t is_hd, const char *font_variant)
 {
     char name_buf[len];
     char res_buf[len];
@@ -37,7 +38,7 @@ void get_font_path_with_extension(char *font_path_dest, const char *font_path, c
     DEBUG_PRINT("Font path: %s\n", font_path_dest);
 }
 
-static int open_font(const char *filename, display_info_t *display_info, char *font_variant)
+static int open_font(const char *filename, display_info_t *display_info, const char *font_variant)
 {
     char file_path[255];
     int is_hd = (display_info->font_width == HD_FONT_WIDTH) ? 1 : 0;
@@ -135,7 +136,7 @@ static int open_font(const char *filename, display_info_t *display_info, char *f
         return -1;
 }
 
-void load_font(display_info_t *display_info, char *font_variant) {
+void load_font(display_info_t *display_info, const char *font_variant) {
 
     // Note: load_font will not replace an existing font.
     if(display_info->fonts[0] == NULL) {
@@ -143,11 +144,11 @@ void load_font(display_info_t *display_info, char *font_variant) {
         DEBUG_PRINT("IN LOAD_FONT\n");
         // create a copy of font_variant
         char font_variant_lower[5] = "";
-        if (font_variant  != NULL)
+        if (font_variant != NULL)
         {
             DEBUG_PRINT("Lowercasing variant\n");
-            int length = sizeof(font_variant) / sizeof(char);
-            for (int i = 0; i < length; i++)
+            size_t length = strlen(font_variant);
+            for (size_t i = 0; i < length && i < 4; i++) // Ensure not to exceed array bounds
             {
                 font_variant_lower[i] = tolower(font_variant[i]);
             }
@@ -160,12 +161,12 @@ void load_font(display_info_t *display_info, char *font_variant) {
         DEBUG_PRINT("Loading font %s\n", font_variant_lower);
 
         char *fallback_font_variant = "";
-        if (font_variant_lower!=NULL && strcmp(font_variant_lower, "btfl") == 0)
+        if (strcmp(font_variant_lower, "btfl") == 0)
         {
             DEBUG_PRINT("Setting fallback font variant to bf\n");
             fallback_font_variant = "bf";
         }
-        else if (font_variant_lower != NULL && strcmp(font_variant_lower, "ultr") == 0)
+        else if (strcmp(font_variant_lower, "ultr") == 0)
         {
             DEBUG_PRINT("Setting fallback font variant to ultra\n");
             fallback_font_variant = "ultra";
