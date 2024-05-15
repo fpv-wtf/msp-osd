@@ -165,10 +165,11 @@ font_update.ini
 WS_BFx4_Sphere_24.png
 WS_BFx4_Sphere_36.png
 ```
-To use them for msp-osd, copy the 2 png files to the SD card root and rename them as:
-
-1. `WS_BFx4_Sphere_24.png` -> `font_btfl_hd.png`
-2. `WS_BFx4_Sphere_36.png` -> `font_btfl.png`
+From the above example, to use them for msp-osd, copy the 2 png files to the SD card root and rename them as:
+|Walksnail Name|msp-osd Name|
+|--------------|------------|
+|`WS_BFx4_Sphere_24.png`|`font_btfl_hd.png`|
+|`WS_BFx4_Sphere_36.png`|`font_btfl.png`|
 
 ### .bin Fonts
 
