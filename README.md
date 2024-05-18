@@ -145,12 +145,21 @@ Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configurin
 We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12.1 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.  
 For the naming convention of the font file in png format see the *FC Specific Font File Names* section below.
 
-***Note the following in regards to when a font file is used from where***
+***It is important to note the following in regards to when a font file is used from where***
 
 When the goggles determines what font file to use in presenting the OSD, it will look in the following 3 different locations in preferential order:
 1. SD Card (root) `/storage/sdcard0`
 2. Goggles user font location `/blackbox` (see the *Moving fonts to the goggles file system* section below)
 3. Goggles bundled fallback location `/blackbox/wtfos/opt/fonts`
+
+### HD vs SD fonts
+
+Due to historical support for FC firmware that did not have the full HD canvas grid size, both SD and HD font files are bundled.
+SD font file/s (naming without the suffix *_hd*) are used when the FC configuration is not set to, or does not support, HD. i.e. BF 4.3 and below.
+HD font file/s are used with most modern FC firmware when the equivalent HD selection is made in the FC's OSD configuration tab.
+
+##### *Note*
+You do not need to use/copy/install the non-hd font file if you only use a HD OSD canvas. 
 
 ### Attaining/using fonts
 * Download a font package. See below for known community fonts.
@@ -187,7 +196,9 @@ https://github.com/shellixyz/hd_fpv_osd_font_tool/tree/main/src/bin/hd_fpv_osd_f
 | Ardupilot       | `font_ardu.png` | `font_ardu_hd.png`|
 | KISS Ultra       | `font_ultr.png` | `font_ultr_hd.png`|
 | QUICKSILVER       | `font_quic.png` | `font_quic_hd.png`|
-| Generic/Fallback       | `font.png` | `font_hd.png`|
+| Generic/Fallback*       | `font.png` | `font_hd.png`| 
+
+*This uses the Betaflight font layout
 
 Airside VTx (AU/Vista) which have a very old version of msp-osd on, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will use to the Generic/Fallback font.
 ##### *Note*
@@ -217,6 +228,25 @@ To remove copied fonts repeat steps 1 to 6 and replace step 7 with `rm /blackbox
  - [EVilm1's OSD Font](https://github.com/EVilm1/EVilm1-OSD-Font)
 
 
+## Overlaying OSD on DVR
+The overlay process uses DVR, recorded osd data and a font file, to overlay/render the OSD data onto DVR footage on your computer.
+A default font will be used if no font file is supplied however.  The font look and feel will be the bundled font you would see if using this during flight.
+
+https://fpv.wtf/osd-overlay provides a tool that will overlay captured osd information onto DVR footage.
+### Pre-requisites
+Unless the osd information is captured during DVR recording on the goggles you will be unable to overlay your osd onto DVR on your computer.
+
+The following fpv.wtf CLI commands (goggles) will ensure this is enabled.
+
+```
+package-config set msp-osd rec_enabled true
+package-config apply msp-osd
+```
+
+##### *Note*
+You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd' font file.
+The 'Chroma Key' will replace the DVR with a solid colour for use within video editing software.  Be aware however that fonts have an amount of transparency around elements that will include the 'Chroma Key' bleed that will be difficult to avoid in video editing software.
+
 ## Modify / Move original DJI OSD elements
 
 You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
@@ -244,7 +274,13 @@ If you continue to have issues with especially INAV character corruption, it is 
 
 ## Configuration options
 
-Configuration options can be set using the WTFOS Configurator.
+Configuration options can be set using the WTFOS Configurator CLI.
+
+Prefix option with `package-config set msp-osd`
+
+e.g. `package-config set msp-osd compress_osd true`
+
+Once desired setting changes are made then: `package-config apply msp-osd`, otherwise settings will be lost when power is off. 
 
 Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plugged in to edit options.
 
