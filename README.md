@@ -140,7 +140,7 @@ Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configuring-Quicksilver/#setup
 
-## Fonts
+# Fonts
 
 We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12.1 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.  
 For the naming convention of the font file in png format see the *FC Specific Font File Names* section below.
@@ -247,32 +247,7 @@ package-config apply msp-osd
 You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd' font file.
 The 'Chroma Key' will replace the DVR with a solid colour for use within video editing software.  Be aware however that fonts have an amount of transparency around elements that will include the 'Chroma Key' bleed that will be difficult to avoid in video editing software.
 
-## Modify / Move original DJI OSD elements
-
-You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
-
-Elements position, visibility, font and icons can be modified by editing the internal googles files.
-This is possible by connecting to the googles using ADB. You can even preview changes using a Python script!
-
-This is not a trivial thing for everyone to do, the full tutorial can be found [here](https://github.com/EVilm1/WIKI-HACK-DJI-OSD#6-advanced-setup-modify-the-dji-hud-elements).
-
-## Compressed Transmission
-
-As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
-
-If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
-
-When enabled, this should fix INAV delta update related issues as well as provide better link stability.
-
-To enable:
-
-Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Air Unit / Vista plugged in to edit package options.
-
-This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
-
-If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
-
-## Configuration options
+# Configuration options
 
 Configuration options can be set using the WTFOS Configurator CLI.
 
@@ -312,7 +287,32 @@ Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plug
 | `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match. | true/false | false |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
 
+#### Compressed Transmission
+
+As of 0.7.0, a new option, `compress_osd`, was added to the **air side** process.
+
+If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
+
+When enabled, this should fix INAV delta update related issues as well as provide better link stability.
+
+To enable:
+
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your **Air Unit / Vista** plugged in to edit package options.
+
+This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
+
+If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
+
 ## FAQ / Suggestions
+
+### Modify / Move original DJI OSD elements
+
+You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
+
+Elements position, visibility, font and icons can be modified by editing the internal googles files.
+This is possible by connecting to the googles using ADB. You can even preview changes using a Python script!
+
+This is not a trivial thing for everyone to do, the full tutorial can be found [here](https://github.com/EVilm1/WIKI-HACK-DJI-OSD#6-advanced-setup-modify-the-dji-hud-elements).
 
 ### How do I create a new font (for INAV, Ardupilot, etc.)?
 
