@@ -167,7 +167,9 @@ You do not need to use/copy/install the non-hd font file if you only use a HD OS
 * Insert the SD card and reboot the goggles.
 
 ### Using Walksnail Fonts
-As of msp-osd 0.12.1, the format of font files are now compatible with Walksnail fonts.
+As of msp-osd 0.12.1, the format of font files are now compatible with Walksnail fonts, with the following caveats.
+For INAV specific Walksnail fonts, the format of the font pages matter as historical fonts typically were formatted with pages stacked vertically.  The new requirement is for the pages to be stacked side by side. The newer format of side by side pages is supported by both msp-osd and Walksnail.  Side by Side specifially formatted Walksnail fonts for INAV will be denoted 'sbs' in the zipfile and or image names.  This does not affect Betaflight as historical fonts were single page, and newer 4 page fonts are side by side formatted pages.  Ardu is a single page font file so all historically created fonts will work without issue.
+
 A Walksnail font package will typically contain 3 files.  An ini file and 2 png files.  The 2 png files will typically follow a naming convention that contains `_24` or `_36` in the file name.  The '24' file is the msp-osd `_hd` equivalent, and the '36' file is the non-hd equivalent.  e.g.
 ```
 font_update.ini
@@ -243,9 +245,11 @@ package-config set msp-osd rec_enabled true
 package-config apply msp-osd
 ```
 
-##### *Note*
+##### *Notes*
 You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd' font file.
 The 'Chroma Key' will replace the DVR with a solid colour for use within video editing software.  Be aware however that fonts have an amount of transparency around elements that will include the 'Chroma Key' bleed that will be difficult to avoid in video editing software.
+
+See the 'Using Walksnail Fonts Section' for specific requirements that may apply to font file formats.
 
 # Configuration options
 
