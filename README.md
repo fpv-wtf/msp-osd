@@ -2,9 +2,7 @@
 
 This package gives you support for full flight controller driven OSD in line with those on analog + other HD systems.
 
-Technically - it takes MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and renders them to a framebuffer overlaid under the DJI `dji_glasses` menu system.
-
-A custom `font.bin` package may be placed on the root of the goggles SD card, at which point it will override the font in `/blackbox/font.bin`.
+Technically - it takes MSP DisplayPort (so-called "canvas" although this is a misnomer as there is another Betaflight "canvas" mode for Pixel OSDs) messages through UDP and renders them to a framebuffer overlaid under the DJI 'dji_glasses' menu system.
 
 SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a *mux* for the Air Unit / Vista, which creates a *pty* and provides filtered MSP access, and reroutes DisplayPort messages to UDP.
 
@@ -20,6 +18,22 @@ SFML (PC/Mac development) and DJI Goggles viewports are available, as well as a 
 
 * Ensure that the correct UART is set to use MSP
 * Enable MSP DisplayPort
+
+### Betaflight - Since 4.5
+
+Betaflight 4.5 has added support for coloured warning messages/OSD elements.
+This added feature requires a Betaflight font that includes the extra colour elements.  The extra colour elements are for green, amber and red indicators and respectively reside in additional font pages.
+This means that to support the extra 3 colours, a 4 page font file is required.
+
+MSP-OSD 0.12+ now supports this feature and includes the required 4 page coloured font for Betaflight bundled by default.
+A Betaflight CLI command may needed to take advantage of the this feature:
+
+`set displayport_msp_fonts = 0,1,2,3`
+
+This tells Betaflight to use a specific [colour] page when displaying the warning.
+
+##### *Important*
+If you are **not** using a Betaflight 4 page font, and this value is set to `0,1,2,3`, some OSD elements may not display.  In this case, set the value to `0,0,0,0`.  Meaning every warning will use the first page of the font.
 
 ### Betaflight - Since 4.4
 
@@ -47,7 +61,7 @@ Afterwards, you can configure the OSD elements as normal in the OSD tab.
 
 #### Troubleshooting wrong grid size in BF 4.4 Configurator
 
-It is recommended to enable [compressed transmission](#compressed-transmission) with BF 4.4; it will soon become the default. It removes/avoids ordering issues between FC/AU/Goggles bootup - the AU has to tell the FC the grid size it supports.
+It is recommended to enable [compressed transmission](#compressed-transmission) with BF 4.4; (now default). It removes/avoids ordering issues between FC/AU/Goggles bootup - the AU has to tell the FC the grid size it supports.
 
 If you don't want to / can't do this - try rebooting your goggles, then reboot your AU.
 
@@ -87,118 +101,25 @@ serial 30 1 115200 57600 0 115200
 ```
 
 #### FakeHD
+With the introduction of HD FPV and its associated transmission and display resolutions, a significantly larger area (canvas*) became a possibility to use for flight controller OSD informaton.
+The first generation of the DJI FPV system supports a display resolution of 810p (1440px width x 810px height).  This allowed for a potential for a 60 * 22 grid of (mono-spaced) characters of OSD.
+Prior to Betaflight(BF) 4.4, the BF OSD supported a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.  This 30 * 16 grid was due to the analogue roots of the video and OSD system.
 
-Betaflight's (before 4.4) OSD supports a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.
+To present the OSD in a visually better way on HD FPV systems, MSP-OSD introduced a workaround called FakeHD that divided up the OSD canvas area into sections that could be configured.
 
-For versions of Betaflight before 4.4 (or other FC firmwares without HD support), as a workaround, we have a mode called "FakeHD". It chops up the OSD into sections and positions them evenly around an HD grid (with gaps between) - the way this is done is configurable, explained below. This then allows the use of smaller fonts - so it looks nicer/more in keeping with the built in Goggles OSD (but you still only have 30 columns / 16 rows to configure.... and you have the gaps to contend with).
-
-A diagram to help...
-
-| Before (in Configurator) | After (in Goggles) |
-| -------|-------|
-|![FakeHD Before](/docs/img/fakehd_before.png "Before")|![FakeHD After](/docs/img/fakehd_after.png "After")|
-
-##### To configure/enable:
-
-Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your goggles connected, and check "Fake HD"
-
-Optionally, place custom fonts in the root of your sd card, using the names `font_bf_hd.png`
-
-Configuration of the grid is also possible; see below.
-
-No air unit/vista config is required.
-
-##### Menu Switching - Getting rid of gaps when displaying Menu / Post Flight Stats + displaying centered:
-
-In order to have menus (accessible in Betaflight using stick commands) and post-flight stats appear in the center of the screen while using FakeHD, rather than having gaps + looking broken, you should set up menu switching.
-
-FakeHD can use the presence/absence of a character in the OSD as a switch to indicate when you are in regular OSD mode or in the menu/stats and switch to centering temporarily when needed.
-
-By default, the `Throttle Position` icon is used (character 4) - but you can set any character you want. It needs to be something that doesn't flash or change in the regular OSD, and ideally (but not essential) something that is never in the menu/post flight stats. The icons next to various elements are obvious choices here. You can set this using the `fakehd_menu_switch` configuration parameter.
-
-Betaflight has a list here: https://github.com/betaflight/betaflight/blob/master/docs/osd.md
-
-
-If you want to use FakeHD with some other Flight Controller, you will need to find an appropriate icon. (Let us know - we can include the information here).
-
-Finally, if you don't have anything in your OSD that works for menu switching, you can hide the menu switching character and the subsequent 5 characters, allowing you to add the `Throttle Position` element but not have to see it on screen. This is enabled by setting `fakehd_hide_menu_switch` to true.
-
-Notes:
-
- - Because of this switching feature, if you change to a different quad or OSD config (specifically the switch element is in a different place), FakeHD will center - you will need to reboot your Goggles to get it to recognise the switch element in a different location.
-
- - Also because of this switching, if you are editing OSD in the configurator with the goggles on to preview and you move the switching element around, it will cause the gaps to be disabled and everything to center. The new location of the switching element will be found next time you reboot the goggles and it'll work as normal.
-
-##### I don't want gaps at all...
-
-Set config `fakehd_lock_center` to true and the center locking used for the menu / post flight stats will be enabled permanently (ie: you fly with it as well) - basically it places your 30 x 16 SD grid into the middle of an HD grid, there's never any gaps - see diagram below + compare to diagrams above.
-
-| After/Centered (in Goggles) `fakehd_lock_center` |
-|-------|
-|<img src="/docs/img/fakehd_centered.png" alt="After / Centered"  height=200 /> |
-
-##### Customising the default FakeHD grid.
-
-By default, FakeHD positions your SD grid into the HD grid as per the before/after diagram above.
-
-If this doesn't work for you for whatever reason, some customisation is available. It's necessarily a little complicated.
-
-Each row can be set to one of:
-
-| Code | Description |
-|---|----|
-| L | Left aligned, the SD row occupies cell 1-30, no gaps |
-| C | Center aligned, the SD row occupies cell 16-45, no gaps |
-| R | Right aligned, , the SD row occupies cell 31-60, no gaps |
-| W | Split A - Row is split in 3, the FakeHD default, filling cells 1-10, 26-35, 51-60 |
-| T | Split B - Row is split in 2, touching the sides - filling cells 1-15 + 46-60 |
-| F | Split C - Row is split in 2 and away from the sides - filling cells 11-25 + 36-50 |
-| D | DJI Special - Row is centered but pushed a little left; used to posiution the bottom row between the existing DJI OSD elements |
-
-<img src="/docs/img/fakehd_rows.png" alt="Columns"  height=200 />
-
-And then the columns as a whole can be set to one of:
-
-| Code | Description |
-|---|----|
-| T | Top aligned, OSD occupies rows 1-16  |
-| M | Center aligned, OSD occupies cells 4-19, no gaps |
-| B | Bottom aligned, , the OSD occupies rows 7-22 |
-| S | Split - FakeHD default - split in 3, OSD occupies rows 1 - 5, 9 - 13, 17-22 |
-
-Using the default row config; here's what they all look like:
-
-| T | M | B | S |
-| - | - | - | - |
-|<img src="/docs/img/fakehd_columns_t.png" alt="T" />|<img src="/docs/img/fakehd_columns_m.png" alt="M" />| <img src="/docs/img/fakehd_columns_b.png" alt="B" />| <img src="/docs/img/fakehd_after.png" alt="S" />|
-
-###### To configure rows
-
-Rows config accepts a 16 character long string; each character configuring it's corresponding row. The default FakeHD config would be set like this:
-
-`fakehd_rows = WWWWWWCCWWWWWWWD`
-
-The characters are case sensitive, but the configurator will reject invalid characters.
-
-###### To configure columns
-
-Columns accepts a single character configuring how the whole grid is aligned. The default would be set like this:
-
-`fakehd_columns = S`
-
-The characters are case sensitive, but the configurator will reject invalid characters.
+[FakeHD information is available here.](FAKEHD.md)
 
 ### INAV
 
-Select "HDZero VTx" or "MSP Display Port" (on newer INAV versions) as the Peripheral. Next, select "HD" in the OSD tab if you'd like to use the HD Canvas.
+Select "MSP Display Port" (or "HDZero VTx" on older INAV versions) as the Peripheral. Next, select "HD" (or the "WTFOS" variant) in the OSD tab if you'd like to use the HD Canvas.
 
 If the iNav OSD appears garbled at first, try entering the iNav menus using the RC sticks, and then exiting the menus. This will force INAV to switch into HD mode a second time.
 
-It is recommended to enable [compressed transmission](#compressed-transmission) with INAV to avoid issues with the display corrupting - the artifical horizon is the most common element to show this.
+It is recommended (now enabled by default in recent msp-osd releases) to enable [compressed transmission](#compressed-transmission) with INAV to avoid issues with the display corrupting - the artifical horizon is the most common element to show this.
 
 ### Ardupilot
 
-Please install an Ardupilot Custom or Nightly build from after 8/29/2022 for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
+Please install a recent Ardupilot version for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
 
 Settings:
 
@@ -206,7 +127,9 @@ Settings:
 SERIALx_PROTOCOL = 42
 OSD_TYPE = 5
 ```
-If you wish to use a Betaflight font instead of an Ardupilot font, you can also set ``MSP_OPTIONS = 4` to allow the use of a Betaflight font.
+
+Recent versions of MSP-OSD fully support Ardupilot with a specific HD FPV font.  This font is bundled with msp-osd 0.12
+If you wish to use a Betaflight font instead of an Ardupilot font, you can also set `MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
 
@@ -218,14 +141,58 @@ Select MSP on serial and select DJI WTF as canvas dialect. That's it.
 
 Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configuring-Quicksilver/#setup
 
-## Fonts
+# Fonts
 
-We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (font is SNEAKYFPV's Europa - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12 we use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.
+We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.
 
+For the naming convention of the font file in png format see the *FC Specific Font File Names* section below.
+
+***It is important to note the following in regards to when a font file is used from where***
+
+When the goggles determines what font file to use in presenting the OSD, it will look in the following 3 different locations in preferential order:
+1. SD Card (root) `/storage/sdcard0`
+2. Goggles user font location `/blackbox` (see the *Moving fonts to the goggles file system* section below)
+3. Goggles bundled fallback location `/blackbox/wtfos/opt/fonts`
+
+### HD vs SD fonts
+
+Due to historical support for FC firmware that did not have the full HD canvas grid size, both SD and HD font files are bundled.
+SD font file/s (naming without the suffix *_hd*) are used when the FC configuration is not set to, or does not support, HD. i.e. BF 4.3 and below.
+HD font file/s are used with most modern FC firmware when the equivalent HD selection is made in the FC's OSD configuration tab.
+
+##### *Note*
+You do not need to use/copy/install the non-hd font file if you only use a HD OSD canvas.
+
+### Attaining/using fonts
 * Download a font package. See below for known community fonts.
-* Rename the files for your desired font to `font_<fc variant>.png` - see table below for examples or take a look at the `fonts` directory for a template for how the file names should look. (If your FC firmware is not listed below, use the generic filenames)
 * Place these two PNG files on the root of your Goggles SD card.
-* Reboot.
+* Insert the SD card and reboot the goggles.
+
+### Using Walksnail Fonts
+As of msp-osd 0.12, the format of font files are now compatible with Walksnail fonts, with the following caveats.
+
+For INAV specific Walksnail fonts, the format of the font pages matter as historical fonts typically were formatted with pages stacked vertically.  The new requirement is for the pages to be stacked side by side. The newer format of side by side pages is supported by both msp-osd and Walksnail.  Side by Side specifially formatted Walksnail fonts for INAV will be denoted 'sbs' in the zipfile and or image names.  This does not affect Betaflight as historical fonts were single page, and newer 4 page fonts are side by side formatted pages.  Ardu is a single page font file so all historically created fonts will work without issue.
+
+A Walksnail font package will typically contain 3 files.  An ini file and 2 png files.  The 2 png files will typically follow a naming convention that contains `_24` or `_36` in the file name.  The '24' file is the msp-osd `_hd` equivalent, and the '36' file is the non-hd equivalent.  e.g.
+```
+font_update.ini
+WS_BFx4_Sphere_24.png
+WS_BFx4_Sphere_36.png
+```
+From the above example, to use them for msp-osd, copy the 2 png files to the SD card root and rename them as:
+|Walksnail Name|msp-osd Name|
+|--------------|------------|
+|`WS_BFx4_Sphere_24.png`|`font_btfl_hd.png`|
+|`WS_BFx4_Sphere_36.png`|`font_btfl.png`|
+
+### .bin Fonts
+
+Due to the changes in 0.12, the .bin font format was superseded in favour of a wider accepted format that makes it easier for the community to create their own.
+
+With 0.12, any fonts stored on the SD card in the .bin format will be ignored.
+
+If you wish to retain the font from the .bin file, this open source tool will assist in conversion to png from bin.
+https://github.com/shellixyz/hd_fpv_osd_font_tool/tree/main/src/bin/hd_fpv_osd_font_tool
 
 ### FC Specific Font File Names
 
@@ -234,51 +201,69 @@ We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KIS
 | Betaflight       | `font_btfl.png` | `font_btfl_hd.png` |
 | INAV       | `font_inav.png` | `font_inav_hd.png`|
 | Ardupilot       | `font_ardu.png` | `font_ardu_hd.png`|
-| KISS Ultra       | `font_ultr.png` | `font_ulta_hd.png`|
+| KISS Ultra       | `font_ultr.png` | `font_ultr_hd.png`|
 | QUICKSILVER       | `font_quic.png` | `font_quic_hd.png`|
-| Generic/Fallback       | `font.png` | `font_hd.png`|
+| Generic/Fallback*       | `font.png` | `font_hd.png`|
 
-Airside VTx (AU/Vista) which have a very old version of msp-osd on, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will fall back to the Generic/Fallback font.
+*This uses the Betaflight font layout
 
+Airside VTx (AU/Vista) which have a very old version of msp-osd on, as well as flight controllers which do not respond to the Variant request, like old Ardupilot versions, will use to the Generic/Fallback font.
+##### *Note*
 You can also add fonts for firmwares not in this list; using the generic filename, or put the MSP identifier in (lower case it) the filename - ```font_<fc_variant>.png / font_<fc_variant>_hd.png```
+
+### Moving fonts to the goggles file system
+
+If you wish to use a specific font different than the font stored on the goggles, for when you do not have the SD card inserted in the goggles, you can follow the below steps to do this.
+1. Copy the font files you wish to be stored on the goggles firstly to your SD card
+2. Connect your goggles via USB if you didn't do this for step 1.
+3. Insert the SD card in the goggles then power them on
+4. Navigate to https://fpv.wtf
+5. After the goggles are found and connected, go to the fpv.wtf CLI and type the following
+6. `cp /storage/sdcard0/font*.png /blackbox`
+7. Power off the goggles, remove the SD card and confirm the newly copied font is used.
+
+##### *Note*
+To remove copied fonts repeat steps 1 to 6 and replace step 7 with `rm /blackbox/font*.png`.  Then power off and on the goggles.
 
 ### Suggested Third Party Fonts
 
- - [KNIFA's Material](https://github.com/Knifa/material-osd/releases) - use the Walksnail version for MSP-OSD >= 0.12
+ - [KNIFA's Material](https://github.com/Knifa/material-osd/releases) - use the Walksnail version for MSP-OSD <= 0.12
  - [SNEAKY_FPV's colour fonts for INAV, ARDU and BF](https://sites.google.com/view/sneaky-fpv/home)
  - [VICEWIZE Italic](https://github.com/vicewize/vicewizeosdfontset)
  - [Kw0ngk4n's Neue OSD](https://github.com/Kw0ngk4n/WTF-Neue-OSD)
  - [EVilm1's OSD Font](https://github.com/EVilm1/EVilm1-OSD-Font)
 
 
-## Modify / Move original DJI OSD elements
+## Overlaying OSD on DVR
+The overlay process uses DVR, recorded osd data and a font file, to overlay/render the OSD data onto DVR footage on your computer.
+A default font will be used if no font file is supplied however.  The font look and feel will be the bundled font you would see if using this during flight.
 
-You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
+https://fpv.wtf/osd-overlay provides a tool that will overlay captured osd information onto DVR footage.
+### Pre-requisites
+Unless the osd information is captured during DVR recording on the goggles you will be unable to overlay your osd onto DVR on your computer.
 
-Elements position, visibility, font and icons can be modified by editing the internal googles files.
-This is possible by connecting to the googles using ADB. You can even preview changes using a Python script!
+The following fpv.wtf CLI commands (goggles) will ensure this is enabled.
 
-This is not a trivial thing for everyone to do, the full tutorial can be found [here](https://github.com/EVilm1/WIKI-HACK-DJI-OSD#6-advanced-setup-modify-the-dji-hud-elements).
+```
+package-config set msp-osd rec_enabled true
+package-config apply msp-osd
+```
 
-## Compressed Transmission
+##### *Notes*
+You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd' font file.
+The 'Chroma Key' will replace the DVR with a solid colour for use within video editing software.  Be aware however that fonts have an amount of transparency around elements that will include the 'Chroma Key' bleed that will be difficult to avoid in video editing software.
 
-As of 0.7.0, a new option, `compress_osd`, has been added to the air side process.
+See the 'Using Walksnail Fonts Section' for specific requirements that may apply to font file formats.
 
-If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
+# Configuration options
 
-When enabled, this should fix INAV delta update related issues as well as provide better link stability.
+Configuration options can be set using the WTFOS Configurator CLI.
 
-To enable:
+Prefix option with `package-config set msp-osd`
 
-Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Air Unit / Vista plugged in to edit package options.
+e.g. `package-config set msp-osd compress_osd true`
 
-This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
-
-If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
-
-## Configuration options
-
-Configuration options can be set using the WTFOS Configurator.
+Once desired setting changes are made then: `package-config apply msp-osd`, otherwise settings will be lost when power is off.
 
 Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plugged in to edit options.
 
@@ -310,7 +295,32 @@ Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plug
 | `fast_serial` | Change serial baud rate to 230400 baud, which can improve OSD performance in some situations - FC UART config must be changed to match. | true/false | false |
 | `cache_serial` | Cache unimportant MSP messages for seldom-used features (like PID tuning in the DJI Goggles Settings Menu) to reduce serial pressure | true/false | false |
 
+#### Compressed Transmission
+
+As of 0.7.0, a new option, `compress_osd`, was added to the **air side** process.
+
+If this is set to "true", then the entire character buffer will be sent using LZ4 compression at the rate defined in `osd_update_rate_hz`, instead of sending raw MSP messages over the air.
+
+When enabled, this should fix INAV delta update related issues as well as provide better link stability.
+
+To enable:
+
+Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your **Air Unit / Vista** plugged in to edit package options.
+
+This option is enabled by default as of 0.10.0, however, if you upgraded from an older version, your configuration will need to be updated using the configurator.
+
+If you continue to have issues with especially INAV character corruption, it is likely your serial link is saturated. Check that the "Custom OSD" option in your DJI goggles menus is set to _disabled_ , and also try out the cache_serial option.
+
 ## FAQ / Suggestions
+
+### Modify / Move original DJI OSD elements
+
+You can now modify the elements present in the original DJI OSD. These include for example : transmission speed, latency, channel used, googles battery, sd card icon and default timer.
+
+Elements position, visibility, font and icons can be modified by editing the internal googles files.
+This is possible by connecting to the googles using ADB. You can even preview changes using a Python script!
+
+This is not a trivial thing for everyone to do, the full tutorial can be found [here](https://github.com/EVilm1/WIKI-HACK-DJI-OSD#6-advanced-setup-modify-the-dji-hud-elements).
 
 ### How do I create a new font (for INAV, Ardupilot, etc.)?
 
