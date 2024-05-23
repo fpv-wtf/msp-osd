@@ -26,7 +26,7 @@ This added feature requires a Betaflight font that includes the extra colour ele
 This means that to support the extra 3 colours, a 4 page font file is required.
 
 MSP-OSD 0.12+ now supports this feature and includes the required 4 page coloured font for Betaflight bundled by default.
-A Betaflight CLI command is needed to take advantage of the this feature:
+A Betaflight CLI command may needed to take advantage of the this feature:
 
 `set displayport_msp_fonts = 0,1,2,3`
 
@@ -102,11 +102,12 @@ serial 30 1 115200 57600 0 115200
 
 #### FakeHD
 With the introduction of HD FPV and its associated transmission and display resolutions, a significantly larger area (canvas*) became a possibility to use for flight controller OSD informaton.
-The first generation of the DJI FPV system supports a display resolution of 810p (1440px width x 810px height).  This allowed for a potential for a 60 * 22 grid of (mono-spaced) characters of OSD. 
-Prior to Betaflight(BF) 4.4, the BF OSD supported a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.  This 30 * 16 grid was due to the analogue roots of the video and OSD system. 
+The first generation of the DJI FPV system supports a display resolution of 810p (1440px width x 810px height).  This allowed for a potential for a 60 * 22 grid of (mono-spaced) characters of OSD.
+Prior to Betaflight(BF) 4.4, the BF OSD supported a 30 * 16 Grid, which looks large/blocky when displayed in the DJI Goggles.  This 30 * 16 grid was due to the analogue roots of the video and OSD system.
 
 To present the OSD in a visually better way on HD FPV systems, MSP-OSD introduced a workaround called FakeHD that divided up the OSD canvas area into sections that could be configured.
-FakeHD information can be found at this link.
+
+[FakeHD information is available here.](FAKEHD.md)
 
 ### INAV
 
@@ -118,7 +119,7 @@ It is recommended (now enabled by default in recent msp-osd releases) to enable 
 
 ### Ardupilot
 
-Please install an recent Ardupilot version for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
+Please install a recent Ardupilot version for full functionality. There was one critical bug fix for MSP telemetry not passing through a DisplayPort serial port. Additionally, there were several feature additions including HD support after the last 4.2 release.
 
 Settings:
 
@@ -127,7 +128,7 @@ SERIALx_PROTOCOL = 42
 OSD_TYPE = 5
 ```
 
-Recent versions of MSP-OSD fully support Ardupilot with a specific HD FPV font.  This font is bundled with msp-osd 0.12.1.
+Recent versions of MSP-OSD fully support Ardupilot with a specific HD FPV font.  This font is bundled with msp-osd 0.12
 If you wish to use a Betaflight font instead of an Ardupilot font, you can also set `MSP_OPTIONS = 4` to allow the use of a Betaflight font.
 
 More info: https://ardupilot.org/plane/docs/common-msp-osd-overview-4.2.html#dji-goggles-with-wtf-osd-firmware
@@ -142,7 +143,8 @@ Configure the UART under Digital VTX - see https://docs.bosshobby.com/Configurin
 
 # Fonts
 
-We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12.1 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.  
+We bundle in default fonts for Betaflight, Ardupilot, INAV, Quicksilver, and KISS ULTRA (INAV/Betaflight/Ardupilot fonts are SNEAKY_FPV's Unify Europa design - thanks to SNEAKYFPV for allowing us to use these - https://sites.google.com/view/sneaky-fpv/home). Since 0.12 we now use a PNG font format, the same as Walksnail. [Default fonts can be viewed here](fonts). You may also upload your own fonts to the SD card.
+
 For the naming convention of the font file in png format see the *FC Specific Font File Names* section below.
 
 ***It is important to note the following in regards to when a font file is used from where***
@@ -159,7 +161,7 @@ SD font file/s (naming without the suffix *_hd*) are used when the FC configurat
 HD font file/s are used with most modern FC firmware when the equivalent HD selection is made in the FC's OSD configuration tab.
 
 ##### *Note*
-You do not need to use/copy/install the non-hd font file if you only use a HD OSD canvas. 
+You do not need to use/copy/install the non-hd font file if you only use a HD OSD canvas.
 
 ### Attaining/using fonts
 * Download a font package. See below for known community fonts.
@@ -167,7 +169,8 @@ You do not need to use/copy/install the non-hd font file if you only use a HD OS
 * Insert the SD card and reboot the goggles.
 
 ### Using Walksnail Fonts
-As of msp-osd 0.12.1, the format of font files are now compatible with Walksnail fonts, with the following caveats.
+As of msp-osd 0.12, the format of font files are now compatible with Walksnail fonts, with the following caveats.
+
 For INAV specific Walksnail fonts, the format of the font pages matter as historical fonts typically were formatted with pages stacked vertically.  The new requirement is for the pages to be stacked side by side. The newer format of side by side pages is supported by both msp-osd and Walksnail.  Side by Side specifially formatted Walksnail fonts for INAV will be denoted 'sbs' in the zipfile and or image names.  This does not affect Betaflight as historical fonts were single page, and newer 4 page fonts are side by side formatted pages.  Ardu is a single page font file so all historically created fonts will work without issue.
 
 A Walksnail font package will typically contain 3 files.  An ini file and 2 png files.  The 2 png files will typically follow a naming convention that contains `_24` or `_36` in the file name.  The '24' file is the msp-osd `_hd` equivalent, and the '36' file is the non-hd equivalent.  e.g.
@@ -184,11 +187,13 @@ From the above example, to use them for msp-osd, copy the 2 png files to the SD 
 
 ### .bin Fonts
 
-Due to the changes in 0.12.1, the .bin font format was superseded in favour of a wider accepted format that makes it easier for the community to create their own.
-With 0.12.1, any fonts stored on the SD card in the .bin format will be ignored. 
+Due to the changes in 0.12, the .bin font format was superseded in favour of a wider accepted format that makes it easier for the community to create their own.
+
+With 0.12, any fonts stored on the SD card in the .bin format will be ignored.
+
 If you wish to retain the font from the .bin file, this open source tool will assist in conversion to png from bin.
 https://github.com/shellixyz/hd_fpv_osd_font_tool/tree/main/src/bin/hd_fpv_osd_font_tool
- 
+
 ### FC Specific Font File Names
 
 | Flight controller | SD | HD |
@@ -198,7 +203,7 @@ https://github.com/shellixyz/hd_fpv_osd_font_tool/tree/main/src/bin/hd_fpv_osd_f
 | Ardupilot       | `font_ardu.png` | `font_ardu_hd.png`|
 | KISS Ultra       | `font_ultr.png` | `font_ultr_hd.png`|
 | QUICKSILVER       | `font_quic.png` | `font_quic_hd.png`|
-| Generic/Fallback*       | `font.png` | `font_hd.png`| 
+| Generic/Fallback*       | `font.png` | `font_hd.png`|
 
 *This uses the Betaflight font layout
 
@@ -210,13 +215,12 @@ You can also add fonts for firmwares not in this list; using the generic filenam
 
 If you wish to use a specific font different than the font stored on the goggles, for when you do not have the SD card inserted in the goggles, you can follow the below steps to do this.
 1. Copy the font files you wish to be stored on the goggles firstly to your SD card
-2. Disconnect your goggles from the computer and power off your goggles
+2. Connect your goggles via USB if you didn't do this for step 1.
 3. Insert the SD card in the goggles then power them on
-4. Wait 30 seconds and then connect your goggles to the computer via USB
-5. Navigate to https://fpv.wtf
-6. After the goggles are found and connected, go to the fpv.wtf CLI and type the following
-7. `cp /storage/sdcard0/font*.png /blackbox`
-8. Power off and on the goggles **without the SD card inserted** to confirm the newly copied font is used.
+4. Navigate to https://fpv.wtf
+5. After the goggles are found and connected, go to the fpv.wtf CLI and type the following
+6. `cp /storage/sdcard0/font*.png /blackbox`
+7. Power off the goggles, remove the SD card and confirm the newly copied font is used.
 
 ##### *Note*
 To remove copied fonts repeat steps 1 to 6 and replace step 7 with `rm /blackbox/font*.png`.  Then power off and on the goggles.
@@ -259,7 +263,7 @@ Prefix option with `package-config set msp-osd`
 
 e.g. `package-config set msp-osd compress_osd true`
 
-Once desired setting changes are made then: `package-config apply msp-osd`, otherwise settings will be lost when power is off. 
+Once desired setting changes are made then: `package-config apply msp-osd`, otherwise settings will be lost when power is off.
 
 Visit https://fpv.wtf/package/fpv-wtf/msp-osd with your Goggles or Air Unit plugged in to edit options.
 
