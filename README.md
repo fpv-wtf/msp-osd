@@ -1,3 +1,7 @@
+# IMPORTANT
+As of msp-osd v0.12+, the required font format has now changed for the goggles and the OSD Overlay tool.  Support for .bin font file format has been removed in favour of .png font file format.
+See the 'Fonts' section and the 'Overlaying OSD on DVR' sections further below for clarification.
+
 # MSP-OSD - Full OSD / Displayport OSD
 
 This package gives you support for full flight controller driven OSD in line with those on analog + other HD systems.
@@ -235,6 +239,8 @@ To remove copied fonts repeat steps 1 to 6 and replace step 7 with `rm /blackbox
 
 
 ## Overlaying OSD on DVR
+**Note the change in font file format requirements (png format) for the OSD Overlay tool.  If no font file is provided by the user, a built in font (png format) will be used.**
+
 The overlay process uses DVR, recorded osd data and a font file, to overlay/render the OSD data onto DVR footage on your computer.
 A default font will be used if no font file is supplied however.  The font look and feel will be the bundled font you would see if using this during flight.
 
@@ -250,7 +256,7 @@ package-config apply msp-osd
 ```
 
 ##### *Notes*
-You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd' font file.
+You only need to supply a font file for the canvas the DVR was recorded with.  i.e. If your FC firmware configuration was HD or a HD variant you only need to supply the '_hd.png' font file.
 The 'Chroma Key' will replace the DVR with a solid colour for use within video editing software.  Be aware however that fonts have an amount of transparency around elements that will include the 'Chroma Key' bleed that will be difficult to avoid in video editing software.
 
 See the 'Using Walksnail Fonts Section' for specific requirements that may apply to font file formats.
