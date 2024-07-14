@@ -12,3 +12,18 @@ echo $! > /opt/var/run/airunit-osd-dji.pid
 setprop dji.hdvt_uav_service 1
 setprop dji.shuttle_service 1
 
+
+
+BBSTORE="/blackbox/dump_tty_`date '+%Y%m%d-%H%M%S'`.log"
+
+stdbuf -o0 cat /dev/ttyS1_moved >$BBSTORE &
+echo $! > /opt/var/run/dump-tty.pid
+
+###wait 10sec and if file >0kb then kill process (msp data, not bb log)
+sleep 10
+if [ -s $BBSTORE ]; then
+	kill `cat /opt/var/run/dump-tty.pid`
+	rm $BBSTORE
+else
+	#file is empty = no msp data
+fi
