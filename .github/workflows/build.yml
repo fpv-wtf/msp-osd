@@ -31,7 +31,7 @@ jobs:
             IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
             SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
         if: "${{ env.IS_TAG == 'true' }}"
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
 
@@ -93,7 +93,7 @@ jobs:
           make ipk
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: |
